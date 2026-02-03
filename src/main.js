@@ -1,30 +1,41 @@
 const { app, BrowserWindow } = require("electron");
 const path = require("node:path");
-const startServer = require(path.join(__dirname, "../server/dist"));
+import started from "electron-squirrel-startup";
+
+function getServerPath() {
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, "server", "dist", "index.js");
+  } else {
+    // In development, use source folder
+    return path.join(app.getAppPath(), "src", "server", "dist", "index.js");
+  }
+}
+
+const bakckend = __non_webpack_require__(getServerPath());
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 
 let server;
 
-if (require("electron-squirrel-startup")) {
-  app.quit();
-}
+if (started) app.quit();
 
 const createWindow = () => {
+  server = bakckend.startServer();
 
-  server = startServer(3001);
-  
   // Create the browser window.
   const mainWindow = new BrowserWindow({
     width: 800,
     height: 600,
     webPreferences: {
       preload: MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY,
+      webSecurity: app.isPackaged,
+      nodeIntegration: false,
+      contextIsolation: true,
     },
   });
 
   const url = app.isPackaged
     ? `file://${path.join(__dirname, "../renderer/out/index.html")}`
-    : "http://localhost:3000";
+    : "http://localhost:8000";
 
   mainWindow.loadURL(url);
 };
@@ -33,7 +44,6 @@ const createWindow = () => {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
-
   createWindow();
 
   // On OS X it's common to re-create a window in the app when the
