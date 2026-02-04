@@ -30,7 +30,16 @@ const createWindow = () => {
       webSecurity: app.isPackaged,
       nodeIntegration: false,
       contextIsolation: true,
+      devTools: !app.isPackaged,
     },
+    titleBarStyle: "hidden",
+    ...(process.platform !== "darwin"
+      ? {
+          titleBarOverlay: {
+            color: "rgba(0, 0, 0, 0)", // transparent,
+          },
+        }
+      : {}),
   });
 
   const url = app.isPackaged
