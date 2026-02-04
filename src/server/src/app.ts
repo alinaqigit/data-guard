@@ -1,13 +1,30 @@
 import express, { Application } from 'express';
+import cors from 'cors';
+import routes from './routes';
 
-export function createDataGuardApp(): Application {
+export interface Config {
+  IS_PRODUCTION: boolean;
+  
+}
+
+export function createDataGuardApp(config: Config): Application {
   const app = express();
 
-  app.use(express.json());
+  // CORS
+  const corsOptions = {
+    origin: config.IS_PRODUCTION? 'null' : 'localhost',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  };
 
-  app.get('/api/health', (_, res) => {
-    res.json({ status: 'ok' });
-  });
+  app.use(cors(corsOptions));
+
+  // Middlewares
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
+
+  // Routes
+  app.use('/api', routes);
 
   return app;
 }
