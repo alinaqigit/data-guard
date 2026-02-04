@@ -18,9 +18,21 @@ import {
     Eye
 } from 'lucide-react';
 import { useSecurity } from '@/context/SecurityContext';
+import PolicyModal from '@/components/PolicyModal';
+import Toast from '@/components/Toast';
+
+interface Policy {
+    id: string;
+    name: string;
+    description: string;
+    type: string;
+    status: 'Active' | 'Disabled';
+}
 
 export default function PolicyManagementPage() {
-    const { theme, toggleTheme, policies, deletePolicy, togglePolicyStatus, addPolicy } = useSecurity();
+    const { theme, toggleTheme, policies, deletePolicy, togglePolicyStatus, addPolicy, updatePolicy } = useSecurity();
+    const [editingPolicy, setEditingPolicy] = useState<Policy | null>(null);
+    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
     const handleAddNewPolicy = () => {
         addPolicy({
@@ -29,10 +41,23 @@ export default function PolicyManagementPage() {
             type: 'SENSITIVE_DATA',
             status: 'Active'
         });
+        setToast({
+            message: 'Policy added successfully.',
+            type: 'success'
+        });
+    };
+
+    const handleSavePolicy = (updatedPolicy: Policy) => {
+        updatePolicy(updatedPolicy);
+        setEditingPolicy(null);
+        setToast({
+            message: 'Policy updated successfully.',
+            type: 'success'
+        });
     };
 
     return (
-        <div className="space-y-6 pb-12">
+        <div className="space-y-6 pb-12" suppressHydrationWarning>
             {/* 1. Page Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
@@ -95,7 +120,10 @@ export default function PolicyManagementPage() {
                                     </div>
 
                                     <div className="flex items-center gap-5 mt-8">
-                                        <button className="flex items-center gap-2 text-base font-black text-blue-500 hover:text-blue-400 transition-colors px-4 py-2 rounded-xl bg-blue-500/5 hover:bg-blue-500/10 border border-blue-500/20">
+                                        <button
+                                            onClick={() => setEditingPolicy(policy)}
+                                            className="flex items-center gap-2 text-base font-black text-blue-500 hover:text-blue-400 transition-colors px-4 py-2 rounded-xl bg-blue-500/5 hover:bg-blue-500/10 border border-blue-500/20"
+                                        >
                                             <Edit2 size={18} />
                                             Edit
                                         </button>
@@ -163,9 +191,24 @@ export default function PolicyManagementPage() {
                             </div>
                         </div>
                     </div>
-
                 </div>
             </div>
+
+            {toast && (
+                <Toast
+                    message={toast.message}
+                    type={toast.type}
+                    onClose={() => setToast(null)}
+                />
+            )}
+
+            <PolicyModal
+                isOpen={!!editingPolicy}
+                policy={editingPolicy}
+                onClose={() => setEditingPolicy(null)}
+                onSave={handleSavePolicy}
+            />
         </div>
     );
 }
+
