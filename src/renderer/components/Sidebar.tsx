@@ -18,7 +18,6 @@ import { useState } from 'react';
 import { useSecurity } from '@/context/SecurityContext';
 
 export default function Sidebar() {
-    const [isCollapsed, setIsCollapsed] = useState(false);
     const pathname = usePathname();
     const router = useRouter();
     const { logout } = useSecurity();
@@ -41,53 +40,45 @@ export default function Sidebar() {
 
     return (
         <aside
-            className={`fixed left-0 top-0 z-40 h-screen bg-white dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-800 transition-all duration-300 ease-in-out ${isCollapsed ? 'w-20' : 'w-72'
-                } hidden md:block`}
+            className="fixed left-0 top-0 z-40 h-screen w-80 bg-neutral-900 border-r border-white/5 hidden md:block"
+            style={{
+                background: 'linear-gradient(180deg, #020617 0%, #000000 100%)',
+                borderColor: 'rgba(51, 65, 85, 0.3)'
+            }}
         >
             <div className="flex flex-col h-full">
                 {/* Header */}
-                <div className="p-4 border-b border-neutral-200 dark:border-neutral-800 flex items-center justify-between">
-                    <div className={`flex flex-col ${isCollapsed ? 'hidden' : 'flex'}`}>
-                        <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-emerald-600 dark:from-indigo-500 dark:to-emerald-500">
-                            DLP Security
-                        </span>
-                        <span className="text-[10px] text-neutral-500 uppercase tracking-wider mt-0.5">
-                            Data Loss Prevention
+                <div className="p-8 border-b border-white/5">
+                    <div className="flex flex-col">
+                        <span className="text-4xl font-black text-white tracking-tight">
+                            DATAGUARD
                         </span>
                     </div>
-                    <button
-                        onClick={() => setIsCollapsed(!isCollapsed)}
-                        className="p-2 text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors"
-                    >
-                        <Menu size={20} />
-                    </button>
                 </div>
 
                 {/* Navigation */}
-                <nav className="flex-1 overflow-y-auto py-4">
-                    <ul className="space-y-1 px-3">
+                <nav className="flex-1 overflow-y-auto py-8">
+                    <ul className="space-y-2 px-4">
                         {navItems.map((item) => {
                             const isActive = pathname === item.href;
                             return (
                                 <li key={item.name}>
                                     <Link
                                         href={item.href}
-                                        className={`flex items-center px-3 py-3 rounded-xl transition-all duration-200 group ${isActive
-                                            ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-600/10 dark:text-indigo-400'
-                                            : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800'
+                                        className={`flex items-center px-6 py-4 rounded-2xl transition-all duration-300 group ${isActive
+                                            ? 'bg-indigo-600/15 text-indigo-400 shadow-lg shadow-indigo-500/10'
+                                            : 'text-neutral-400 hover:text-white hover:bg-white/5'
                                             }`}
                                     >
                                         <item.icon
-                                            size={20}
-                                            className={`flex-shrink-0 ${isActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-neutral-400 dark:text-neutral-500 group-hover:text-neutral-900 dark:group-hover:text-white'}`}
+                                            size={24}
+                                            className={`flex-shrink-0 ${isActive ? 'text-indigo-400' : 'text-neutral-400 group-hover:text-white'}`}
                                         />
-                                        {!isCollapsed && (
-                                            <span className="ml-3 text-sm font-medium whitespace-nowrap">
-                                                {item.name}
-                                            </span>
-                                        )}
-                                        {isActive && !isCollapsed && (
-                                            <div className="ml-auto w-1.5 h-1.5 rounded-full bg-indigo-600 dark:bg-indigo-500" />
+                                        <span className="ml-4 text-lg font-black whitespace-nowrap tracking-tight">
+                                            {item.name}
+                                        </span>
+                                        {isActive && (
+                                            <div className="ml-auto w-2.5 h-2.5 rounded-full bg-indigo-500 shadow-[0_0_12px_rgba(99,102,241,0.6)]" />
                                         )}
                                     </Link>
                                 </li>
@@ -97,17 +88,15 @@ export default function Sidebar() {
                 </nav>
 
                 {/* Footer */}
-                <div className="p-4 border-t border-neutral-200 dark:border-neutral-800">
+                <div className="p-8 border-t border-white/5">
                     <button
                         onClick={handleLogout}
-                        className="flex items-center w-full px-3 py-3 text-neutral-500 dark:text-neutral-400 rounded-xl hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 group transition-colors"
+                        className="flex items-center w-full px-6 py-4 text-neutral-400 rounded-2xl hover:text-red-400 hover:bg-red-500/10 group transition-all"
                     >
-                        <LogOut size={20} className="flex-shrink-0 group-hover:text-red-500 dark:group-hover:text-red-400" />
-                        {!isCollapsed && (
-                            <span className="ml-3 text-sm font-medium whitespace-nowrap">
-                                Logout
-                            </span>
-                        )}
+                        <LogOut size={24} className="flex-shrink-0 group-hover:text-red-400 transition-colors" />
+                        <span className="ml-4 text-lg font-black whitespace-nowrap tracking-tight">
+                            Logout
+                        </span>
                     </button>
                 </div>
             </div>

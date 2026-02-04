@@ -13,7 +13,6 @@ import {
     LayoutTemplate,
     Moon,
     Sun,
-    Clock,
     CheckCircle2,
     AlertCircle,
     Eye
@@ -22,17 +21,6 @@ import { useSecurity } from '@/context/SecurityContext';
 
 export default function PolicyManagementPage() {
     const { theme, toggleTheme, policies, deletePolicy, togglePolicyStatus, addPolicy } = useSecurity();
-    const [currentTime, setCurrentTime] = useState('');
-
-    useEffect(() => {
-        const updateTime = () => {
-            const now = new Date();
-            setCurrentTime(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
-        };
-        updateTime();
-        const interval = setInterval(updateTime, 1000);
-        return () => clearInterval(interval);
-    }, []);
 
     const handleAddNewPolicy = () => {
         addPolicy({
@@ -48,85 +36,77 @@ export default function PolicyManagementPage() {
             {/* 1. Page Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-white tracking-tight">Policy Management</h1>
-                    <p className="text-neutral-500 text-sm mt-1">Configure and enforce security rules across the organization.</p>
-                </div>
-                <div className="flex items-center gap-4 bg-neutral-900/50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 p-2 rounded-xl">
-                    <button
-                        onClick={toggleTheme}
-                        className="p-2 text-neutral-500 dark:text-neutral-400 hover:text-indigo-600 dark:hover:text-white transition-colors"
-                    >
-                        {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-                    </button>
-                    <div className="h-6 w-px bg-neutral-800" />
-                    <div className="flex items-center gap-2 px-2 text-neutral-400 font-mono text-sm min-w-[100px]">
-                        <Clock size={16} />
-                        {currentTime}
-                    </div>
+                    <h1 className="text-5xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-500 tracking-tight">
+                        Policy Management
+                    </h1>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* 2. Active Policies (Main Left Section) */}
                 <div className="lg:col-span-2 space-y-6">
-                    <div className="bg-neutral-900 border border-neutral-800 rounded-2xl shadow-xl overflow-hidden">
-                        <div className="p-6 border-b border-neutral-800 flex items-center justify-between">
-                            <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                                <Shield className="text-emerald-500" size={24} />
+                    <div className="border rounded-2xl shadow-xl overflow-hidden transition-all duration-300"
+                        style={{
+                            background: 'linear-gradient(135deg, #020617 0%, #000000 100%)',
+                            borderColor: 'rgba(51, 65, 85, 0.3)'
+                        }}>
+                        <div className="p-6 border-b border-white/5 flex items-center justify-between">
+                            <h2 className="text-2xl font-black text-white flex items-center gap-3 tracking-tight">
+                                <Shield className="text-emerald-500" size={28} />
                                 Active Policies
                             </h2>
                             <button
                                 onClick={handleAddNewPolicy}
-                                className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-lg shadow-indigo-500/20 flex items-center gap-2 active:scale-95"
+                                className="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-3 rounded-xl text-base font-black transition-all shadow-lg shadow-indigo-500/20 flex items-center gap-2 active:scale-95"
                             >
-                                <Plus size={18} />
+                                <Plus size={20} />
                                 New Policy
                             </button>
                         </div>
 
-                        <div className="divide-y divide-neutral-800">
+                        <div className="divide-y divide-white/5">
                             {policies.map((policy: any) => (
-                                <div key={policy.id} className="p-6 hover:bg-neutral-800/30 transition-colors group">
+                                <div key={policy.id} className="p-6 hover:bg-white/5 transition-colors group">
                                     <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-                                        <div className="space-y-2">
+                                        <div className="space-y-3">
                                             <div className="flex items-center gap-2">
-                                                <h3 className="text-lg font-bold text-white group-hover:text-indigo-400 transition-colors capitalize">
+                                                <h3 className="text-xl font-black text-white group-hover:text-indigo-400 transition-colors capitalize tracking-tight">
                                                     {policy.name}
                                                 </h3>
                                             </div>
-                                            <p className="text-neutral-400 text-sm leading-relaxed max-w-xl">
+                                            <p className="text-neutral-400 text-base font-bold leading-relaxed max-w-xl">
                                                 {policy.description}
                                             </p>
-                                            <div className="flex flex-wrap items-center gap-4 pt-1">
-                                                <span className="bg-neutral-800 text-neutral-400 px-2 py-0.5 rounded text-[10px] font-mono border border-neutral-700 uppercase tracking-wider">
+                                            <div className="flex flex-wrap items-center gap-5 pt-1">
+                                                <span className="bg-white/5 text-neutral-300 px-3 py-1 rounded text-sm font-black border border-white/10 uppercase tracking-widest">
                                                     Type: {policy.type}
                                                 </span>
-                                                <span className="text-[10px] text-neutral-500 font-mono">
+                                                <span className="text-sm text-neutral-500 font-black tracking-widest">
                                                     ID: {policy.id}
                                                 </span>
                                             </div>
                                         </div>
                                         <div className="flex items-center">
-                                            <span className="bg-emerald-500/10 text-emerald-500 px-3 py-1 rounded-full text-[10px] font-bold uppercase border border-emerald-500/20 flex items-center gap-1.5 shadow-sm">
-                                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                            <span className="bg-emerald-500/10 text-emerald-500 px-4 py-1.5 rounded-full text-sm font-black uppercase border border-emerald-500/20 flex items-center gap-2 shadow-sm">
+                                                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                                                 {policy.status}
                                             </span>
                                         </div>
                                     </div>
 
-                                    <div className="flex items-center gap-4 mt-6">
-                                        <button className="flex items-center gap-1.5 text-xs font-bold text-blue-500 hover:text-blue-400 transition-colors px-3 py-1.5 rounded-lg bg-blue-500/5 hover:bg-blue-500/10 border border-blue-500/20">
-                                            <Edit2 size={14} />
+                                    <div className="flex items-center gap-5 mt-8">
+                                        <button className="flex items-center gap-2 text-base font-black text-blue-500 hover:text-blue-400 transition-colors px-4 py-2 rounded-xl bg-blue-500/5 hover:bg-blue-500/10 border border-blue-500/20">
+                                            <Edit2 size={18} />
                                             Edit
                                         </button>
                                         <button
                                             onClick={() => togglePolicyStatus(policy.id)}
-                                            className={`flex items-center gap-1.5 text-xs font-bold transition-colors px-3 py-1.5 rounded-lg border ${policy.status === 'Active'
-                                                    ? 'text-red-500 bg-red-500/5 hover:bg-red-500/10 border-red-500/20'
-                                                    : 'text-emerald-500 bg-emerald-500/5 hover:bg-emerald-500/10 border-emerald-500/20'
+                                            className={`flex items-center gap-2 text-base font-black transition-colors px-4 py-2 rounded-xl border ${policy.status === 'Active'
+                                                ? 'text-red-500 bg-red-500/5 hover:bg-red-500/10 border-red-500/20'
+                                                : 'text-emerald-500 bg-emerald-500/5 hover:bg-emerald-500/10 border-emerald-500/20'
                                                 }`}
                                         >
-                                            <Slash size={14} />
+                                            <Slash size={18} />
                                             {policy.status === 'Active' ? 'Disable' : 'Enable'}
                                         </button>
                                         <button
@@ -135,9 +115,9 @@ export default function PolicyManagementPage() {
                                                     deletePolicy(policy.id);
                                                 }
                                             }}
-                                            className="flex items-center gap-1.5 text-xs font-bold text-neutral-500 hover:text-red-500 transition-all ml-auto p-1.5 hover:bg-red-500/10 rounded-lg"
+                                            className="flex items-center gap-2 text-base font-black text-neutral-500 hover:text-red-500 transition-all ml-auto p-2 hover:bg-red-500/10 rounded-xl"
                                         >
-                                            <Trash2 size={16} />
+                                            <Trash2 size={20} />
                                         </button>
                                     </div>
                                 </div>
@@ -149,63 +129,41 @@ export default function PolicyManagementPage() {
                 {/* Right Column */}
                 <div className="space-y-6">
                     {/* 3. Policy Statistics */}
-                    <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 shadow-xl">
-                        <h3 className="text-lg font-bold text-white mb-6">Policy Statistics</h3>
+                    <div className="border rounded-2xl p-6 shadow-xl transition-all duration-300"
+                        style={{
+                            background: 'linear-gradient(135deg, #020617 0%, #000000 100%)',
+                            borderColor: 'rgba(51, 65, 85, 0.3)'
+                        }}>
+                        <h3 className="text-2xl font-black text-white mb-8 tracking-tight">Policy Statistics</h3>
 
-                        <div className="text-center pb-6 border-b border-neutral-800/50 mb-6">
-                            <p className="text-5xl font-black text-white mb-1 tracking-tighter">100%</p>
-                            <p className="text-neutral-500 text-xs font-bold uppercase tracking-widest">Policy Implementation</p>
+                        <div className="text-center pb-8 border-b border-white/5 mb-8">
+                            <p className="text-6xl font-black text-white mb-2 tracking-tighter">100%</p>
+                            <p className="text-neutral-500 text-sm font-black uppercase tracking-[0.2em]">Policy Implementation</p>
                         </div>
 
-                        <div className="space-y-6">
-                            <div className="space-y-3">
-                                <div className="flex justify-between items-center text-xs font-bold uppercase">
+                        <div className="space-y-8">
+                            <div className="space-y-4">
+                                <div className="flex justify-between items-center text-base font-black uppercase tracking-wider">
                                     <span className="text-neutral-400">Violations Today</span>
                                     <span className="text-rose-500">8</span>
                                 </div>
-                                <div className="h-2 bg-neutral-950 rounded-full overflow-hidden border border-neutral-800 p-0.5">
-                                    <div className="h-full w-[35%] bg-rose-500 rounded-full" />
+                                <div className="h-3 bg-black/40 rounded-full overflow-hidden border border-white/5 p-0.5">
+                                    <div className="h-full w-[35%] bg-rose-500 rounded-full shadow-[0_0_15px_rgba(244,63,94,0.4)]" />
                                 </div>
                             </div>
 
-                            <div className="space-y-3">
-                                <div className="flex justify-between items-center text-xs font-bold uppercase">
+                            <div className="space-y-4">
+                                <div className="flex justify-between items-center text-base font-black uppercase tracking-wider">
                                     <span className="text-neutral-400">Policy Coverage</span>
                                     <span className="text-emerald-500">92%</span>
                                 </div>
-                                <div className="h-2 bg-neutral-950 rounded-full overflow-hidden border border-neutral-800 p-0.5">
-                                    <div className="h-full w-[92%] bg-emerald-500 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.3)]" />
+                                <div className="h-3 bg-black/40 rounded-full overflow-hidden border border-white/5 p-0.5">
+                                    <div className="h-full w-[92%] bg-emerald-500 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.4)]" />
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* 4. Quick Actions */}
-                    <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 shadow-xl">
-                        <h3 className="text-lg font-bold text-white mb-6">Quick Actions</h3>
-
-                        <div className="space-y-3">
-                            <button className="w-full flex items-center justify-between p-4 bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-400 border border-indigo-500/20 hover:border-indigo-500/40 rounded-xl transition-all group active:scale-[0.98]">
-                                <span className="font-bold text-sm">Import Policy</span>
-                                <Upload size={18} className="group-hover:-translate-y-1 transition-transform" />
-                            </button>
-
-                            <button disabled className="w-full flex items-center justify-between p-4 bg-neutral-950 text-neutral-700 border border-neutral-900 rounded-xl opacity-50 cursor-not-allowed">
-                                <span className="font-bold text-sm">Export All</span>
-                                <Download size={18} />
-                            </button>
-
-                            <button className="w-full flex items-center justify-between p-4 bg-transparent hover:bg-cyan-500/5 text-cyan-500 border border-cyan-500/30 hover:border-cyan-500/60 rounded-xl transition-all group active:scale-[0.98]">
-                                <span className="font-bold text-sm">Templates</span>
-                                <LayoutTemplate size={18} className="group-hover:rotate-12 transition-transform" />
-                            </button>
-
-                            <button className="w-full flex items-center justify-between p-4 bg-transparent hover:bg-amber-500/5 text-amber-500 border border-amber-500/30 hover:border-amber-500/60 rounded-xl transition-all group active:scale-[0.98]">
-                                <span className="font-bold text-sm">Documentation</span>
-                                <BookOpen size={18} className="group-hover:scale-110 transition-transform" />
-                            </button>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>

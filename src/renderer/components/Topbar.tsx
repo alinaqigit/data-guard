@@ -19,7 +19,12 @@ export default function Topbar() {
     }, []);
 
     return (
-        <header className="sticky top-0 z-30 w-full h-16 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md border-b border-neutral-200 dark:border-neutral-800 transition-colors duration-300">
+        <header className="sticky top-0 z-30 w-full h-16 backdrop-blur-md border-b transition-colors duration-300"
+            style={{
+                background: 'rgba(2, 6, 23, 0.8)',
+                borderColor: 'rgba(51, 65, 85, 0.3)'
+            }}
+        >
             <div className="flex items-center justify-between h-full px-4 md:px-6">
 
                 {/* Left: Spacer */}

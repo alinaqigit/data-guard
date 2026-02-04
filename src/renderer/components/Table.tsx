@@ -16,19 +16,24 @@ interface TableProps<T> {
 
 export default function Table<T>({ columns, data }: TableProps<T>) {
     return (
-        <div className="w-full overflow-hidden rounded-2xl border border-neutral-200 dark:border-white/5 bg-white dark:bg-neutral-900/40 backdrop-blur-sm shadow-sm dark:shadow-inner dark:shadow-black/20">
+        <div className="w-full overflow-hidden rounded-2xl border transition-all duration-300"
+            style={{
+                background: 'linear-gradient(135deg, #020617 0%, #000000 100%)',
+                borderColor: 'rgba(51, 65, 85, 0.3)'
+            }}
+        >
             <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm text-neutral-500 dark:text-neutral-400">
-                    <thead className="bg-neutral-50 dark:bg-white/5 text-xs uppercase text-neutral-500 dark:text-neutral-400 font-semibold tracking-wider">
+                <table className="w-full text-left text-base text-white">
+                    <thead className="bg-white/5 text-sm uppercase text-neutral-400 font-black tracking-[0.1em] border-b border-white/10">
                         <tr>
                             {columns.map((col, index) => (
-                                <th key={index} className={`px-6 py-4 ${col.className || ''}`}>
+                                <th key={index} className={`px-6 py-5 ${col.className || ''}`}>
                                     {col.header}
                                 </th>
                             ))}
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-neutral-200 dark:divide-white/5">
+                    <tbody className="divide-y divide-white/5">
                         {data.map((row, rowIndex) => (
                             <tr
                                 key={rowIndex}
@@ -40,7 +45,7 @@ export default function Table<T>({ columns, data }: TableProps<T>) {
                                         : row[col.accessor];
 
                                     return (
-                                        <td key={colIndex} className="px-6 py-4 text-neutral-900 dark:text-white">
+                                        <td key={colIndex} className="px-6 py-5 text-white font-medium">
                                             {col.render ? col.render(value, row) : value}
                                         </td>
                                     );
