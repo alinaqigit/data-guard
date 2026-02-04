@@ -41,31 +41,40 @@ export default function ThreatsPage() {
         <div className="space-y-8">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-white mb-2">Threat Intelligence</h1>
-                    <p className="text-neutral-400 text-sm">Advanced threat tracking and localized data protection metrics.</p>
+                    <h1 className="text-5xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-500 tracking-tight">Threat Intelligence</h1>
                 </div>
             </div>
 
             {/* Statistics Row */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {stats.map((stat, i) => (
-                    <div key={i} className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 shadow-lg flex items-center gap-4">
-                        <div className={`p-3 rounded-xl ${stat.bg} ${stat.color}`}>
-                            <stat.icon size={24} />
+                    <div key={i} className="border rounded-2xl p-6 shadow-xl flex items-center gap-5 transition-all duration-300 hover:-translate-y-1"
+                        style={{
+                            background: 'linear-gradient(135deg, #020617 0%, #000000 100%)',
+                            borderColor: 'rgba(51, 65, 85, 0.3)'
+                        }}
+                    >
+                        <div className={`p-4 rounded-xl ${stat.bg} ${stat.color}`}>
+                            <stat.icon size={28} />
                         </div>
                         <div>
-                            <p className="text-sm font-medium text-neutral-500">{stat.label}</p>
-                            <p className="text-2xl font-bold text-white">{stat.count.toLocaleString()}</p>
+                            <p className="text-base font-bold text-neutral-400 uppercase tracking-widest">{stat.label}</p>
+                            <p className="text-3xl font-black text-white mt-1 tracking-tight">{stat.count.toLocaleString()}</p>
                         </div>
                     </div>
                 ))}
             </div>
 
             {/* Threat Records Section */}
-            <div className="bg-neutral-900 border border-neutral-800 rounded-2xl shadow-xl overflow-hidden">
-                <div className="p-6 border-b border-neutral-800 bg-neutral-900/50">
-                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                        <AlertTriangle className="text-rose-500" size={24} />
+            <div className="border rounded-2xl shadow-xl overflow-hidden transition-all duration-300"
+                style={{
+                    background: 'linear-gradient(135deg, #020617 0%, #000000 100%)',
+                    borderColor: 'rgba(51, 65, 85, 0.3)'
+                }}
+            >
+                <div className="p-8 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <h2 className="text-2xl font-black text-white flex items-center gap-3 tracking-tight">
+                        <AlertTriangle className="text-rose-500" size={28} />
                         Active Threat Registry
                     </h2>
                 </div>
@@ -94,25 +103,25 @@ export default function ThreatsPage() {
                                 </tr>
                             ) : (
                                 alerts.map((threat) => (
-                                    <tr key={threat.id} className="group hover:bg-neutral-800/40 transition-colors">
-                                        <td className="py-4 px-6">
-                                            <span className="text-xs font-mono text-neutral-500">THR-{threat.id.toString().slice(-6)}</span>
+                                    <tr key={threat.id} className="group hover:bg-white/5 transition-colors">
+                                        <td className="py-5 px-6">
+                                            <span className="text-sm font-mono text-neutral-500 font-bold">THR-{threat.id.toString().slice(-6)}</span>
                                         </td>
-                                        <td className="py-4 px-6">
+                                        <td className="py-5 px-6">
                                             <div className="flex flex-col">
-                                                <span className="text-white font-bold text-sm">{threat.type}</span>
-                                                <span className="text-neutral-500 text-[10px] uppercase tracking-tighter">{threat.source}</span>
+                                                <span className="text-white font-black text-lg tracking-tight">{threat.type}</span>
+                                                <span className="text-neutral-500 text-xs font-black uppercase tracking-wider mt-0.5">{threat.source}</span>
                                             </div>
                                         </td>
-                                        <td className="py-4 px-6 min-w-[300px]">
-                                            <p className="text-neutral-400 text-sm leading-relaxed">{threat.description}</p>
+                                        <td className="py-5 px-6 min-w-[300px]">
+                                            <p className="text-neutral-400 text-base font-bold leading-relaxed">{threat.description}</p>
                                         </td>
-                                        <td className="py-4 px-6">
-                                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase border ${getStatusStyles(threat.status)}`}>
+                                        <td className="py-5 px-6 text-center">
+                                            <span className={`px-4 py-1.5 rounded-full text-xs font-black uppercase border ${getStatusStyles(threat.status)}`}>
                                                 {threat.status}
                                             </span>
                                         </td>
-                                        <td className="py-4 px-6">
+                                        破                                        <td className="py-4 px-6">
                                             <div className="flex items-center justify-end gap-2 text-neutral-400">
                                                 <button className="p-2 hover:bg-blue-500/10 hover:text-blue-400 rounded-lg transition-colors" title="View Forensics">
                                                     <Eye size={18} />

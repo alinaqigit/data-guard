@@ -4,13 +4,27 @@ import { useState } from 'react';
 import { Search, Trash2, Shield, Files, AlertCircle, CheckCircle } from 'lucide-react';
 
 import { useSecurity } from '@/context/SecurityContext';
+import Table from '@/components/Table';
 
 export default function ScannerPage() {
     const { scans, runScan, clearAllScans, totalFilesScanned } = useSecurity();
     const [scanType, setScanType] = useState('Quick Scan (Fast)');
-    const [target, setTarget] = useState('All Files');
     const [scanPath, setScanPath] = useState('');
     const [isScanning, setIsScanning] = useState(false);
+    const [excludedKeywords, setExcludedKeywords] = useState('');
+    const [whitelistedPaths, setWhitelistedPaths] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
+    const [confidence, setConfidence] = useState(85);
+    const [sensitivity, setSensitivity] = useState('Medium');
+
+    const handleSavePreferences = () => {
+        setIsSaving(true);
+        // Simulate save
+        setTimeout(() => {
+            setIsSaving(false);
+            alert('Preferences saved successfully.');
+        }, 1000);
+    };
 
     const handleStartScan = () => {
         if (!scanPath.trim()) {
@@ -19,7 +33,7 @@ export default function ScannerPage() {
         }
 
         setIsScanning(true);
-        runScan(scanType, target, scanPath);
+        runScan(scanType, 'All Files', scanPath);
 
         // Mock UI loading state
         setTimeout(() => {
@@ -27,30 +41,26 @@ export default function ScannerPage() {
         }, 1500);
     };
 
-    const handleTestScan = () => {
-        setIsScanning(true);
-        runScan('Test Scan', 'All Files', '/test/path');
-
-        setTimeout(() => {
-            setIsScanning(false);
-        }, 1000);
-    };
 
     return (
         <div className="space-y-6">
-            <h1 className="text-3xl font-bold text-white mb-6">Content Scanner</h1>
+            <h1 className="text-5xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-500 mb-8 tracking-tight">Content Scanner</h1>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
                 {/* Scan Configuration Card */}
-                <div className="lg:col-span-2 bg-neutral-900 border border-neutral-800 rounded-2xl p-6 shadow-lg">
-                    <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                        <Shield className="text-blue-500" size={24} />
+                <div className="lg:col-span-2 border rounded-2xl p-6 shadow-lg transition-all duration-300"
+                    style={{
+                        background: 'linear-gradient(135deg, #020617 0%, #000000 100%)',
+                        borderColor: 'rgba(51, 65, 85, 0.3)'
+                    }}>
+                    <h2 className="text-2xl font-black text-white mb-8 flex items-center gap-3 tracking-tight">
+                        <Shield className="text-blue-500" size={28} />
                         Scan Configuration
                     </h2>
 
                     <div className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 gap-6">
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-neutral-400">Scan Type</label>
                                 <select
@@ -61,18 +71,6 @@ export default function ScannerPage() {
                                     <option>Quick Scan (Fast)</option>
                                     <option>Full Scan</option>
                                     <option>Custom Scan</option>
-                                </select>
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-neutral-400">Target</label>
-                                <select
-                                    className="w-full bg-neutral-950 border border-neutral-800 text-white rounded-lg px-4 py-2.5 focus:outline-none focus:border-blue-500 transition-colors"
-                                    value={target}
-                                    onChange={(e) => setTarget(e.target.value)}
-                                >
-                                    <option>All Files</option>
-                                    <option>Documents Only</option>
-                                    <option>Media Files</option>
                                 </select>
                             </div>
                         </div>
@@ -88,11 +86,11 @@ export default function ScannerPage() {
                             />
                         </div>
 
-                        <div className="flex gap-4 pt-2">
+                        <div className="flex pt-2">
                             <button
                                 onClick={handleStartScan}
                                 disabled={isScanning}
-                                className={`flex-1 ${isScanning ? 'bg-blue-600/50 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500'} text-white py-2.5 rounded-lg font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-900/20 active:scale-95`}
+                                className={`w-full ${isScanning ? 'bg-blue-600/50 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500'} text-white py-2.5 rounded-lg font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-900/20 active:scale-95`}
                             >
                                 {isScanning ? (
                                     <>
@@ -106,32 +104,116 @@ export default function ScannerPage() {
                                     </>
                                 )}
                             </button>
-                            <button
-                                onClick={handleTestScan}
-                                disabled={isScanning}
-                                className="px-6 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white rounded-lg font-medium transition-colors border border-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                Test Scan
-                            </button>
                         </div>
                     </div>
                 </div>
 
-                {/* Scan Statistics Card */}
-                <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 shadow-lg flex flex-col items-center justify-center text-center space-y-4">
-                    <div className="p-4 bg-emerald-500/10 rounded-full text-emerald-500 mb-2">
-                        <Files size={32} />
-                    </div>
-                    <div>
-                        <span className="text-5xl font-bold text-white block mb-2">{totalFilesScanned.toLocaleString()}</span>
-                        <span className="text-neutral-400 font-medium">Total Files Scanned</span>
+                {/* Model Configuration Card */}
+                <div className="border rounded-2xl p-6 shadow-lg transition-all duration-300 flex flex-col justify-center"
+                    style={{
+                        background: 'linear-gradient(135deg, #020617 0%, #000000 100%)',
+                        borderColor: 'rgba(51, 65, 85, 0.3)'
+                    }}>
+                    <h3 className="text-lg font-bold text-white mb-6">Model Configuration</h3>
+
+                    <div className="space-y-6">
+                        {/* Confidence Bar */}
+                        <div className="space-y-3">
+                            <div className="flex justify-between items-center">
+                                <label className="text-sm font-medium text-neutral-400">Confidence in Detection</label>
+                                <span className="text-indigo-400 font-mono font-bold text-sm tracking-tighter">{confidence}%</span>
+                            </div>
+                            <div className="relative w-full h-2 bg-white/5 rounded-full overflow-hidden border border-white/5">
+                                <div
+                                    className="absolute top-0 left-0 h-full bg-gradient-to-r from-indigo-600 to-indigo-400 transition-all duration-500 rounded-full"
+                                    style={{ width: `${confidence}%` }}
+                                />
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max="100"
+                                    value={confidence}
+                                    onChange={(e) => setConfidence(parseInt(e.target.value))}
+                                    className="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Sensitivity Dropdown */}
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-neutral-400">Model Sensitivity</label>
+                            <select
+                                className="w-full bg-black border border-white/10 text-white rounded-lg px-4 py-2.5 focus:outline-none focus:border-indigo-500 transition-colors cursor-pointer"
+                                value={sensitivity}
+                                onChange={(e) => setSensitivity(e.target.value)}
+                            >
+                                <option value="Low">Low</option>
+                                <option value="Medium">Medium</option>
+                                <option value="High">High</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
 
             </div>
 
+            {/* Scanner Preferences Card */}
+            <div className="border rounded-2xl p-6 shadow-lg transition-all duration-300"
+                style={{
+                    background: 'linear-gradient(135deg, #020617 0%, #000000 100%)',
+                    borderColor: 'rgba(51, 65, 85, 0.3)'
+                }}>
+                <h3 className="text-lg font-bold text-white mb-6">Scanner Preferences</h3>
+                <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-neutral-400">Excluded Keywords</label>
+                            <input
+                                type="text"
+                                placeholder="Enter keywords separated by commas"
+                                className="w-full bg-black border border-white/10 text-white rounded-lg px-4 py-2.5 focus:outline-none focus:border-indigo-500 transition-colors placeholder:text-neutral-600"
+                                value={excludedKeywords}
+                                onChange={(e) => setExcludedKeywords(e.target.value)}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-neutral-400">Whitelisted Paths</label>
+                            <input
+                                type="text"
+                                placeholder="Enter paths separated by commas"
+                                className="w-full bg-black border border-white/10 text-white rounded-lg px-4 py-2.5 focus:outline-none focus:border-indigo-500 transition-colors placeholder:text-neutral-600"
+                                value={whitelistedPaths}
+                                onChange={(e) => setWhitelistedPaths(e.target.value)}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="flex justify-start">
+                        <button
+                            onClick={handleSavePreferences}
+                            disabled={isSaving}
+                            className={`px-8 py-2.5 rounded-lg font-bold transition-all shadow-lg active:scale-95 flex items-center gap-2 ${isSaving ? 'bg-indigo-600/50 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-500'
+                                } text-white`}
+                        >
+                            {isSaving ? (
+                                <>
+                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    Saving...
+                                </>
+                            ) : (
+                                'Save Preferences'
+                            )}
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             {/* Recent Scan Results */}
-            <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 shadow-lg">
+            <div className="border rounded-2xl p-6 shadow-lg transition-all duration-300"
+                style={{
+                    background: 'linear-gradient(135deg, #020617 0%, #000000 100%)',
+                    borderColor: 'rgba(51, 65, 85, 0.3)'
+                }}>
                 <div className="flex justify-between items-center mb-6">
                     <h3 className="text-lg font-bold text-white">Recent Scan Results</h3>
                     {scans.length > 0 && (
@@ -145,51 +227,50 @@ export default function ScannerPage() {
                     )}
                 </div>
 
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="border-b border-neutral-800 text-neutral-400 text-sm uppercase tracking-wider">
-                                <th className="py-3 px-4 font-medium">Time</th>
-                                <th className="py-3 px-4 font-medium">Scan Type</th>
-                                <th className="py-3 px-4 font-medium">Files</th>
-                                <th className="py-3 px-4 font-medium">Threats</th>
-                                <th className="py-3 px-4 font-medium">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-neutral-800">
-                            {scans.length === 0 ? (
-                                <tr>
-                                    <td colSpan={5} className="py-8 text-center text-neutral-500">
-                                        No recent scans found.
-                                    </td>
-                                </tr>
-                            ) : (
-                                scans.map((scan) => (
-                                    <tr key={scan.id} className="group hover:bg-neutral-800/50 transition-colors">
-                                        <td className="py-4 px-4 text-white text-sm">{scan.time}</td>
-                                        <td className="py-4 px-4 text-neutral-300 text-sm">{scan.type}</td>
-                                        <td className="py-4 px-4 text-neutral-300 text-sm">{scan.files}</td>
-                                        <td className="py-4 px-4">
-                                            {scan.threats > 0 ? (
-                                                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-red-500 text-white text-xs font-bold">
-                                                    {scan.threats}
-                                                </span>
-                                            ) : (
-                                                <span className="text-neutral-500 text-sm">-</span>
-                                            )}
-                                        </td>
-                                        <td className="py-4 px-4">
-                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-500 text-xs font-medium border border-emerald-500/20">
-                                                <CheckCircle size={12} />
-                                                {scan.status}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+                <Table<any>
+                    columns={[
+                        {
+                            header: 'Scan ID',
+                            accessor: 'scanid',
+                            render: (value) => (
+                                <span className="font-mono text-xs px-2 py-1 bg-white/5 rounded text-neutral-400 border border-white/5">
+                                    {value}
+                                </span>
+                            )
+                        },
+                        {
+                            header: 'Filename',
+                            accessor: 'filename',
+                            className: 'w-[40%]',
+                            render: (value) => (
+                                <span className="font-semibold text-neutral-100">{value}</span>
+                            )
+                        },
+                        {
+                            header: 'Threats',
+                            accessor: 'threats',
+                            render: (value) => (
+                                <div className="flex items-center gap-2">
+                                    <span className={`w-2 h-2 rounded-full ${value > 0 ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500'}`}></span>
+                                    <span className={`${value > 0 ? 'text-rose-500 font-bold' : 'text-neutral-500'}`}>
+                                        {value}
+                                    </span>
+                                </div>
+                            )
+                        },
+                        {
+                            header: 'Date',
+                            accessor: 'date',
+                            className: 'text-neutral-500 text-xs text-right'
+                        },
+                    ]}
+                    data={scans.map((s, i) => ({
+                        scanid: `SCN-${1000 + i}`,
+                        filename: s.type,
+                        threats: s.threats,
+                        date: s.time
+                    }))}
+                />
             </div>
         </div>
     );
