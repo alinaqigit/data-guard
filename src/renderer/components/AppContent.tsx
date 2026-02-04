@@ -17,7 +17,7 @@ export default function AppContent({ children }: { children: React.ReactNode }) 
     }, []);
 
     if (!mounted) {
-        return <div className="min-h-screen bg-black" />; // Empty placeholder during hydration
+        return <div className="min-h-screen bg-black" suppressHydrationWarning />; // Empty placeholder during hydration
     }
 
     const isPublicPath = pathname === '/login' || pathname === '/signup';

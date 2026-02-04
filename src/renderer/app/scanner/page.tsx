@@ -5,6 +5,7 @@ import { Search, Trash2, Shield, Files, AlertCircle, CheckCircle } from 'lucide-
 
 import { useSecurity } from '@/context/SecurityContext';
 import Table from '@/components/Table';
+import Toast from '@/components/Toast';
 
 export default function ScannerPage() {
     const { scans, runScan, clearAllScans, totalFilesScanned } = useSecurity();
@@ -16,19 +17,26 @@ export default function ScannerPage() {
     const [isSaving, setIsSaving] = useState(false);
     const [confidence, setConfidence] = useState(85);
     const [sensitivity, setSensitivity] = useState('Medium');
+    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
     const handleSavePreferences = () => {
         setIsSaving(true);
         // Simulate save
         setTimeout(() => {
             setIsSaving(false);
-            alert('Preferences saved successfully.');
+            setToast({
+                message: 'Preferences saved successfully.',
+                type: 'success'
+            });
         }, 1000);
     };
 
     const handleStartScan = () => {
         if (!scanPath.trim()) {
-            alert('Please enter a valid scan path before starting the scan.');
+            setToast({
+                message: 'Please enter a valid scan path.',
+                type: 'error'
+            });
             return;
         }
 
@@ -272,6 +280,13 @@ export default function ScannerPage() {
                     }))}
                 />
             </div>
+            {toast && (
+                <Toast
+                    message={toast.message}
+                    type={toast.type}
+                    onClose={() => setToast(null)}
+                />
+            )}
         </div>
     );
 }
