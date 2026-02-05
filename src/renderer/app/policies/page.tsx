@@ -15,11 +15,15 @@ import {
     Sun,
     CheckCircle2,
     AlertCircle,
-    Eye
+    Eye,
+    Lock, // Added from user's diff
+    Unlock, // Added from user's diff
+    Settings // Added from user's diff
 } from 'lucide-react';
 import { useSecurity } from '@/context/SecurityContext';
 import PolicyModal from '@/components/PolicyModal';
 import Toast from '@/components/Toast';
+import ConfirmDialog from '@/components/ConfirmDialog'; // Added ConfirmDialog import
 
 interface Policy {
     id: string;
@@ -33,6 +37,10 @@ export default function PolicyManagementPage() {
     const { theme, toggleTheme, policies, deletePolicy, togglePolicyStatus, addPolicy, updatePolicy } = useSecurity();
     const [editingPolicy, setEditingPolicy] = useState<Policy | null>(null);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+    const [confirmState, setConfirmState] = useState<{ isOpen: boolean; policyId: string | null }>({ // Added confirmState
+        isOpen: false,
+        policyId: null
+    });
 
     const handleAddNewPolicy = () => {
         addPolicy({
@@ -54,6 +62,18 @@ export default function PolicyManagementPage() {
             message: 'Policy updated successfully.',
             type: 'success'
         });
+    };
+
+    const handleDeleteClick = (id: string) => { // Added handleDeleteClick
+        setConfirmState({ isOpen: true, policyId: id });
+    };
+
+    const handleConfirmDelete = () => { // Added handleConfirmDelete
+        if (confirmState.policyId) {
+            deletePolicy(confirmState.policyId);
+            setToast({ message: 'Policy deleted successfully', type: 'success' });
+            setConfirmState({ isOpen: false, policyId: null });
+        }
     };
 
     return (
@@ -138,11 +158,7 @@ export default function PolicyManagementPage() {
                                             {policy.status === 'Active' ? 'Disable' : 'Enable'}
                                         </button>
                                         <button
-                                            onClick={() => {
-                                                if (confirm('Delete this policy permanently?')) {
-                                                    deletePolicy(policy.id);
-                                                }
-                                            }}
+                                            onClick={() => handleDeleteClick(policy.id)}
                                             className="flex items-center gap-2 text-base font-black text-neutral-500 hover:text-red-500 transition-all ml-auto p-2 hover:bg-red-500/10 rounded-xl"
                                         >
                                             <Trash2 size={20} />
@@ -201,6 +217,16 @@ export default function PolicyManagementPage() {
                     onClose={() => setToast(null)}
                 />
             )}
+
+            <ConfirmDialog
+                isOpen={confirmState.isOpen}
+                title="Delete Policy"
+                message="Are you sure you want to permanently delete this policy? This action cannot be undone."
+                confirmText="Delete Policy"
+                isDestructive={true}
+                onConfirm={handleConfirmDelete}
+                onCancel={() => setConfirmState({ isOpen: false, policyId: null })}
+            />
 
             <PolicyModal
                 isOpen={!!editingPolicy}
