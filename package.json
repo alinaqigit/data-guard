@@ -10,7 +10,7 @@
     "start": "electron-forge start",
     "package": "electron-forge package",
     "publish": "electron-forge publish",
-    "dev:server": "node src/server/index.js",
+    "dev:server": "cd src/server && npm run dev",
     "dev:next": "cd src/renderer && npm run dev -- -p 8000",
     "build:server": "cd src/server && npm run build",
     "build:next": "cd src/renderer && npm run build",

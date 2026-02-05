@@ -2,8 +2,8 @@ import { dbRepository } from "./db.repository";
 
 export class User {
   private dbRepository: dbRepository;
-  constructor() {
-    this.dbRepository = new dbRepository();
+  constructor(DB_PATH: string) {
+    this.dbRepository = new dbRepository(DB_PATH);
   }
 
   public createUser(userData: { username: string; passwordHash: string }) {

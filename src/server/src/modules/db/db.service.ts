@@ -2,7 +2,7 @@ import {User} from "./db.user";
 export class dbService {
   public user: User;
 
-  constructor() {
-    this.user = new User();
+  constructor(DB_PATH: string) {
+    this.user = new User(DB_PATH);
   }
 }

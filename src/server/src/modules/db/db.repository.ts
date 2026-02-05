@@ -1,10 +1,17 @@
 import Database from "better-sqlite3";
 import { initializeDatabaseQuery } from "./db.queries";
+import fs from "fs";
 
 export class dbRepository {
   private db: Database.Database;
-  constructor() {
-    this.db = new Database("./database-files/data_guard.db");
+
+  constructor(DB_PATH: string) {
+
+    if (!fs.existsSync(DB_PATH)) {
+      fs.mkdirSync(DB_PATH, { recursive: true });
+    }
+
+    this.db = new Database(DB_PATH + "/data_guard.db", { fileMustExist: false });
     this.db.exec(initializeDatabaseQuery);
   }
 

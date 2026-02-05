@@ -1,14 +1,17 @@
 import express, { Application } from 'express';
 import cors from 'cors';
-import routes from './routes';
+import { authModule } from './modules/auth';
 
 export interface Config {
   IS_PRODUCTION: boolean;
-  
+  DB_PATH: string;
 }
 
 export function createDataGuardApp(config: Config): Application {
   const app = express();
+
+  // modules setup
+  const auth = new authModule(config.DB_PATH);
 
   // CORS
   const corsOptions = {
@@ -24,7 +27,9 @@ export function createDataGuardApp(config: Config): Application {
   app.use(express.urlencoded({ extended: true }));
 
   // Routes
-  app.use('/api', routes);
+  app.get('/api/health', (_, res) => res.json({ status: 'OK' }));
+
+  app.use('/api/auth', auth.authController.getRouter());
 
   return app;
 }

@@ -41,7 +41,7 @@ if (started) app.quit();
 const createWindow = () => {
 
   const serverConfig = {
-    DB_PATH: app.getPath("userData"),
+    C: app.getPath("userData"),
     IS_PRODUCTION: app.isPackaged,
   };
 
