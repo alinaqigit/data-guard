@@ -44,7 +44,7 @@ export default function AlertsPage() {
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-5xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-500 tracking-tight">
+                    <h1 className="text-3xl md:text-4xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-500 tracking-tight">
                         Alerts Center
                     </h1>
                 </div>
@@ -56,8 +56,8 @@ export default function AlertsPage() {
                     background: 'linear-gradient(135deg, #020617 0%, #000000 100%)',
                     borderColor: 'rgba(51, 65, 85, 0.3)'
                 }}>
-                <div className="p-6 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <h2 className="text-2xl font-black text-white flex items-center gap-3 tracking-tight">
+                <div className="p-4 md:p-5 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <h2 className="text-xl font-black text-white flex items-center gap-3 tracking-tight">
                         <Bell className="text-blue-500" size={28} />
                         Security Alerts
                     </h2>
@@ -75,13 +75,13 @@ export default function AlertsPage() {
                     <table className="w-full text-left border-separate border-spacing-0">
                         <thead>
                             <tr className="bg-white/5 border-b border-white/10 text-neutral-400 text-sm font-black uppercase tracking-[0.1em]">
-                                <th className="py-5 px-6">Severity</th>
-                                <th className="py-5 px-6">Time</th>
-                                <th className="py-5 px-6">Alert Type</th>
-                                <th className="py-5 px-6">Description</th>
-                                <th className="py-5 px-6">Source</th>
-                                <th className="py-5 px-6">Status</th>
-                                <th className="py-5 px-6 text-right">Actions</th>
+                                <th className="py-4 px-5">Severity</th>
+                                <th className="py-4 px-5">Time</th>
+                                <th className="py-4 px-5">Alert Type</th>
+                                <th className="py-4 px-5">Description</th>
+                                <th className="py-4 px-5">Source</th>
+                                <th className="py-4 px-5">Status</th>
+                                <th className="py-4 px-5 text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-white/5">
@@ -100,32 +100,32 @@ export default function AlertsPage() {
                             ) : (
                                 alerts.map((alert) => (
                                     <tr key={alert.id} className="group hover:bg-white/5 transition-colors">
-                                        <td className="py-5 px-6">
+                                        <td className="py-4 px-5">
                                             <span className={`px-3 py-1.5 rounded-full text-xs font-black uppercase border ${getSeverityStyles(alert.severity)}`}>
                                                 {alert.severity}
                                             </span>
                                         </td>
-                                        <td className="py-5 px-6 whitespace-nowrap">
+                                        <td className="py-4 px-5 whitespace-nowrap">
                                             <span className="text-neutral-300 text-base font-bold">{alert.time}</span>
                                         </td>
-                                        <td className="py-5 px-6">
+                                        <td className="py-4 px-5">
                                             <span className="text-white text-base font-black tracking-tight">{alert.type}</span>
                                         </td>
-                                        <td className="py-5 px-6 min-w-[300px]">
+                                        <td className="py-4 px-5 min-w-[300px]">
                                             <p className="text-neutral-400 text-base font-bold leading-relaxed">{alert.description}</p>
                                         </td>
-                                        <td className="py-5 px-6">
+                                        <td className="py-4 px-5">
                                             <div className="flex items-center gap-2 text-neutral-500">
                                                 <Info size={16} />
                                                 <span className="text-sm font-bold">{alert.source}</span>
                                             </div>
                                         </td>
-                                        <td className="py-5 px-6">
+                                        <td className="py-4 px-5">
                                             <span className={`px-3 py-1 rounded text-sm font-black uppercase border ${getStatusStyles(alert.status)}`}>
                                                 {alert.status}
                                             </span>
                                         </td>
-                                        <td className="py-4 px-6">
+                                        <td className="py-4 px-5">
                                             <div className="flex items-center justify-end gap-2">
                                                 <button
                                                     title="View Details"

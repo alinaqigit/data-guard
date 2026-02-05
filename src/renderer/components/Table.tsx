@@ -23,11 +23,11 @@ export default function Table<T>({ columns, data }: TableProps<T>) {
             }}
         >
             <div className="overflow-x-auto">
-                <table className="w-full text-left text-base text-white">
+                <table className="w-full text-left text-sm text-white">
                     <thead className="bg-white/5 text-sm uppercase text-neutral-400 font-black tracking-[0.1em] border-b border-white/10">
                         <tr>
                             {columns.map((col, index) => (
-                                <th key={index} className={`px-6 py-5 ${col.className || ''}`}>
+                                <th key={index} className={`px-5 py-4 ${col.className || ''}`}>
                                     {col.header}
                                 </th>
                             ))}
@@ -45,7 +45,7 @@ export default function Table<T>({ columns, data }: TableProps<T>) {
                                         : row[col.accessor];
 
                                     return (
-                                        <td key={colIndex} className="px-6 py-5 text-white font-medium">
+                                        <td key={colIndex} className="px-5 py-4 text-white font-medium">
                                             {col.render ? col.render(value, row) : value}
                                         </td>
                                     );

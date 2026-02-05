@@ -52,17 +52,17 @@ export default function ScannerPage() {
 
     return (
         <div className="space-y-6">
-            <h1 className="text-5xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-500 mb-8 tracking-tight">Content Scanner</h1>
+            <h1 className="text-3xl md:text-4xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-500 mb-8 tracking-tight">Content Scanner</h1>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
                 {/* Scan Configuration Card */}
-                <div className="lg:col-span-2 border rounded-2xl p-6 shadow-lg transition-all duration-300"
+                <div className="lg:col-span-2 border rounded-2xl p-4 md:p-5 shadow-lg transition-all duration-300"
                     style={{
                         background: 'linear-gradient(135deg, #020617 0%, #000000 100%)',
                         borderColor: 'rgba(51, 65, 85, 0.3)'
                     }}>
-                    <h2 className="text-2xl font-black text-white mb-8 flex items-center gap-3 tracking-tight">
+                    <h2 className="text-xl font-black text-white mb-8 flex items-center gap-3 tracking-tight">
                         <Shield className="text-blue-500" size={28} />
                         Scan Configuration
                     </h2>
@@ -117,7 +117,7 @@ export default function ScannerPage() {
                 </div>
 
                 {/* Model Configuration Card */}
-                <div className="border rounded-2xl p-6 shadow-lg transition-all duration-300 flex flex-col justify-center"
+                <div className="border rounded-2xl p-4 md:p-5 shadow-lg transition-all duration-300 flex flex-col justify-center"
                     style={{
                         background: 'linear-gradient(135deg, #020617 0%, #000000 100%)',
                         borderColor: 'rgba(51, 65, 85, 0.3)'
@@ -166,7 +166,7 @@ export default function ScannerPage() {
             </div>
 
             {/* Scanner Preferences Card */}
-            <div className="border rounded-2xl p-6 shadow-lg transition-all duration-300"
+            <div className="border rounded-2xl p-4 md:p-5 shadow-lg transition-all duration-300"
                 style={{
                     background: 'linear-gradient(135deg, #020617 0%, #000000 100%)',
                     borderColor: 'rgba(51, 65, 85, 0.3)'
@@ -217,13 +217,13 @@ export default function ScannerPage() {
             </div>
 
             {/* Recent Scan Results */}
-            <div className="border rounded-2xl p-6 shadow-lg transition-all duration-300"
+            <div className="border rounded-2xl p-4 md:p-5 shadow-lg transition-all duration-300"
                 style={{
                     background: 'linear-gradient(135deg, #020617 0%, #000000 100%)',
                     borderColor: 'rgba(51, 65, 85, 0.3)'
                 }}>
                 <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-lg font-bold text-white">Recent Scan Results</h3>
+                    <h3 className="text-lg font-black text-white">Recent Scan Results</h3>
                     {scans.length > 0 && (
                         <button
                             onClick={clearAllScans}

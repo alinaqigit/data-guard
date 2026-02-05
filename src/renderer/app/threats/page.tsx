@@ -83,14 +83,14 @@ export default function ThreatsPage() {
 
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-5xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-500 tracking-tight">Threat Intelligence</h1>
+                    <h1 className="text-3xl md:text-4xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-500 tracking-tight">Threat Intelligence</h1>
                 </div>
             </div>
 
             {/* Statistics Row */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {stats.map((stat, i) => (
-                    <div key={i} className="border rounded-2xl p-6 shadow-xl flex items-center gap-5 transition-all duration-300 hover:-translate-y-1"
+                    <div key={i} className="border rounded-2xl p-4 md:p-5 shadow-xl flex items-center gap-5 transition-all duration-300 hover:-translate-y-1"
                         style={{
                             background: 'linear-gradient(135deg, #020617 0%, #000000 100%)',
                             borderColor: 'rgba(51, 65, 85, 0.3)'
@@ -101,7 +101,7 @@ export default function ThreatsPage() {
                         </div>
                         <div>
                             <p className="text-base font-bold text-neutral-400 uppercase tracking-widest">{stat.label}</p>
-                            <p className="text-3xl font-black text-white mt-1 tracking-tight">{stat.count.toLocaleString()}</p>
+                            <p className="text-2xl font-black text-white mt-1 tracking-tight">{stat.count.toLocaleString()}</p>
                         </div>
                     </div>
                 ))}
@@ -114,8 +114,8 @@ export default function ThreatsPage() {
                     borderColor: 'rgba(51, 65, 85, 0.3)'
                 }}
             >
-                <div className="p-8 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <h2 className="text-2xl font-black text-white flex items-center gap-3 tracking-tight">
+                <div className="p-4 md:p-5 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <h2 className="text-xl font-black text-white flex items-center gap-3 tracking-tight">
                         <AlertTriangle className="text-rose-500" size={28} />
                         Active Threat Registry
                     </h2>
@@ -146,24 +146,24 @@ export default function ThreatsPage() {
                             ) : (
                                 alerts.map((threat) => (
                                     <tr key={threat.id} className="group hover:bg-white/5 transition-colors">
-                                        <td className="py-5 px-6">
+                                        <td className="py-4 px-5">
                                             <span className="text-sm font-mono text-neutral-500 font-bold">THR-{threat.id.toString().slice(-6)}</span>
                                         </td>
-                                        <td className="py-5 px-6">
+                                        <td className="py-4 px-5">
                                             <div className="flex flex-col">
-                                                <span className="text-white font-black text-lg tracking-tight">{threat.type}</span>
+                                                <span className="text-white font-black text-base tracking-tight">{threat.type}</span>
                                                 <span className="text-neutral-500 text-xs font-black uppercase tracking-wider mt-0.5">{threat.source}</span>
                                             </div>
                                         </td>
-                                        <td className="py-5 px-6 min-w-[300px]">
+                                        <td className="py-4 px-5 min-w-[300px]">
                                             <p className="text-neutral-400 text-base font-bold leading-relaxed">{threat.description}</p>
                                         </td>
-                                        <td className="py-5 px-6 text-center">
+                                        <td className="py-4 px-5 text-center">
                                             <span className={`px-4 py-1.5 rounded-full text-xs font-black uppercase border ${getStatusStyles(threat.status)}`}>
                                                 {threat.status}
                                             </span>
                                         </td>
-                                        <td className="py-4 px-6">
+                                        <td className="py-4 px-5">
                                             <div className="flex items-center justify-end gap-2 text-neutral-400">
                                                 <button className="p-2 hover:bg-blue-500/10 hover:text-blue-400 rounded-lg transition-colors" title="View Forensics">
                                                     <Eye size={18} />
