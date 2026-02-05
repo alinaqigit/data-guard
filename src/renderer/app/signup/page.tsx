@@ -5,20 +5,34 @@ import { useSecurity } from '@/context/SecurityContext';
 import { Shield, Lock, User, Mail, UserPlus, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
+
+import Toast from '@/components/Toast';
+
 export default function SignupPage() {
     const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         // Redirect to login or auto-login
-        alert('Account created (Mock). You can now login.');
-        window.location.href = '/login';
+        setToast({ message: 'Account created (Mock). Redirecting to login...', type: 'success' });
+
+        setTimeout(() => {
+            window.location.href = '/login';
+        }, 2000);
     };
 
     return (
         <div className="min-h-screen bg-black flex items-center justify-center p-4">
+            {toast && (
+                <Toast
+                    message={toast.message}
+                    type={toast.type}
+                    onClose={() => setToast(null)}
+                />
+            )}
             <div className="w-full max-w-md">
                 <div className="text-center mb-12">
                     <div className="inline-flex p-6 rounded-3xl bg-emerald-500/10 border border-emerald-500/20 mb-8 group hover:border-emerald-500/40 transition-all duration-500 shadow-2xl shadow-emerald-500/5">

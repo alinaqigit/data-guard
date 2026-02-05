@@ -1,5 +1,8 @@
 'use client';
 
+import { useState } from 'react';
+import Toast from '@/components/Toast';
+import ConfirmDialog from '@/components/ConfirmDialog';
 import { useSecurity } from '@/context/SecurityContext';
 import {
     ShieldAlert,
@@ -37,8 +40,47 @@ export default function ThreatsPage() {
         }
     };
 
+
+
+    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+    const [confirmState, setConfirmState] = useState<{ isOpen: boolean; threatId: number | null }>({
+        isOpen: false,
+        threatId: null
+    });
+
+    const handleDeleteClick = (id: number) => {
+        setConfirmState({ isOpen: true, threatId: id });
+    };
+
+    const handleConfirmDelete = () => {
+        if (confirmState.threatId) {
+            deleteAlert(confirmState.threatId);
+            setToast({ message: 'Threat record deleted successfully', type: 'success' });
+            setConfirmState({ isOpen: false, threatId: null });
+        }
+    };
+
     return (
         <div className="space-y-8">
+            {toast && (
+                <Toast
+                    message={toast.message}
+                    type={toast.type}
+                    onClose={() => setToast(null)}
+                />
+            )}
+
+            <ConfirmDialog
+                isOpen={confirmState.isOpen}
+                title="Delete Threat Record"
+                message="Are you sure you want to permanently delete this threat record? This action cannot be undone."
+                confirmText="Delete Record"
+                isDestructive={true}
+                onConfirm={handleConfirmDelete}
+                onCancel={() => setConfirmState({ isOpen: false, threatId: null })}
+            />
+
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-5xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-500 tracking-tight">Threat Intelligence</h1>
@@ -121,17 +163,13 @@ export default function ThreatsPage() {
                                                 {threat.status}
                                             </span>
                                         </td>
-                                        破                                        <td className="py-4 px-6">
+                                        <td className="py-4 px-6">
                                             <div className="flex items-center justify-end gap-2 text-neutral-400">
                                                 <button className="p-2 hover:bg-blue-500/10 hover:text-blue-400 rounded-lg transition-colors" title="View Forensics">
                                                     <Eye size={18} />
                                                 </button>
                                                 <button
-                                                    onClick={() => {
-                                                        if (confirm('Permanently delete this threat record?')) {
-                                                            deleteAlert(threat.id);
-                                                        }
-                                                    }}
+                                                    onClick={() => handleDeleteClick(threat.id)}
                                                     className="p-2 hover:bg-red-500/10 hover:text-red-500 rounded-lg transition-colors"
                                                     title="Delete Record"
                                                 >
