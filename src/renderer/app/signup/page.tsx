@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useSecurity } from '@/context/SecurityContext';
 import { Shield, Lock, User, Mail, UserPlus, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 
 
 import Toast from '@/components/Toast';
@@ -35,8 +36,15 @@ export default function SignupPage() {
             )}
             <div className="w-full max-w-md">
                 <div className="text-center mb-12">
-                    <div className="inline-flex p-6 rounded-3xl bg-emerald-500/10 border border-emerald-500/20 mb-8 group hover:border-emerald-500/40 transition-all duration-500 shadow-2xl shadow-emerald-500/5">
-                        <Shield className="text-emerald-500 group-hover:scale-110 transition-transform duration-500" size={64} />
+                    <div className="inline-flex p-6 mb-4 group transition-all duration-500">
+                        <div className="w-24 h-24 relative">
+                            <Image
+                                src="/images/logo.png"
+                                alt="DataGuard Logo"
+                                fill
+                                className="object-contain drop-shadow-[0_0_15px_rgba(16,185,129,0.5)]"
+                            />
+                        </div>
                     </div>
                     <h1 className="text-5xl font-black text-white tracking-tighter mb-3">
                         Create Account
