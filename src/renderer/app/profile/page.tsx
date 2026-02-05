@@ -50,14 +50,14 @@ export default function ProfilePage() {
 
     return (
         <div className="space-y-8 max-w-4xl mx-auto py-8">
-            <h1 className="text-5xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-500 text-center tracking-tighter mb-4">
+            <h1 className="text-3xl md:text-4xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-500 text-center tracking-tighter mb-4">
                 User Profile
             </h1>
 
             <div className="flex flex-col gap-8">
                 {/* Profile Card */}
                 <div className="w-full">
-                    <div className="border rounded-2xl p-6 flex flex-col items-center text-center space-y-4 shadow-xl active:scale-[0.99] transition-all duration-300"
+                    <div className="border rounded-2xl p-4 md:p-5 flex flex-col items-center text-center space-y-4 shadow-xl active:scale-[0.99] transition-all duration-300"
                         style={{
                             background: 'linear-gradient(135deg, #020617 0%, #000000 100%)',
                             borderColor: 'rgba(51, 65, 85, 0.3)'
@@ -67,7 +67,7 @@ export default function ProfilePage() {
                             <span className="text-6xl font-black text-white/20">{displayUser.name.charAt(0)}</span>
                         </div>
                         <div>
-                            <h2 className="text-3xl font-black text-white tracking-tight">{displayUser.name}</h2>
+                            <h2 className="text-2xl font-black text-white tracking-tight">{displayUser.name}</h2>
                             <p className="text-neutral-400 text-lg font-bold mt-1">{displayUser.email}</p>
                         </div>
                         <div className="flex items-center space-x-2 px-3 py-1 bg-blue-500/10 text-blue-400 rounded-full text-xs font-medium border border-blue-500/20">
@@ -104,12 +104,12 @@ export default function ProfilePage() {
                 <div className="w-full space-y-6">
 
                     {/* Bio Section (Always Visible) */}
-                    <div className="border rounded-2xl p-6 shadow-xl transition-all duration-300"
+                    <div className="border rounded-2xl p-4 md:p-5 shadow-xl transition-all duration-300"
                         style={{
                             background: 'linear-gradient(135deg, #020617 0%, #000000 100%)',
                             borderColor: 'rgba(51, 65, 85, 0.3)'
                         }}>
-                        <h3 className="text-2xl font-black text-white mb-4 flex items-center tracking-tight">
+                        <h3 className="text-xl font-black text-white mb-4 flex items-center tracking-tight">
                             About
                         </h3>
                         <p className="text-neutral-400 leading-relaxed font-bold text-lg">
@@ -119,7 +119,7 @@ export default function ProfilePage() {
 
                     {/* Edit Form - Conditionally Rendered */}
                     <div className={`transition-all duration-500 ease-in-out overflow-hidden ${isEditing ? 'max-h-[800px] opacity-100 mt-6' : 'max-h-0 opacity-0'}`}>
-                        <div className="border rounded-2xl p-6 shadow-xl"
+                        <div className="border rounded-2xl p-4 md:p-5 shadow-xl"
                             style={{
                                 background: 'linear-gradient(135deg, #020617 0%, #000000 100%)',
                                 borderColor: 'rgba(51, 65, 85, 0.3)'

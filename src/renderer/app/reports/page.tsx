@@ -152,13 +152,13 @@ export default function ReportsPage() {
                     background: 'linear-gradient(135deg, #020617 0%, #020617 100%)', // Adjusted slightly to match
                     borderColor: 'rgba(51, 65, 85, 0.3)'
                 }}>
-                <div className="p-8 border-b border-white/5">
-                    <h1 className="text-5xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-500 tracking-tight">
+                <div className="p-4 md:p-6 border-b border-white/5">
+                    <h1 className="text-3xl md:text-4xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-500 tracking-tight">
                         Reports & Analytics
                     </h1>
                 </div>
 
-                <div className="p-8 space-y-8">
+                <div className="p-4 md:p-6 space-y-8">
                     <div className="flex items-center gap-2 text-indigo-400 font-black text-base uppercase tracking-[0.15em] mb-4">
                         <BarChart3 size={20} />
                         Quick Report Generator
@@ -263,7 +263,7 @@ export default function ReportsPage() {
                     background: 'linear-gradient(135deg, #020617 0%, #000000 100%)',
                     borderColor: 'rgba(51, 65, 85, 0.3)'
                 }}>
-                <div className="p-6 border-b border-white/5">
+                <div className="p-4 md:p-5 border-b border-white/5">
                     <h2 className="text-xl font-bold text-white">Recently Generated Reports</h2>
                 </div>
 
@@ -271,12 +271,12 @@ export default function ReportsPage() {
                     <table className="w-full text-left border-separate border-spacing-0">
                         <thead>
                             <tr className="bg-white/5 border-b border-white/5 text-neutral-400 text-xs uppercase tracking-wider">
-                                <th className="py-4 px-6 font-semibold">Report Name</th>
-                                <th className="py-4 px-6 font-semibold">Type</th>
-                                <th className="py-4 px-6 font-semibold text-center">Format</th>
-                                <th className="py-4 px-6 font-semibold text-center">Generated</th>
-                                <th className="py-4 px-6 font-semibold text-center">Size</th>
-                                <th className="py-4 px-6 font-semibold text-right">Actions</th>
+                                <th className="py-4 px-5 font-semibold">Report Name</th>
+                                <th className="py-4 px-5 font-semibold">Type</th>
+                                <th className="py-4 px-5 font-semibold text-center">Format</th>
+                                <th className="py-4 px-5 font-semibold text-center">Generated</th>
+                                <th className="py-4 px-5 font-semibold text-center">Size</th>
+                                <th className="py-4 px-5 font-semibold text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-white/5">
@@ -284,7 +284,7 @@ export default function ReportsPage() {
                                 { name: 'Threat Analysis', date: 'Jan 24, 2026', type: 'Full Security Audit', format: 'JSON', generated: '20 mins ago', size: '2.4 MB' }
                             ].map((report, i) => (
                                 <tr key={i} className="group hover:bg-white/5 transition-colors">
-                                    <td className="py-5 px-6">
+                                    <td className="py-4 px-5">
                                         <div className="flex items-center gap-4">
                                             <div className="p-3 bg-amber-500/10 text-amber-500 rounded-xl">
                                                 <FileJson size={24} />
@@ -295,21 +295,21 @@ export default function ReportsPage() {
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="py-5 px-6">
+                                    <td className="py-4 px-5">
                                         <span className="text-neutral-400 text-base font-bold whitespace-nowrap">{report.type}</span>
                                     </td>
-                                    <td className="py-5 px-6 text-center">
+                                    <td className="py-4 px-5 text-center">
                                         <span className="px-4 py-1.5 bg-amber-500/10 text-amber-500 text-xs font-black uppercase tracking-wider rounded-lg border border-amber-500/20">
                                             {report.format}
                                         </span>
                                     </td>
-                                    <td className="py-5 px-6 text-center text-neutral-500 text-base font-bold">
+                                    <td className="py-4 px-5 text-center text-neutral-500 text-base font-bold">
                                         {report.generated}
                                     </td>
-                                    <td className="py-5 px-6 text-center text-neutral-500 text-base font-bold">
+                                    <td className="py-4 px-5 text-center text-neutral-500 text-base font-bold">
                                         {report.size}
                                     </td>
-                                    <td className="py-5 px-6">
+                                    <td className="py-4 px-5">
                                         <div className="flex items-center justify-end gap-2">
                                             <button
                                                 onClick={handleDownload}

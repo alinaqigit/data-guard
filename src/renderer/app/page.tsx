@@ -114,7 +114,7 @@ export default function Home() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-5xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-500 tracking-tight">
+          <h2 className="text-3xl md:text-4xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-500 tracking-tight">
             Security Overview
           </h2>
         </div>
@@ -157,9 +157,9 @@ export default function Home() {
         {/* Left Column: Tables */}
         <div className="lg:col-span-2 space-y-6">
           {/* Recent Scans Table */}
-          <div className="p-6 rounded-2xl bg-white dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 backdrop-blur-sm">
+          <div className="p-4 md:p-5 rounded-2xl bg-white dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 backdrop-blur-sm">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-2xl font-black text-white tracking-tight">Recent Scans</h3>
+              <h3 className="text-xl font-black text-white tracking-tight">Recent Scans</h3>
               <button
                 onClick={() => router.push('/scans')}
                 className="cursor-pointer text-sm font-bold text-indigo-400 hover:text-indigo-300 transition-colors"
@@ -218,9 +218,9 @@ export default function Home() {
           </div>
 
           {/* Recent Threats Table */}
-          <div className="p-6 rounded-2xl bg-white dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 backdrop-blur-sm transition-all duration-300">
+          <div className="p-4 md:p-5 rounded-2xl bg-white dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 backdrop-blur-sm transition-all duration-300">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-2xl font-black text-white tracking-tight">Recent Threats</h3>
+              <h3 className="text-xl font-black text-white tracking-tight">Recent Threats</h3>
               <button
                 onClick={() => router.push('/threats')}
                 className="cursor-pointer text-sm font-bold text-rose-400 hover:text-rose-300 transition-colors"
@@ -296,13 +296,13 @@ export default function Home() {
 
 
           {/* Quick Report Form */}
-          <div className="p-8 rounded-2xl border transition-all duration-300 shadow-xl"
+          <div className="p-4 md:p-5 rounded-2xl border transition-all duration-300 shadow-xl"
             style={{
               background: 'linear-gradient(135deg, #020617 0%, #000000 100%)',
               borderColor: 'rgba(51, 65, 85, 0.3)'
             }}
           >
-            <h3 className="text-2xl font-black text-white mb-6 tracking-tight">Quick Report</h3>
+            <h3 className="text-xl font-black text-white mb-6 tracking-tight">Quick Report</h3>
             <form className="space-y-6" onSubmit={handleGenerateReport}>
               <div className="space-y-3">
                 <label className="text-sm font-bold text-neutral-400 uppercase tracking-widest px-1">File Type</label>

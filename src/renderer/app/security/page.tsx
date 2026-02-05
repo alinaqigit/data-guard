@@ -55,7 +55,7 @@ export default function SecurityMonitorPage() {
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center mb-8">
-                <h1 className="text-5xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-500 tracking-tight">
+                <h1 className="text-3xl md:text-4xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-500 tracking-tight">
                     Security Monitor
                 </h1>
                 <div className="flex items-center gap-2 text-base font-bold text-neutral-400">
@@ -72,39 +72,39 @@ export default function SecurityMonitorPage() {
                 <div className="lg:col-span-2 space-y-6">
 
                     {/* Live Monitoring Dashboard */}
-                    <div className="border rounded-2xl p-6 shadow-lg transition-all duration-300"
+                    <div className="border rounded-2xl p-4 md:p-5 shadow-lg transition-all duration-300"
                         style={{
                             background: 'linear-gradient(135deg, #020617 0%, #000000 100%)',
                             borderColor: 'rgba(51, 65, 85, 0.3)'
                         }}>
                         <div className="flex items-center gap-3 mb-8">
                             <Activity className="text-blue-500" size={28} />
-                            <h2 className="text-2xl font-black text-white tracking-tight">Live Monitoring Dashboard</h2>
+                            <h2 className="text-xl font-black text-white tracking-tight">Live Monitoring Dashboard</h2>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-6 text-center shadow-xl">
                                 <p className="text-red-400 text-base font-black uppercase tracking-widest mb-2">Critical Alerts</p>
-                                <span className="text-5xl font-black text-white">{criticalCount}</span>
+                                <span className="text-4xl font-black text-white">{criticalCount}</span>
                             </div>
                             <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-6 text-center shadow-xl">
                                 <p className="text-yellow-400 text-base font-black uppercase tracking-widest mb-2">Warnings</p>
-                                <span className="text-5xl font-black text-white">{warningCount}</span>
+                                <span className="text-4xl font-black text-white">{warningCount}</span>
                             </div>
                             <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-6 text-center shadow-xl">
                                 <p className="text-blue-400 text-base font-black uppercase tracking-widest mb-2">Active Sessions</p>
-                                <span className="text-5xl font-black text-white">48</span>
+                                <span className="text-4xl font-black text-white">48</span>
                             </div>
                         </div>
                     </div>
 
                     {/* Recent Activity Stream */}
-                    <div className="border rounded-2xl p-6 shadow-lg transition-all duration-300"
+                    <div className="border rounded-2xl p-4 md:p-5 shadow-lg transition-all duration-300"
                         style={{
                             background: 'linear-gradient(135deg, #020617 0%, #000000 100%)',
                             borderColor: 'rgba(51, 65, 85, 0.3)'
                         }}>
-                        <h3 className="text-2xl font-black text-white mb-6 tracking-tight flex items-center gap-3">
+                        <h3 className="text-xl font-black text-white mb-6 tracking-tight flex items-center gap-3">
                             <Activity className="text-indigo-500" size={28} />
                             Recent Activity Stream
                         </h3>
@@ -139,12 +139,12 @@ export default function SecurityMonitorPage() {
                 <div className="space-y-6">
 
                     {/* Monitoring Controls */}
-                    <div className="border rounded-2xl p-6 shadow-lg transition-all duration-300"
+                    <div className="border rounded-2xl p-4 md:p-5 shadow-lg transition-all duration-300"
                         style={{
                             background: 'linear-gradient(135deg, #020617 0%, #000000 100%)',
                             borderColor: 'rgba(51, 65, 85, 0.3)'
                         }}>
-                        <h3 className="text-2xl font-black text-white mb-8 flex items-center gap-3 tracking-tight">
+                        <h3 className="text-xl font-black text-white mb-8 flex items-center gap-3 tracking-tight">
                             <Settings size={28} className="text-indigo-400" />
                             Monitoring Controls
                         </h3>
@@ -219,12 +219,12 @@ export default function SecurityMonitorPage() {
                     </div>
 
                     {/* System Metrics (Shifted here to replace Monitoring Controls) */}
-                    <div className="border rounded-2xl p-6 shadow-lg transition-all duration-300"
+                    <div className="border rounded-2xl p-4 md:p-5 shadow-lg transition-all duration-300"
                         style={{
                             background: 'linear-gradient(135deg, #020617 0%, #000000 100%)',
                             borderColor: 'rgba(51, 65, 85, 0.3)'
                         }}>
-                        <h3 className="text-2xl font-black text-white mb-8 tracking-tight flex items-center gap-3">
+                        <h3 className="text-xl font-black text-white mb-8 tracking-tight flex items-center gap-3">
                             <BarChart3 size={28} className="text-emerald-400" />
                             System Metrics
                         </h3>

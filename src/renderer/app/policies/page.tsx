@@ -81,7 +81,7 @@ export default function PolicyManagementPage() {
             {/* 1. Page Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-5xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-500 tracking-tight">
+                    <h1 className="text-3xl md:text-4xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-500 tracking-tight">
                         Policy Management
                     </h1>
                 </div>
@@ -95,8 +95,8 @@ export default function PolicyManagementPage() {
                             background: 'linear-gradient(135deg, #020617 0%, #000000 100%)',
                             borderColor: 'rgba(51, 65, 85, 0.3)'
                         }}>
-                        <div className="p-6 border-b border-white/5 flex items-center justify-between">
-                            <h2 className="text-2xl font-black text-white flex items-center gap-3 tracking-tight">
+                        <div className="p-4 md:p-6 border-b border-white/5 flex items-center justify-between">
+                            <h2 className="text-xl font-black text-white flex items-center gap-3 tracking-tight">
                                 <Shield className="text-emerald-500" size={28} />
                                 Active Policies
                             </h2>
@@ -111,11 +111,11 @@ export default function PolicyManagementPage() {
 
                         <div className="divide-y divide-white/5">
                             {policies.map((policy: any) => (
-                                <div key={policy.id} className="p-6 hover:bg-white/5 transition-colors group">
+                                <div key={policy.id} className="p-4 md:p-5 hover:bg-white/5 transition-colors group">
                                     <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                                         <div className="space-y-3">
                                             <div className="flex items-center gap-2">
-                                                <h3 className="text-xl font-black text-white group-hover:text-indigo-400 transition-colors capitalize tracking-tight">
+                                                <h3 className="text-lg font-black text-white group-hover:text-indigo-400 transition-colors capitalize tracking-tight">
                                                     {policy.name}
                                                 </h3>
                                             </div>
@@ -173,12 +173,12 @@ export default function PolicyManagementPage() {
                 {/* Right Column */}
                 <div className="space-y-6">
                     {/* 3. Policy Statistics */}
-                    <div className="border rounded-2xl p-6 shadow-xl transition-all duration-300"
+                    <div className="border rounded-2xl p-4 md:p-5 shadow-xl transition-all duration-300"
                         style={{
                             background: 'linear-gradient(135deg, #020617 0%, #000000 100%)',
                             borderColor: 'rgba(51, 65, 85, 0.3)'
                         }}>
-                        <h3 className="text-2xl font-black text-white mb-8 tracking-tight">Policy Statistics</h3>
+                        <h3 className="text-xl font-black text-white mb-8 tracking-tight">Policy Statistics</h3>
 
                         <div className="text-center pb-8 border-b border-white/5 mb-8">
                             <p className="text-6xl font-black text-white mb-2 tracking-tighter">100%</p>
