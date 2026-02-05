@@ -5,6 +5,7 @@ import { useSecurity } from '@/context/SecurityContext';
 import { Shield, Lock, User, ArrowRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function LoginPage() {
     const { login, isAuthenticated } = useSecurity();
@@ -27,11 +28,18 @@ export default function LoginPage() {
         <div className="min-h-screen bg-black flex items-center justify-center p-4">
             <div className="w-full max-w-md">
                 <div className="text-center mb-12">
-                    <div className="inline-flex p-6 rounded-3xl bg-blue-500/10 border border-blue-500/20 mb-8 group hover:border-blue-500/40 transition-all duration-500 shadow-2xl shadow-blue-500/5">
-                        <Shield className="text-blue-500 group-hover:scale-110 transition-transform duration-500" size={64} />
+                    <div className="inline-flex p-6 mb-4 group transition-all duration-500">
+                        <div className="w-24 h-24 relative">
+                            <Image
+                                src="/images/logo.png"
+                                alt="DataGuard Logo"
+                                fill
+                                className="object-contain drop-shadow-[0_0_15px_rgba(59,130,246,0.5)]"
+                            />
+                        </div>
                     </div>
                     <h1 className="text-5xl font-black text-white tracking-tighter mb-3">
-                        DLP Dashboard
+                        DataGaurd
                     </h1>
                     <p className="text-neutral-400 font-bold text-lg tracking-wide uppercase opacity-75">Data Leak Prevention & Monitoring</p>
                 </div>
@@ -58,7 +66,6 @@ export default function LoginPage() {
                                 />
                             </div>
                         </div>
-                        破
                         <div className="space-y-3">
                             <label className="text-sm font-black text-neutral-400 uppercase tracking-widest ml-1">Password</label>
                             <div className="relative group">
@@ -73,7 +80,7 @@ export default function LoginPage() {
                                 />
                             </div>
                         </div>
-                        破
+
                         <div className="flex items-center justify-between text-sm">
                             <label className="flex items-center gap-2 text-neutral-400 cursor-pointer hover:text-neutral-300">
                                 <input type="checkbox" className="rounded border-neutral-800 bg-neutral-950 text-blue-600 focus:ring-blue-500" />
@@ -86,7 +93,7 @@ export default function LoginPage() {
                             type="submit"
                             className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-4.5 rounded-2xl transition-all shadow-xl shadow-blue-600/20 active:scale-[0.98] flex items-center justify-center gap-3 mt-6 text-xl tracking-tight"
                         >
-                            Login to Dashboard
+                            Login to DataGaurd
                             <ArrowRight size={22} />
                         </button>
                     </form>
@@ -99,7 +106,7 @@ export default function LoginPage() {
                             </Link>
                         </p>
                     </div>
-                    破                </div>
+                </div>
             </div>
         </div>
     );

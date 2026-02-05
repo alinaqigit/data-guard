@@ -13,6 +13,7 @@ import {
     Menu
 } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useSecurity } from '@/context/SecurityContext';
@@ -55,9 +56,19 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                 {/* Header */}
                 <div className="p-8 border-b border-white/5">
                     <div className="flex items-center justify-between">
-                        <span className="text-3xl font-black text-white tracking-tight">
-                            DATAGUARD
-                        </span>
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 relative">
+                                <Image
+                                    src="/images/logo.png"
+                                    alt="DataGuard Logo"
+                                    fill
+                                    className="object-contain"
+                                />
+                            </div>
+                            <span className="text-3xl font-black text-white tracking-tight">
+                                DataGaurd
+                            </span>
+                        </div>
                         {/* Mobile Close Button */}
                         <button
                             onClick={onClose}
