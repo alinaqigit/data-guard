@@ -6,11 +6,11 @@
   "main": ".webpack/main",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"npm run build:server -- --watch\" \"npm run dev:next\" \"electron-forge start\"",
+    "dev": "npm run build:server && concurrently \"npm run dev:next\" \"electron-forge start\"",
     "start": "electron-forge start",
     "package": "electron-forge package",
     "publish": "electron-forge publish",
-    "dev:server": "node src/server/index.js",
+    "dev:server": "cd src/server && npm run dev",
     "dev:next": "cd src/renderer && npm run dev -- -p 8000",
     "build:server": "cd src/server && npm run build",
     "build:next": "cd src/renderer && npm run build",

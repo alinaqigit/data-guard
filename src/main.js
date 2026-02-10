@@ -2,6 +2,26 @@ const { app, BrowserWindow } = require("electron");
 const path = require("node:path");
 import started from "electron-squirrel-startup";
 
+const BrowserWindowConfig = {
+  width: 800,
+  height: 600,
+  webPreferences: {
+    preload: MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY,
+    webSecurity: app.isPackaged,
+    nodeIntegration: false,
+    contextIsolation: true,
+    devTools: !app.isPackaged,
+  },
+  titleBarStyle: "hidden",
+  ...(process.platform !== "darwin"
+    ? {
+        titleBarOverlay: {
+          color: "rgba(0, 0, 0, 0)", // transparent,
+        },
+      }
+    : {}),
+};
+
 function getServerPath() {
   if (app.isPackaged) {
     return path.join(process.resourcesPath, "server", "dist", "index.js");
@@ -19,19 +39,16 @@ let server;
 if (started) app.quit();
 
 const createWindow = () => {
-  server = bakckend.startServer();
+
+  const serverConfig = {
+    C: app.getPath("userData"),
+    IS_PRODUCTION: app.isPackaged,
+  };
+
+  server = bakckend.startServer(serverConfig);
 
   // Create the browser window.
-  const mainWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
-    webPreferences: {
-      preload: MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY,
-      webSecurity: app.isPackaged,
-      nodeIntegration: false,
-      contextIsolation: true,
-    },
-  });
+  const mainWindow = new BrowserWindow(BrowserWindowConfig);
 
   const url = app.isPackaged
     ? `file://${path.join(__dirname, "../renderer/out/index.html")}`
