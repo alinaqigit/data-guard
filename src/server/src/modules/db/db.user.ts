@@ -1,3 +1,4 @@
+import { UserEntity } from "../../entities";
 import { dbRepository } from "./db.repository";
 
 export class User {
@@ -6,8 +7,13 @@ export class User {
     this.dbRepository = new dbRepository(DB_PATH);
   }
 
-  public createUser(userData: { username: string; passwordHash: string }) {
-    const user = this.dbRepository.getUserByUsername(userData.username);
+  public createUser(userData: {
+    username: string;
+    passwordHash: string;
+  }): UserEntity {
+    const user = this.dbRepository.getUserByUsername(
+      userData.username,
+    );
 
     if (user) {
       throw new Error("User already exists");
@@ -16,17 +22,15 @@ export class User {
     return this.dbRepository.createUser(userData);
   }
 
-  public getUserByUsername(username: string) {
+  public getUserByUsername(username: string): UserEntity | null {
     const user = this.dbRepository.getUserByUsername(username);
-
-    if (!user) {
-      throw new Error("User not found");
-    }
-
     return user;
   }
 
-  public updateUserName(oldUsername: string, newUsername: string) {
+  public updateUserName(
+    oldUsername: string,
+    newUsername: string,
+  ): void {
     const user = this.dbRepository.getUserByUsername(oldUsername);
 
     if (!user) {
@@ -36,7 +40,7 @@ export class User {
     return this.dbRepository.updateUserName(oldUsername, newUsername);
   }
 
-  public deleteUserByUsername(username: string) {
+  public deleteUserByUsername(username: string): void {
     const user = this.dbRepository.getUserByUsername(username);
 
     if (!user) {

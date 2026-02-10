@@ -1,14 +1,18 @@
 import { authService } from "./auth.service";
-import { NextFunction, Response, Router } from "express";
+import e, { NextFunction, Response, Router } from "express";
 import { CustomRequest, loginDTO, registerDTO } from "./dto";
+import {
+  authMiddleware,
+  AuthenticatedRequest,
+} from "./auth.middleware";
 
 export class authController {
   private readonly authService: authService;
   private readonly authRouter: Router;
-  private readonly path: string = "/auth";
+  public readonly path: string = "/auth";
 
-  constructor(DB_PATH: string) {
-    this.authService = new authService(DB_PATH);
+  constructor(authService: authService) {
+    this.authService = authService;
     this.authRouter = Router();
 
     // Map middlewares and routes
@@ -28,19 +32,59 @@ export class authController {
   private mapRoutes() {
     this.authRouter.post(
       "/login",
-      (req: CustomRequest, res: Response) => {
-        const { status, body, message } = this.authService.login(req.body as loginDTO);;
-        res.status(status).json(body || message);
+      async (req: CustomRequest, res: Response) => {
+        const { status, body, error } = await this.authService.login(
+          req.body as loginDTO,
+        );
+        res.status(status).json(error ? { error } : body);
       },
     );
 
     this.authRouter.post(
       "/register",
-      (req: CustomRequest, res: Response) => {
-        const { status, body, message } = this.authService.register(
-          req.body as registerDTO,
-        );
-        res.status(status).json(body || message);
+      async (req: CustomRequest, res: Response) => {
+        const { status, body, error } =
+          await this.authService.register(req.body as registerDTO);
+        res.status(status).json(error ? { error } : body);
+      },
+    );
+
+    this.authRouter.post(
+      "/logout",
+      async (req: CustomRequest, res: Response) => {
+        const sessionId = req.headers["x-session-id"] as string;
+
+        if (!sessionId) {
+          res.status(400).json({ error: "No session ID provided" });
+          return;
+        }
+
+        const { status, body, error } =
+          await this.authService.logout(sessionId);
+        res.status(status).json(error ? { error } : body);
+      },
+    );
+
+    // Protected route - requires valid session
+    this.authRouter.get(
+      "/verify",
+      authMiddleware.verifySession,
+      async (req: AuthenticatedRequest, res: Response) => {
+        const sessionId = req.headers["x-session-id"] as string;
+        const { status, body, error } =
+          await this.authService.verifySession(sessionId);
+        res.status(status).json(error ? { error } : body);
+      },
+    );
+
+    // Example: Get current user profile (protected route)
+    this.authRouter.get(
+      "/me",
+      authMiddleware.verifySession,
+      async (req: AuthenticatedRequest, res: Response) => {
+        res.status(200).json({
+          user: req.user,
+        });
       },
     );
   }
@@ -52,6 +96,8 @@ export class authController {
     res: Response,
     next: NextFunction,
   ) {
+    req.dto = null;
+
     // attach DTO to request
     if (req.path === "/login") {
       req.dto = new loginDTO();
@@ -61,7 +107,15 @@ export class authController {
       req.dto = new registerDTO();
     }
 
-    req.dto = null;
+    // No DTOs needed for logout, verify, or me endpoints
+    if (
+      req.path === "/logout" ||
+      req.path === "/verify" ||
+      req.path === "/me"
+    ) {
+      req.dto = true; // Skip validation
+    }
+
     next();
   }
 
@@ -70,7 +124,10 @@ export class authController {
     res: Response,
     next: NextFunction,
   ) {
-    // validate login DTO
+    // Skip validation for endpoints without DTOs
+    if (req.dto === true) {
+      return next();
+    }
 
     if (!req.dto) {
       return res.status(400).json({ error: "Invalid request" });
@@ -84,6 +141,11 @@ export class authController {
           errors.push(
             `${key} should be of type ${typeof req.dto[key]}`,
           );
+        } else if (
+          typeof req.body[key] === "string" &&
+          req.body[key].trim() === ""
+        ) {
+          errors.push(`${key} cannot be empty`);
         } else {
           validatedDTO[key] = req.body[key];
         }
