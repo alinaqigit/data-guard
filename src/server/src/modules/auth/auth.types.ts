@@ -2,6 +2,6 @@ import { Response } from "express";
 
 export class authResponse {
   status: number;
-  message?: string;
+  error?: string;
   body?: any;
 }
