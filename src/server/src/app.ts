@@ -1,6 +1,7 @@
-import express, { Application } from 'express';
-import cors from 'cors';
-import { authModule } from './modules/auth';
+import express, { Application } from "express";
+import cors from "cors";
+import { authModule } from "./modules/auth";
+import { policyModule } from "./modules/policy";
 
 export interface Config {
   IS_PRODUCTION: boolean;
@@ -12,12 +13,13 @@ export function createDataGuardApp(config: Config): Application {
 
   // modules setup
   const auth = new authModule(config.DB_PATH);
+  const policy = new policyModule(config.DB_PATH);
 
   // CORS
   const corsOptions = {
-    origin: config.IS_PRODUCTION? 'null' : 'localhost',
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    origin: config.IS_PRODUCTION ? "null" : "*",
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allowedHeaders: ["Content-Type", "Authorization", "x-session-id"],
   };
 
   app.use(cors(corsOptions));
@@ -27,9 +29,10 @@ export function createDataGuardApp(config: Config): Application {
   app.use(express.urlencoded({ extended: true }));
 
   // Routes
-  app.get('/api/health', (_, res) => res.json({ status: 'OK' }));
+  app.get("/api/health", (_, res) => res.json({ status: "OK" }));
 
-  app.use('/api/auth', auth.authController.getRouter());
+  app.use("/api/policies", policy.policyController.getRouter());
+  app.use("/api/auth", auth.authController.getRouter());
 
   return app;
 }
