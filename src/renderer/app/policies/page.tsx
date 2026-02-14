@@ -26,53 +26,66 @@ import Toast from '@/components/Toast';
 import ConfirmDialog from '@/components/ConfirmDialog'; // Added ConfirmDialog import
 
 interface Policy {
-    id: string;
+    id: number;
     name: string;
+    pattern: string;
+    type: 'keyword' | 'regex';
     description: string;
-    type: string;
-    status: 'Active' | 'Disabled';
+    isEnabled: boolean;
 }
 
 export default function PolicyManagementPage() {
     const { theme, toggleTheme, policies, deletePolicy, togglePolicyStatus, addPolicy, updatePolicy } = useSecurity();
     const [editingPolicy, setEditingPolicy] = useState<Policy | null>(null);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-    const [confirmState, setConfirmState] = useState<{ isOpen: boolean; policyId: string | null }>({ // Added confirmState
+    const [confirmState, setConfirmState] = useState<{ isOpen: boolean; policyId: number | null }>({ // Updated id to number
         isOpen: false,
         policyId: null
     });
 
-    const handleAddNewPolicy = () => {
-        addPolicy({
-            name: 'New Security Policy',
-            description: 'New policy created to monitor sensitive data flows.',
-            type: 'SENSITIVE_DATA',
-            status: 'Active'
-        });
-        setToast({
-            message: 'Policy added successfully.',
-            type: 'success'
-        });
+    const handleAddNewPolicy = async () => {
+        try {
+            await addPolicy({
+                name: 'New Security Policy',
+                description: 'New policy created to monitor sensitive data flows.',
+                pattern: 'CHANGE_ME',
+                type: 'keyword'
+            });
+            setToast({
+                message: 'Policy added successfully. Please edit it to set a pattern.',
+                type: 'success'
+            });
+        } catch (err: any) {
+            setToast({ message: err.message || 'Failed to add policy', type: 'error' });
+        }
     };
 
-    const handleSavePolicy = (updatedPolicy: Policy) => {
-        updatePolicy(updatedPolicy);
-        setEditingPolicy(null);
-        setToast({
-            message: 'Policy updated successfully.',
-            type: 'success'
-        });
+    const handleSavePolicy = async (updatedPolicy: Policy) => {
+        try {
+            await updatePolicy(updatedPolicy);
+            setEditingPolicy(null);
+            setToast({
+                message: 'Policy updated successfully.',
+                type: 'success'
+            });
+        } catch (err: any) {
+            setToast({ message: err.message || 'Failed to update policy', type: 'error' });
+        }
     };
 
-    const handleDeleteClick = (id: string) => { // Added handleDeleteClick
+    const handleDeleteClick = (id: number) => { // Updated id to number
         setConfirmState({ isOpen: true, policyId: id });
     };
 
-    const handleConfirmDelete = () => { // Added handleConfirmDelete
-        if (confirmState.policyId) {
-            deletePolicy(confirmState.policyId);
-            setToast({ message: 'Policy deleted successfully', type: 'success' });
-            setConfirmState({ isOpen: false, policyId: null });
+    const handleConfirmDelete = async () => {
+        if (confirmState.policyId !== null) {
+            try {
+                await deletePolicy(confirmState.policyId);
+                setToast({ message: 'Policy deleted successfully', type: 'success' });
+                setConfirmState({ isOpen: false, policyId: null });
+            } catch (err: any) {
+                setToast({ message: err.message || 'Failed to delete policy', type: 'error' });
+            }
         }
     };
 
@@ -126,15 +139,18 @@ export default function PolicyManagementPage() {
                                                 <span className="bg-white/5 text-neutral-300 px-3 py-1 rounded text-sm font-black border border-white/10 uppercase tracking-widest">
                                                     Type: {policy.type}
                                                 </span>
+                                                <span className="bg-white/5 text-neutral-300 px-3 py-1 rounded text-sm font-black border border-white/10 tracking-wider">
+                                                    Pattern: <code className="text-indigo-400">{policy.pattern}</code>
+                                                </span>
                                                 <span className="text-sm text-neutral-500 font-black tracking-widest">
                                                     ID: {policy.id}
                                                 </span>
                                             </div>
                                         </div>
                                         <div className="flex items-center">
-                                            <span className="bg-emerald-500/10 text-emerald-500 px-4 py-1.5 rounded-full text-sm font-black uppercase border border-emerald-500/20 flex items-center gap-2 shadow-sm">
-                                                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                                                {policy.status}
+                                            <span className={`${policy.isEnabled ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-red-500/10 text-red-500 border-red-500/20'} px-4 py-1.5 rounded-full text-sm font-black uppercase border flex items-center gap-2 shadow-sm`}>
+                                                <div className={`w-2 h-2 rounded-full ${policy.isEnabled ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`} />
+                                                {policy.isEnabled ? 'Active' : 'Disabled'}
                                             </span>
                                         </div>
                                     </div>
@@ -148,14 +164,21 @@ export default function PolicyManagementPage() {
                                             Edit
                                         </button>
                                         <button
-                                            onClick={() => togglePolicyStatus(policy.id)}
-                                            className={`flex items-center gap-2 text-base font-black transition-colors px-4 py-2 rounded-xl border ${policy.status === 'Active'
+                                            onClick={async () => {
+                                                try {
+                                                    await togglePolicyStatus(policy.id);
+                                                    setToast({ message: `Policy ${policy.isEnabled ? 'disabled' : 'enabled'} successfully`, type: 'success' });
+                                                } catch (err: any) {
+                                                    setToast({ message: err.message || 'Failed to toggle status', type: 'error' });
+                                                }
+                                            }}
+                                            className={`flex items-center gap-2 text-base font-black transition-colors px-4 py-2 rounded-xl border ${policy.isEnabled
                                                 ? 'text-red-500 bg-red-500/5 hover:bg-red-500/10 border-red-500/20'
                                                 : 'text-emerald-500 bg-emerald-500/5 hover:bg-emerald-500/10 border-emerald-500/20'
                                                 }`}
                                         >
                                             <Slash size={18} />
-                                            {policy.status === 'Active' ? 'Disable' : 'Enable'}
+                                            {policy.isEnabled ? 'Disable' : 'Enable'}
                                         </button>
                                         <button
                                             onClick={() => handleDeleteClick(policy.id)}
