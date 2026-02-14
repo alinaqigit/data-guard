@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { X, Save, Shield } from 'lucide-react';
 
 interface Policy {
-    id: string;
+    id: number;
     name: string;
+    pattern: string;
+    type: 'keyword' | 'regex';
     description: string;
-    type: string;
-    status: 'Active' | 'Disabled';
+    isEnabled: boolean;
 }
 
 interface PolicyModalProps {
@@ -28,8 +29,14 @@ const PolicyModal: React.FC<PolicyModalProps> = ({ isOpen, onClose, policy, onSa
     if (!isOpen || !formData) return null;
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-        const { name, value } = e.target;
-        setFormData(prev => prev ? { ...prev, [name]: value } : null);
+        const { name, value, type, checked } = e.target as HTMLInputElement;
+        setFormData(prev => {
+            if (!prev) return null;
+            return {
+                ...prev,
+                [name]: type === 'checkbox' ? checked : value
+            };
+        });
     };
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -85,28 +92,42 @@ const PolicyModal: React.FC<PolicyModalProps> = ({ isOpen, onClose, policy, onSa
                         />
                     </div>
 
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-neutral-400">Pattern</label>
+                        <input
+                            type="text"
+                            name="pattern"
+                            value={formData.pattern}
+                            onChange={handleChange}
+                            required
+                            placeholder={formData.type === 'regex' ? 'e.g. \\d{3}-\\d{2}-\\d{4}' : 'e.g. CONFIDENTIAL'}
+                            className="w-full bg-black/50 border border-white/10 text-white rounded-lg px-4 py-2.5 focus:outline-none focus:border-indigo-500 transition-colors"
+                        />
+                    </div>
+
                     <div className="grid grid-cols-2 gap-6">
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-neutral-400">Type</label>
-                            <input
-                                type="text"
+                            <select
                                 name="type"
                                 value={formData.type}
                                 onChange={handleChange}
                                 className="w-full bg-black/50 border border-white/10 text-white rounded-lg px-4 py-2.5 focus:outline-none focus:border-indigo-500 transition-colors"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-neutral-400">Status</label>
-                            <select
-                                name="status"
-                                value={formData.status}
-                                onChange={handleChange}
-                                className="w-full bg-black/50 border border-white/10 text-white rounded-lg px-4 py-2.5 focus:outline-none focus:border-indigo-500 transition-colors"
                             >
-                                <option value="Active">Active</option>
-                                <option value="Disabled">Disabled</option>
+                                <option value="keyword">Keyword</option>
+                                <option value="regex">Regex</option>
                             </select>
+                        </div>
+                        <div className="flex items-center gap-3 pt-6">
+                            <input
+                                type="checkbox"
+                                name="isEnabled"
+                                id="isEnabled"
+                                checked={formData.isEnabled}
+                                onChange={handleChange}
+                                className="w-5 h-5 rounded border-white/10 bg-black/50 text-indigo-600 focus:ring-indigo-500"
+                            />
+                            <label htmlFor="isEnabled" className="text-sm font-medium text-neutral-400">Policy Enabled</label>
                         </div>
                     </div>
 

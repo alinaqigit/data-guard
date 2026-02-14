@@ -29,11 +29,12 @@ interface UserProfile {
 }
 
 interface Policy {
-    id: string;
+    id: number;
     name: string;
+    pattern: string;
+    type: 'keyword' | 'regex';
     description: string;
-    type: string;
-    status: 'Active' | 'Disabled';
+    isEnabled: boolean;
 }
 
 interface SecurityContextType {
@@ -54,10 +55,11 @@ interface SecurityContextType {
     updateUserProfile: (profile: UserProfile) => void;
     theme: 'light' | 'dark';
     toggleTheme: () => void;
-    addPolicy: (policy: Omit<Policy, 'id'>) => void;
-    updatePolicy: (policy: Policy) => void;
-    togglePolicyStatus: (id: string) => void;
-    deletePolicy: (id: string) => void;
+    addPolicy: (policy: Omit<Policy, 'id' | 'isEnabled'>) => Promise<void>;
+    updatePolicy: (policy: Policy) => Promise<void>;
+    togglePolicyStatus: (id: number) => Promise<void>;
+    deletePolicy: (id: number) => Promise<void>;
+    fetchPolicies: () => Promise<void>;
 }
 
 const SecurityContext = createContext<SecurityContextType | undefined>(undefined);
@@ -69,22 +71,25 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [user, setUser] = useState<UserProfile | null>(null);
     const [theme, setTheme] = useState<'light' | 'dark'>('dark');
-    const [policies, setPolicies] = useState<Policy[]>([
-        {
-            id: 'POL-8090',
-            name: 'CNIC Detection Policy',
-            description: 'Detection and prevention of CNIC numbers in outbound communications.',
-            type: 'SENSITIVE_DATA',
-            status: 'Active'
-        },
-        {
-            id: 'POL-8122',
-            name: 'Phone Number Protection',
-            description: 'Monitor for unauthorized sharing of corporate contact information.',
-            type: 'SENSITIVE_DATA',
-            status: 'Active'
+    const [policies, setPolicies] = useState<Policy[]>([]);
+
+    // Policies fetcher
+    const fetchPolicies = async () => {
+        const sessionId = localStorage.getItem('dlp_session_id');
+        if (!sessionId) return;
+
+        try {
+            const response = await fetch('http://localhost:4000/api/policies', {
+                headers: { 'x-session-id': sessionId }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setPolicies(data);
+            }
+        } catch (error) {
+            console.error('Failed to fetch policies:', error);
         }
-    ]);
+    };
 
     useEffect(() => {
         const savedPolicies = localStorage.getItem('dlp_policies');
@@ -111,6 +116,8 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
                             role: 'Security Administrator',
                             bio: 'Authenticated user.'
                         });
+                        // Fetch policies after successful authentication verification
+                        await fetchPolicies();
                     } else {
                         // Session invalid, clear up
                         localStorage.removeItem('dlp_session_id');
@@ -202,6 +209,7 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
                 setIsAuthenticated(true);
                 setUser(newUser);
                 localStorage.setItem('dlp_session_id', data.sessionId);
+                await fetchPolicies();
             } else {
                 throw new Error(data.error || 'Login failed');
             }
@@ -255,26 +263,105 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem('dlp_user', JSON.stringify(profile));
     };
 
-    const addPolicy = (p: Omit<Policy, 'id'>) => {
-        const newPolicy: Policy = {
-            ...p,
-            id: `POL-${Math.floor(Math.random() * 9000) + 1000}`
-        };
-        setPolicies(prev => [newPolicy, ...prev]);
+    const addPolicy = async (p: Omit<Policy, 'id' | 'isEnabled'>) => {
+        const sessionId = localStorage.getItem('dlp_session_id');
+        if (!sessionId) return;
+
+        try {
+            const response = await fetch('http://localhost:4000/api/policies', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-session-id': sessionId
+                },
+                body: JSON.stringify(p),
+            });
+
+            if (response.ok) {
+                await fetchPolicies();
+            } else {
+                const data = await response.json();
+                throw new Error(data.error || 'Failed to create policy');
+            }
+        } catch (error) {
+            console.error('Add policy error:', error);
+            throw error;
+        }
     };
 
-    const updatePolicy = (p: Policy) => {
-        setPolicies(prev => prev.map(policy => policy.id === p.id ? p : policy));
+    const updatePolicy = async (p: Policy) => {
+        const sessionId = localStorage.getItem('dlp_session_id');
+        if (!sessionId) return;
+
+        try {
+            const response = await fetch(`http://localhost:4000/api/policies/${p.id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-session-id': sessionId
+                },
+                body: JSON.stringify({
+                    name: p.name,
+                    description: p.description,
+                    pattern: p.pattern,
+                    type: p.type
+                }),
+            });
+
+            if (response.ok) {
+                await fetchPolicies();
+            } else {
+                const data = await response.json();
+                throw new Error(data.error || 'Failed to update policy');
+            }
+        } catch (error) {
+            console.error('Update policy error:', error);
+            throw error;
+        }
     };
 
-    const togglePolicyStatus = (id: string) => {
-        setPolicies(prev => prev.map(p =>
-            p.id === id ? { ...p, status: p.status === 'Active' ? 'Disabled' : 'Active' } : p
-        ));
+    const togglePolicyStatus = async (id: number) => {
+        const sessionId = localStorage.getItem('dlp_session_id');
+        if (!sessionId) return;
+
+        try {
+            const response = await fetch(`http://localhost:4000/api/policies/${id}/toggle`, {
+                method: 'PATCH',
+                headers: { 'x-session-id': sessionId },
+            });
+
+            if (response.ok) {
+                await fetchPolicies();
+            } else {
+                const data = await response.json();
+                throw new Error(data.error || 'Failed to toggle policy');
+            }
+        } catch (error) {
+            console.error('Toggle policy error:', error);
+            throw error;
+        }
     };
 
-    const deletePolicy = (id: string) => {
-        setPolicies(prev => prev.filter(p => p.id !== id));
+    const deletePolicy = async (id: number) => {
+        const sessionId = localStorage.getItem('dlp_session_id');
+        if (!sessionId) return;
+
+        try {
+            const response = await fetch(`http://localhost:4000/api/policies/${id}`, {
+                method: 'DELETE',
+                headers: { 'x-session-id': sessionId },
+            });
+
+            if (response.ok) {
+                await fetchPolicies();
+            } else {
+                const data = await response.json();
+                throw new Error(data.error || 'Failed to delete policy');
+            }
+        } catch (error) {
+            console.error('Delete policy error:', error);
+            throw error;
+        }
     };
 
     const toggleTheme = () => {
@@ -285,7 +372,7 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
         <SecurityContext.Provider value={{
             scans, alerts, policies, totalFilesScanned, isAuthenticated, user, theme,
             runScan, resolveAlert, clearAllAlerts, clearAllScans, deleteAlert, login, signup, logout, updateUserProfile,
-            addPolicy, updatePolicy, togglePolicyStatus, deletePolicy, toggleTheme
+            addPolicy, updatePolicy, togglePolicyStatus, deletePolicy, toggleTheme, fetchPolicies
         }}>
             {children}
         </SecurityContext.Provider>
