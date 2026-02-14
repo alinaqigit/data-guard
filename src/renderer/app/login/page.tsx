@@ -13,19 +13,31 @@ export default function LoginPage() {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
 
+    const [error, setError] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
+
     useEffect(() => {
         if (isAuthenticated) {
             router.push('/');
         }
     }, [isAuthenticated, router]);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        login(username, password);
+        setError(null);
+        setIsLoading(true);
+        try {
+            await login(username, password);
+            router.push('/');
+        } catch (err: any) {
+            setError(err.message || 'Login failed');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
-        <div className="min-h-screen bg-black flex items-center justify-center p-4">
+        <div className="min-h-screen w-full bg-black flex items-center justify-center p-4">
             <div className="w-full max-w-md">
                 <div className="text-center mb-12">
                     <div className="inline-flex p-6 mb-4 group transition-all duration-500">
@@ -49,7 +61,12 @@ export default function LoginPage() {
                         background: 'linear-gradient(135deg, #020617 0%, #000000 100%)',
                     }}
                 >
-                    <h2 className="text-2xl font-black text-white mb-8 tracking-tight">Sign In</h2>
+                    <h2 className="text-2xl font-black text-white mb-2 tracking-tight">Sign In</h2>
+                    {error && (
+                        <div className="bg-red-500/10 border border-red-500/50 text-red-500 p-4 rounded-2xl mb-6 font-bold text-sm">
+                            {error}
+                        </div>
+                    )}
 
                     <form onSubmit={handleSubmit} className="space-y-6">
                         <div className="space-y-3">
@@ -63,6 +80,7 @@ export default function LoginPage() {
                                     placeholder="Enter username"
                                     value={username}
                                     onChange={(e) => setUsername(e.target.value)}
+                                    disabled={isLoading}
                                 />
                             </div>
                         </div>
@@ -77,6 +95,7 @@ export default function LoginPage() {
                                     placeholder="••••••••"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
+                                    disabled={isLoading}
                                 />
                             </div>
                         </div>
@@ -91,10 +110,11 @@ export default function LoginPage() {
 
                         <button
                             type="submit"
-                            className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-4.5 rounded-2xl transition-all shadow-xl shadow-blue-600/20 active:scale-[0.98] flex items-center justify-center gap-3 mt-6 text-xl tracking-tight"
+                            disabled={isLoading}
+                            className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-4.5 rounded-2xl transition-all shadow-xl shadow-blue-600/20 active:scale-[0.98] flex items-center justify-center gap-3 mt-6 text-xl tracking-tight disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            Login to DataGaurd
-                            <ArrowRight size={22} />
+                            {isLoading ? 'Signing In...' : 'Login to DataGaurd'}
+                            {!isLoading && <ArrowRight size={22} />}
                         </button>
                     </form>
 

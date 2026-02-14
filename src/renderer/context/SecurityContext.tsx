@@ -48,8 +48,9 @@ interface SecurityContextType {
     clearAllAlerts: () => void;
     clearAllScans: () => void;
     deleteAlert: (id: number) => void;
-    login: (username: string, pass: string) => void;
-    logout: () => void;
+    login: (username: string, pass: string) => Promise<void>;
+    signup: (username: string, pass: string) => Promise<void>;
+    logout: () => Promise<void>;
     updateUserProfile: (profile: UserProfile) => void;
     theme: 'light' | 'dark';
     toggleTheme: () => void;
@@ -85,19 +86,46 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
         }
     ]);
 
-    // Load initial mock data or from localStorage
     useEffect(() => {
-        const savedAuth = localStorage.getItem('dlp_auth');
-        const savedUser = localStorage.getItem('dlp_user');
         const savedPolicies = localStorage.getItem('dlp_policies');
         const savedTheme = localStorage.getItem('dlp_theme') as 'light' | 'dark';
 
-        if (savedAuth === 'true') {
-            setIsAuthenticated(true);
-            if (savedUser) setUser(JSON.parse(savedUser));
-        }
         if (savedPolicies) setPolicies(JSON.parse(savedPolicies));
         if (savedTheme) setTheme(savedTheme);
+
+        // Verify session with backend
+        const verifySession = async () => {
+            const sessionId = localStorage.getItem('dlp_session_id');
+            if (sessionId) {
+                try {
+                    const response = await fetch('http://localhost:4000/api/auth/verify', {
+                        headers: { 'x-session-id': sessionId }
+                    });
+
+                    if (response.ok) {
+                        const userData = await response.json();
+                        setIsAuthenticated(true);
+                        setUser({
+                            name: userData.username,
+                            email: `${userData.username.toLowerCase()}@example.com`,
+                            role: 'Security Administrator',
+                            bio: 'Authenticated user.'
+                        });
+                    } else {
+                        // Session invalid, clear up
+                        localStorage.removeItem('dlp_session_id');
+                        setIsAuthenticated(false);
+                        setUser(null);
+                    }
+                } catch (error) {
+                    console.error('Session verification failed:', error);
+                    setIsAuthenticated(false);
+                    setUser(null);
+                }
+            }
+        };
+
+        verifySession();
     }, []);
 
     // Sync theme to localStorage
@@ -154,25 +182,72 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
     const clearAllAlerts = () => setAlerts([]);
     const clearAllScans = () => setScans([]);
 
-    const login = (u: string, p: string) => {
-        // Mock login
-        const newUser: UserProfile = {
-            name: u || 'Admin User',
-            email: `${u.toLowerCase().replace(/\s+/g, '.')}@example.com` || 'admin@example.com',
-            role: 'Security Administrator',
-            bio: 'Dashboard administrator managing Data Leak Prevention policies.'
-        };
-        setIsAuthenticated(true);
-        setUser(newUser);
-        localStorage.setItem('dlp_auth', 'true');
-        localStorage.setItem('dlp_user', JSON.stringify(newUser));
+    const login = async (u: string, p: string) => {
+        try {
+            const response = await fetch('http://localhost:4000/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: u, password: p }),
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                const newUser: UserProfile = {
+                    name: data.user.username,
+                    email: `${data.user.username.toLowerCase()}@example.com`,
+                    role: 'Security Administrator',
+                    bio: 'Dashboard administrator managing Data Leak Prevention policies.'
+                };
+                setIsAuthenticated(true);
+                setUser(newUser);
+                localStorage.setItem('dlp_session_id', data.sessionId);
+            } else {
+                throw new Error(data.error || 'Login failed');
+            }
+        } catch (error) {
+            console.error('Login error:', error);
+            throw error;
+        }
     };
 
-    const logout = () => {
+    const signup = async (u: string, p: string) => {
+        try {
+            const response = await fetch('http://localhost:4000/api/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: u, password: p }),
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                // Return success or auto-login
+                return data;
+            } else {
+                throw new Error(data.error || 'Registration failed');
+            }
+        } catch (error) {
+            console.error('Signup error:', error);
+            throw error;
+        }
+    };
+
+    const logout = async () => {
+        const sessionId = localStorage.getItem('dlp_session_id');
+        if (sessionId) {
+            try {
+                await fetch('http://localhost:4000/api/auth/logout', {
+                    method: 'POST',
+                    headers: { 'x-session-id': sessionId },
+                });
+            } catch (error) {
+                console.error('Logout error:', error);
+            }
+        }
         setIsAuthenticated(false);
         setUser(null);
-        localStorage.removeItem('dlp_auth');
-        localStorage.removeItem('dlp_user');
+        localStorage.removeItem('dlp_session_id');
     };
 
     const updateUserProfile = (profile: UserProfile) => {
@@ -209,7 +284,7 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
     return (
         <SecurityContext.Provider value={{
             scans, alerts, policies, totalFilesScanned, isAuthenticated, user, theme,
-            runScan, resolveAlert, clearAllAlerts, clearAllScans, deleteAlert, login, logout, updateUserProfile,
+            runScan, resolveAlert, clearAllAlerts, clearAllScans, deleteAlert, login, signup, logout, updateUserProfile,
             addPolicy, updatePolicy, togglePolicyStatus, deletePolicy, toggleTheme
         }}>
             {children}

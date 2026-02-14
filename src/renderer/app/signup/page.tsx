@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useSecurity } from '@/context/SecurityContext';
-import { Shield, Lock, User, Mail, UserPlus, ArrowLeft } from 'lucide-react';
+import { Shield, Lock, User, UserPlus, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 
@@ -11,22 +11,31 @@ import Toast from '@/components/Toast';
 
 export default function SignupPage() {
     const [username, setUsername] = useState('');
-    const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const { signup } = useSecurity();
+    const [isLoading, setIsLoading] = useState(false);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        // Redirect to login or auto-login
-        setToast({ message: 'Account created (Mock). Redirecting to login...', type: 'success' });
+        setIsLoading(true);
+        setToast(null);
 
-        setTimeout(() => {
-            window.location.href = '/login';
-        }, 2000);
+        try {
+            await signup(username, password);
+            setToast({ message: 'Account created! Redirecting to login...', type: 'success' });
+            setTimeout(() => {
+                window.location.href = '/login';
+            }, 2000);
+        } catch (err: any) {
+            setToast({ message: err.message || 'Signup failed', type: 'error' });
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
-        <div className="min-h-screen bg-black flex items-center justify-center p-4">
+        <div className="min-h-screen w-full bg-black flex items-center justify-center p-4">
             {toast && (
                 <Toast
                     message={toast.message}
@@ -69,21 +78,7 @@ export default function SignupPage() {
                                     placeholder="Choose a username"
                                     value={username}
                                     onChange={(e) => setUsername(e.target.value)}
-                                />
-                            </div>
-                        </div>
-
-                        <div className="space-y-3">
-                            <label className="text-sm font-black text-neutral-400 uppercase tracking-widest ml-1">Email Address</label>
-                            <div className="relative group">
-                                <Mail className="absolute left-5 top-1/2 -translate-y-1/2 text-neutral-500 group-focus-within:text-emerald-500 transition-colors" size={20} />
-                                <input
-                                    type="email"
-                                    required
-                                    className="w-full bg-black/40 border border-white/5 rounded-2xl pl-12 pr-6 py-4.5 text-white focus:outline-none focus:border-emerald-500/50 focus:ring-4 focus:ring-emerald-500/10 transition-all outline-none font-bold text-lg placeholder:text-neutral-700"
-                                    placeholder="Enter your email"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
+                                    disabled={isLoading}
                                 />
                             </div>
                         </div>
@@ -99,16 +94,18 @@ export default function SignupPage() {
                                     placeholder="••••••••"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
+                                    disabled={isLoading}
                                 />
                             </div>
                         </div>
 
                         <button
                             type="submit"
-                            className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-4.5 rounded-2xl transition-all shadow-xl shadow-emerald-600/20 active:scale-[0.98] flex items-center justify-center gap-3 mt-6 text-xl tracking-tight"
+                            disabled={isLoading}
+                            className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-4.5 rounded-2xl transition-all shadow-xl shadow-emerald-600/20 active:scale-[0.98] flex items-center justify-center gap-3 mt-6 text-xl tracking-tight disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            Sign Up
-                            <UserPlus size={22} />
+                            {isLoading ? 'Creating Account...' : 'Sign Up'}
+                            {!isLoading && <UserPlus size={22} />}
                         </button>
                     </form>
 

@@ -26,7 +26,7 @@ export default function AppContent({ children }: { children: React.ReactNode }) 
     const isPublicPath = pathname === '/login' || pathname === '/signup';
 
     if (!isAuthenticated && !isPublicPath) {
-        return <LoginPage />;
+        return <main className="flex-1 w-full bg-black min-h-screen"><LoginPage /></main>;
     }
 
     if (!isAuthenticated && isPublicPath) {
