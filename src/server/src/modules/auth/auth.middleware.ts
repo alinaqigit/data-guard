@@ -15,23 +15,27 @@ export class authMiddleware {
     res: Response,
     next: NextFunction,
   ): void {
-    const sessionId = req.headers["x-session-id"] as string;
+    try {
+      const sessionId = req.headers["x-session-id"] as string;
 
-    if (!sessionId) {
-      res.status(401).json({ error: "No session ID provided" });
-      return;
+      if (!sessionId) {
+        res.status(401).json({ error: "No session ID provided" });
+        return;
+      }
+
+      const payload = SessionManager.verifySession(sessionId);
+
+      if (!payload) {
+        res.status(401).json({ error: "Invalid or expired session" });
+        return;
+      }
+
+      // Attach user payload to request
+      req.user = payload;
+      next();
+    } catch (error) {
+      next(error);
     }
-
-    const payload = SessionManager.verifySession(sessionId);
-
-    if (!payload) {
-      res.status(401).json({ error: "Invalid or expired session" });
-      return;
-    }
-
-    // Attach user payload to request
-    req.user = payload;
-    next();
   }
 
   /**
@@ -42,16 +46,20 @@ export class authMiddleware {
     res: Response,
     next: NextFunction,
   ): void {
-    const sessionId = req.headers["x-session-id"] as string;
+    try {
+      const sessionId = req.headers["x-session-id"] as string;
 
-    if (sessionId) {
-      const payload = SessionManager.verifySession(sessionId);
+      if (sessionId) {
+        const payload = SessionManager.verifySession(sessionId);
 
-      if (payload) {
-        req.user = payload;
+        if (payload) {
+          req.user = payload;
+        }
       }
-    }
 
-    next();
+      next();
+    } catch (error) {
+      next(error);
+    }
   }
 }

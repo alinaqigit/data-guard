@@ -2,6 +2,11 @@ import express, { Application } from "express";
 import cors from "cors";
 import { authModule } from "./modules/auth";
 import { policyModule } from "./modules/policy";
+import { scannerModule } from "./modules/scanner";
+import {
+  errorHandler,
+  notFoundHandler,
+} from "./middleware/errorHandler";
 
 export interface Config {
   IS_PRODUCTION: boolean;
@@ -14,6 +19,7 @@ export function createDataGuardApp(config: Config): Application {
   // modules setup
   const auth = new authModule(config.DB_PATH);
   const policy = new policyModule(config.DB_PATH);
+  const scanner = new scannerModule(config.DB_PATH);
 
   // CORS
   const corsOptions = {
@@ -31,8 +37,15 @@ export function createDataGuardApp(config: Config): Application {
   // Routes
   app.get("/api/health", (_, res) => res.json({ status: "OK" }));
 
-  app.use("/api/policies", policy.policyController.getRouter());
   app.use("/api/auth", auth.authController.getRouter());
+  app.use("/api/policies", policy.policyController.getRouter());
+  app.use("/api/scans", scanner.scannerController.getRouter());
+
+  // 404 handler - must be after all routes
+  app.use(notFoundHandler);
+
+  // Global error handler - must be last
+  app.use(errorHandler);
 
   return app;
 }

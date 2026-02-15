@@ -22,4 +22,23 @@ CREATE TABLE IF NOT EXISTS policies (
 );
 `;
 
-export const initializeDatabaseQuery = `${createUserTableQuery} ${createPolicyTableQuery}`;
+const createScanTableQuery = `
+CREATE TABLE IF NOT EXISTS scans (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  scan_type TEXT NOT NULL CHECK(scan_type IN ('full', 'quick', 'custom')),
+  target_path TEXT NOT NULL,
+  status TEXT NOT NULL CHECK(status IN ('running', 'completed', 'failed', 'cancelled')),
+  started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  completed_at DATETIME,
+  files_scanned INTEGER DEFAULT 0,
+  files_with_threats INTEGER DEFAULT 0,
+  total_threats INTEGER DEFAULT 0,
+  error_message TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+`;
+
+export const initializeDatabaseQuery = `${createUserTableQuery} ${createPolicyTableQuery} ${createScanTableQuery}`;
