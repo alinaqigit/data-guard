@@ -1,7 +1,12 @@
 import Database from "better-sqlite3-multiple-ciphers";
 import { initializeDatabaseQuery } from "./db.queries";
 import fs from "fs";
-import { UserEntity, PolicyEntity, ScanEntity } from "../../entities";
+import {
+  UserEntity,
+  PolicyEntity,
+  ScanEntity,
+  LiveScannerEntity,
+} from "../../entities";
 
 export class dbRepository {
   private db: Database.Database;
@@ -400,6 +405,245 @@ export class dbRepository {
 
   public deleteScanById(id: number): void {
     const stmt = this.db.prepare("DELETE FROM scans WHERE id = ?");
+    stmt.run(id);
+  }
+
+  // Live Scanner CRUD operations
+
+  public createLiveScanner(liveScannerData: {
+    userId: number;
+    name: string;
+    targetPath: string;
+    watchMode: "file-changes" | "directory-changes" | "both";
+    isRecursive: boolean;
+    status: "active" | "paused" | "stopped";
+  }): LiveScannerEntity {
+    const stmt = this.db.prepare(
+      "INSERT INTO live_scanners (user_id, name, target_path, watch_mode, is_recursive, status, started_at) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)",
+    );
+    const info = stmt.run(
+      liveScannerData.userId,
+      liveScannerData.name,
+      liveScannerData.targetPath,
+      liveScannerData.watchMode,
+      liveScannerData.isRecursive ? 1 : 0,
+      liveScannerData.status,
+    );
+
+    return {
+      id: info.lastInsertRowid as number,
+      userId: liveScannerData.userId,
+      name: liveScannerData.name,
+      targetPath: liveScannerData.targetPath,
+      watchMode: liveScannerData.watchMode,
+      isRecursive: liveScannerData.isRecursive,
+      status: liveScannerData.status,
+      startedAt: new Date().toISOString(),
+      filesMonitored: 0,
+      filesScanned: 0,
+      threatsDetected: 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  public getLiveScannerById(id: number): LiveScannerEntity | null {
+    const stmt = this.db.prepare(
+      `SELECT 
+        id, 
+        user_id as userId, 
+        name, 
+        target_path as targetPath, 
+        watch_mode as watchMode,
+        is_recursive as isRecursive,
+        status,
+        started_at as startedAt,
+        stopped_at as stoppedAt,
+        files_monitored as filesMonitored,
+        files_scanned as filesScanned,
+        threats_detected as threatsDetected,
+        last_activity_at as lastActivityAt,
+        created_at as createdAt,
+        updated_at as updatedAt 
+      FROM live_scanners 
+      WHERE id = ?`,
+    );
+    const liveScanner = stmt.get(id) as any;
+
+    if (!liveScanner) {
+      return null;
+    }
+
+    return {
+      id: liveScanner.id,
+      userId: liveScanner.userId,
+      name: liveScanner.name,
+      targetPath: liveScanner.targetPath,
+      watchMode: liveScanner.watchMode,
+      isRecursive: liveScanner.isRecursive === 1,
+      status: liveScanner.status,
+      startedAt: liveScanner.startedAt,
+      stoppedAt: liveScanner.stoppedAt || undefined,
+      filesMonitored: liveScanner.filesMonitored,
+      filesScanned: liveScanner.filesScanned,
+      threatsDetected: liveScanner.threatsDetected,
+      lastActivityAt: liveScanner.lastActivityAt || undefined,
+      createdAt: liveScanner.createdAt,
+      updatedAt: liveScanner.updatedAt,
+    };
+  }
+
+  public getAllLiveScannersByUserId(
+    userId: number,
+  ): LiveScannerEntity[] {
+    const stmt = this.db.prepare(
+      `SELECT 
+        id, 
+        user_id as userId, 
+        name, 
+        target_path as targetPath, 
+        watch_mode as watchMode,
+        is_recursive as isRecursive,
+        status,
+        started_at as startedAt,
+        stopped_at as stoppedAt,
+        files_monitored as filesMonitored,
+        files_scanned as filesScanned,
+        threats_detected as threatsDetected,
+        last_activity_at as lastActivityAt,
+        created_at as createdAt,
+        updated_at as updatedAt 
+      FROM live_scanners 
+      WHERE user_id = ?
+      ORDER BY id DESC`,
+    );
+    const liveScanners = stmt.all(userId) as any[];
+
+    return liveScanners.map((liveScanner) => ({
+      id: liveScanner.id,
+      userId: liveScanner.userId,
+      name: liveScanner.name,
+      targetPath: liveScanner.targetPath,
+      watchMode: liveScanner.watchMode,
+      isRecursive: liveScanner.isRecursive === 1,
+      status: liveScanner.status,
+      startedAt: liveScanner.startedAt,
+      stoppedAt: liveScanner.stoppedAt || undefined,
+      filesMonitored: liveScanner.filesMonitored,
+      filesScanned: liveScanner.filesScanned,
+      threatsDetected: liveScanner.threatsDetected,
+      lastActivityAt: liveScanner.lastActivityAt || undefined,
+      createdAt: liveScanner.createdAt,
+      updatedAt: liveScanner.updatedAt,
+    }));
+  }
+
+  public getActiveLiveScannersByUserId(
+    userId: number,
+  ): LiveScannerEntity[] {
+    const stmt = this.db.prepare(
+      `SELECT 
+        id, 
+        user_id as userId, 
+        name, 
+        target_path as targetPath, 
+        watch_mode as watchMode,
+        is_recursive as isRecursive,
+        status,
+        started_at as startedAt,
+        stopped_at as stoppedAt,
+        files_monitored as filesMonitored,
+        files_scanned as filesScanned,
+        threats_detected as threatsDetected,
+        last_activity_at as lastActivityAt,
+        created_at as createdAt,
+        updated_at as updatedAt 
+      FROM live_scanners 
+      WHERE user_id = ? AND status = 'active'
+      ORDER BY id DESC`,
+    );
+    const liveScanners = stmt.all(userId) as any[];
+
+    return liveScanners.map((liveScanner) => ({
+      id: liveScanner.id,
+      userId: liveScanner.userId,
+      name: liveScanner.name,
+      targetPath: liveScanner.targetPath,
+      watchMode: liveScanner.watchMode,
+      isRecursive: liveScanner.isRecursive === 1,
+      status: liveScanner.status,
+      startedAt: liveScanner.startedAt,
+      stoppedAt: liveScanner.stoppedAt || undefined,
+      filesMonitored: liveScanner.filesMonitored,
+      filesScanned: liveScanner.filesScanned,
+      threatsDetected: liveScanner.threatsDetected,
+      lastActivityAt: liveScanner.lastActivityAt || undefined,
+      createdAt: liveScanner.createdAt,
+      updatedAt: liveScanner.updatedAt,
+    }));
+  }
+
+  public updateLiveScanner(
+    id: number,
+    updates: {
+      name?: string;
+      status?: "active" | "paused" | "stopped";
+      stoppedAt?: string;
+      filesMonitored?: number;
+      filesScanned?: number;
+      threatsDetected?: number;
+      lastActivityAt?: string;
+    },
+  ): void {
+    const fields: string[] = [];
+    const values: any[] = [];
+
+    if (updates.name !== undefined) {
+      fields.push("name = ?");
+      values.push(updates.name);
+    }
+    if (updates.status) {
+      fields.push("status = ?");
+      values.push(updates.status);
+    }
+    if (updates.stoppedAt !== undefined) {
+      fields.push("stopped_at = ?");
+      values.push(updates.stoppedAt);
+    }
+    if (updates.filesMonitored !== undefined) {
+      fields.push("files_monitored = ?");
+      values.push(updates.filesMonitored);
+    }
+    if (updates.filesScanned !== undefined) {
+      fields.push("files_scanned = ?");
+      values.push(updates.filesScanned);
+    }
+    if (updates.threatsDetected !== undefined) {
+      fields.push("threats_detected = ?");
+      values.push(updates.threatsDetected);
+    }
+    if (updates.lastActivityAt !== undefined) {
+      fields.push("last_activity_at = ?");
+      values.push(updates.lastActivityAt);
+    }
+
+    if (fields.length === 0) {
+      return;
+    }
+
+    fields.push("updated_at = CURRENT_TIMESTAMP");
+    values.push(id);
+
+    const stmt = this.db.prepare(
+      `UPDATE live_scanners SET ${fields.join(", ")} WHERE id = ?`,
+    );
+    stmt.run(...values);
+  }
+
+  public deleteLiveScannerById(id: number): void {
+    const stmt = this.db.prepare(
+      "DELETE FROM live_scanners WHERE id = ?",
+    );
     stmt.run(id);
   }
 }
