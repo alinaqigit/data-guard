@@ -41,4 +41,25 @@ CREATE TABLE IF NOT EXISTS scans (
 );
 `;
 
-export const initializeDatabaseQuery = `${createUserTableQuery} ${createPolicyTableQuery} ${createScanTableQuery}`;
+const createLiveScannerTableQuery = `
+CREATE TABLE IF NOT EXISTS live_scanners (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  name TEXT NOT NULL,
+  target_path TEXT NOT NULL,
+  status TEXT NOT NULL CHECK(status IN ('active', 'paused', 'stopped')),
+  watch_mode TEXT NOT NULL CHECK(watch_mode IN ('file-changes', 'directory-changes', 'both')),
+  is_recursive INTEGER DEFAULT 1 CHECK(is_recursive IN (0, 1)),
+  started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  stopped_at DATETIME,
+  files_monitored INTEGER DEFAULT 0,
+  files_scanned INTEGER DEFAULT 0,
+  threats_detected INTEGER DEFAULT 0,
+  last_activity_at DATETIME,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+`;
+
+export const initializeDatabaseQuery = `${createUserTableQuery} ${createPolicyTableQuery} ${createScanTableQuery} ${createLiveScannerTableQuery}`;

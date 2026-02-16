@@ -27,7 +27,7 @@ function getServerPath() {
     return path.join(process.resourcesPath, "server", "dist", "index.js");
   } else {
     // In development, use source folder
-    return path.join(app.getAppPath(), "src", "server", "dist", "index.js");
+    return path.join(app.getAppPath(), "src", "server", "dist", "src", "index.js");
   }
 }
 
@@ -41,7 +41,7 @@ if (started) app.quit();
 const createWindow = () => {
 
   const serverConfig = {
-    C: app.getPath("userData"),
+    DB_PATH: app.getPath("userData"),
     IS_PRODUCTION: app.isPackaged,
   };
 
