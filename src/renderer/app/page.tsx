@@ -35,7 +35,7 @@ import { useSecurity } from '@/context/SecurityContext';
 
 export default function Home() {
   const router = useRouter();
-  const { scans, alerts, runScan, totalFilesScanned, isAuthenticated } = useSecurity();
+  const { scans, alerts, runScan, totalFilesScanned, isAuthenticated, policies } = useSecurity();
   const [isScanning, setIsScanning] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [showDownloadSuccess, setShowDownloadSuccess] = useState(false);
@@ -100,8 +100,8 @@ export default function Home() {
     },
     {
       title: 'Active Policies',
-      value: '28',
-      change: 'All enforced',
+      value: policies.filter(p => p.isEnabled).length.toString(),
+      change: `${policies.length} total policies`,
       trend: 'neutral',
       icon: ScrollText,
       color: 'text-indigo-500',
