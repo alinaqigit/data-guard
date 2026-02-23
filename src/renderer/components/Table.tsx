@@ -34,24 +34,35 @@ export default function Table<T>({ columns, data }: TableProps<T>) {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
-                        {data.map((row, rowIndex) => (
-                            <tr
-                                key={rowIndex}
-                                className="hover:bg-neutral-50 dark:hover:bg-white/5 transition-colors duration-200"
-                            >
-                                {columns.map((col, colIndex) => {
-                                    const value = typeof col.accessor === 'function'
-                                        ? col.accessor(row)
-                                        : row[col.accessor];
-
-                                    return (
-                                        <td key={colIndex} className="px-5 py-4 text-white font-medium">
-                                            {col.render ? col.render(value, row) : value}
-                                        </td>
-                                    );
-                                })}
+                        {data.length === 0 ? (
+                            <tr>
+                                <td colSpan={columns.length} className="px-5 py-12 text-center text-neutral-500 font-medium">
+                                    <div className="flex flex-col items-center gap-2">
+                                        <p className="text-lg">No data found</p>
+                                        <p className="text-xs opacity-60">Try running a new scan or check back later.</p>
+                                    </div>
+                                </td>
                             </tr>
-                        ))}
+                        ) : (
+                            data.map((row, rowIndex) => (
+                                <tr
+                                    key={rowIndex}
+                                    className="hover:bg-neutral-50 dark:hover:bg-white/5 transition-colors duration-200"
+                                >
+                                    {columns.map((col, colIndex) => {
+                                        const value = typeof col.accessor === 'function'
+                                            ? col.accessor(row)
+                                            : row[col.accessor];
+
+                                        return (
+                                            <td key={colIndex} className="px-5 py-4 text-white font-medium">
+                                                {col.render ? col.render(value, row) : value}
+                                            </td>
+                                        );
+                                    })}
+                                </tr>
+                            ))
+                        )}
                     </tbody>
                 </table>
             </div>

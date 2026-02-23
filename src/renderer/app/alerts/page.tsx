@@ -3,19 +3,20 @@
 import { useState } from 'react';
 import {
     Bell,
-    ShieldAlert,
     Eye,
     CheckCircle2,
     Trash2,
-    AlertTriangle,
     Info,
-    MoreVertical
+    MoreVertical,
+    Download
 } from 'lucide-react';
-
 import { useSecurity } from '@/context/SecurityContext';
+import { generateAndDownloadReport } from '@/lib/reportUtils';
+import Toast from '@/components/Toast';
 
 export default function AlertsPage() {
     const { alerts, resolveAlert, clearAllAlerts } = useSecurity();
+    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
     const getSeverityStyles = (severity: string) => {
         switch (severity) {
@@ -40,14 +41,48 @@ export default function AlertsPage() {
         }
     };
 
+    const handleDownloadReport = () => {
+        generateAndDownloadReport(
+            {
+                scans: [],
+                alerts,
+                policies: [],
+                generatedAt: new Date().toLocaleString(),
+                summary: {
+                    totalScans: 0,
+                    totalThreats: alerts.length,
+                    activePolicies: 0
+                }
+            },
+            'CSV',
+            'security_alerts_history'
+        );
+        setToast({ message: 'Alert history downloaded (CSV)', type: 'success' });
+    };
+
     return (
         <div className="space-y-6">
+            {toast && (
+                <Toast
+                    message={toast.message}
+                    type={toast.type}
+                    onClose={() => setToast(null)}
+                />
+            )}
+
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl md:text-4xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-500 tracking-tight">
                         Alerts Center
                     </h1>
                 </div>
+                <button
+                    onClick={handleDownloadReport}
+                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl text-sm font-black transition-all shadow-lg active:scale-95"
+                >
+                    <Download size={18} />
+                    Download History
+                </button>
             </div>
 
             {/* Security Alerts Card */}
@@ -98,7 +133,7 @@ export default function AlertsPage() {
                                     </td>
                                 </tr>
                             ) : (
-                                alerts.map((alert) => (
+                                alerts.map((alert: any) => (
                                     <tr key={alert.id} className="group hover:bg-white/5 transition-colors">
                                         <td className="py-4 px-5">
                                             <span className={`px-3 py-1.5 rounded-full text-xs font-black uppercase border ${getSeverityStyles(alert.severity)}`}>

@@ -32,6 +32,7 @@ interface RecentThreat {
 }
 
 import { useSecurity } from "@/context/SecurityContext";
+import { generateAndDownloadReport, ReportFormat } from "@/lib/reportUtils";
 
 export default function Home() {
   const router = useRouter();
@@ -67,22 +68,40 @@ export default function Home() {
   const handleGenerateReport = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setIsGenerating(true);
-    // Simulate report generation
+
+    const format = (document.querySelector('select') as HTMLSelectElement)?.value.toUpperCase() as ReportFormat || 'PDF';
+
+    // Simulate slight delay for "Preparing..." effect
     setTimeout(() => {
+      generateAndDownloadReport(
+        {
+          scans,
+          alerts,
+          policies,
+          generatedAt: new Date().toLocaleString(),
+          summary: {
+            totalScans: scans.length,
+            totalThreats: alerts.length,
+            activePolicies: policies.filter(p => p.status === 'Active').length
+          }
+        },
+        format,
+        'security_overview_report'
+      );
+
       setIsGenerating(false);
       setShowDownloadSuccess(true);
-      // Auto-hide after 3 seconds
       setTimeout(() => {
         setShowDownloadSuccess(false);
       }, 3000);
-    }, 1500);
+    }, 1000);
   };
 
   const stats = [
     {
       title: "Total Scans",
-      value: (24500 + scans.length).toLocaleString(),
-      change: `+${scans.length} new scans`,
+      value: scans.length.toLocaleString(),
+      change: `${scans.length} total sessions`,
       trend: "up",
       icon: FileSearch,
       color: "text-blue-500",
@@ -124,9 +143,9 @@ export default function Home() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl md:text-4xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-500 tracking-tight">
+          <h1 className="text-4xl md:text-5xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-500 tracking-tight">
             Security Overview
-          </h2>
+          </h1>
         </div>
       </div>
 
@@ -171,7 +190,7 @@ export default function Home() {
                 Recent Scans
               </h3>
               <button
-                onClick={() => router.push("/scans")}
+                onClick={() => router.push("/scanner")}
                 className="cursor-pointer text-sm font-bold text-indigo-400 hover:text-indigo-300 transition-colors"
               >
                 View All Scans
@@ -221,29 +240,12 @@ export default function Home() {
                   className: "text-neutral-500 text-xs text-right",
                 },
               ]}
-              data={
-                scans.length > 0
-                  ? scans.slice(0, 5).map((s, i) => ({
-                      scanid: `SCN-${1000 + i}`,
-                      filename: `Session: ${s.type}`,
-                      threats: s.threats,
-                      date: s.time,
-                    }))
-                  : [
-                      {
-                        scanid: "SCN-1024",
-                        filename: "Weekly System Audit",
-                        threats: 12,
-                        date: "Yesterday",
-                      },
-                      {
-                        scanid: "SCN-1023",
-                        filename: "Quick Security Check",
-                        threats: 0,
-                        date: "2 days ago",
-                      },
-                    ]
-              }
+              data={scans.slice(0, 5).map((s, i) => ({
+                scanid: `SCN-${1000 + i}`,
+                filename: `Session: ${s.type}`,
+                threats: s.threats,
+                date: s.time,
+              }))}
             />
           </div>
 
@@ -321,32 +323,15 @@ export default function Home() {
                   className: "text-neutral-500 text-xs text-right",
                 },
               ]}
-              data={
-                alerts.length > 0
-                  ? alerts.slice(0, 4).map((a) => ({
-                      scanid: `THR-${a.id.toString().slice(-4)}`,
-                      filename:
-                        a.description
-                          .split(" in ")[1]
-                          ?.split(" during ")[0] || "Unknown",
-                      threats: a.severity,
-                      date: a.time.split(" ")[1] || a.time,
-                    }))
-                  : [
-                      {
-                        scanid: "THR-1024",
-                        filename: "invoice_2024.pdf.exe",
-                        threats: "Critical",
-                        date: "Yesterday",
-                      },
-                      {
-                        scanid: "THR-1023",
-                        filename: "customer_db.sql",
-                        threats: "High",
-                        date: "Yesterday",
-                      },
-                    ]
-              }
+              data={alerts.slice(0, 4).map((a) => ({
+                scanid: `THR-${a.id.toString().slice(-4)}`,
+                filename:
+                  a.description
+                    .split(" in ")[1]
+                    ?.split(" during ")[0] || "Unknown",
+                threats: a.severity,
+                date: a.time.split(" ")[1] || a.time,
+              }))}
             />
           </div>
         </div>

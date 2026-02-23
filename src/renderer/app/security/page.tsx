@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
     Shield,
     AlertTriangle,
@@ -21,8 +21,14 @@ import { useRouter } from 'next/navigation';
 import { useSecurity } from '@/context/SecurityContext';
 
 export default function SecurityMonitorPage() {
-    const { alerts, totalFilesScanned } = useSecurity();
+    const { alerts, totalFilesScanned, isAuthenticated } = useSecurity();
     const router = useRouter();
+
+    useEffect(() => {
+        if (!isAuthenticated) {
+            router.push('/login');
+        }
+    }, [isAuthenticated, router]);
 
     // Derive stats from global alerts state
     const criticalCount = alerts.filter(a => a.severity === 'High' && a.status === 'New').length;
@@ -38,6 +44,24 @@ export default function SecurityMonitorPage() {
         autoResponse: false,
         notifications: true
     });
+
+    // Dynamic metrics state
+    const [metrics, setMetrics] = useState({
+        cpu: 45,
+        memory: 72,
+        network: 28
+    });
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setMetrics(prev => ({
+                cpu: Math.max(10, Math.min(95, prev.cpu + (Math.random() * 10 - 5))),
+                memory: Math.max(10, Math.min(95, prev.memory + (Math.random() * 6 - 3))),
+                network: Math.max(5, Math.min(95, prev.network + (Math.random() * 14 - 7)))
+            }));
+        }, 3000);
+        return () => clearInterval(interval);
+    }, []);
 
     // Recent activity derived from alerts for consistency
     const recentActivity = alerts.length > 0
@@ -93,7 +117,7 @@ export default function SecurityMonitorPage() {
                             </div>
                             <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-6 text-center shadow-xl">
                                 <p className="text-blue-400 text-base font-black uppercase tracking-widest mb-2">Active Sessions</p>
-                                <span className="text-4xl font-black text-white">48</span>
+                                <span className="text-4xl font-black text-white">{isAuthenticated ? '1' : '0'}</span>
                             </div>
                         </div>
                     </div>
@@ -232,28 +256,37 @@ export default function SecurityMonitorPage() {
                             <div>
                                 <div className="flex justify-between text-base font-bold mb-3">
                                     <span className="text-neutral-400 flex items-center gap-2"><Cpu size={18} /> CPU Usage</span>
-                                    <span className="text-blue-400 font-black">45%</span>
+                                    <span className="text-blue-400 font-black">{Math.round(metrics.cpu)}%</span>
                                 </div>
                                 <div className="h-3 bg-white/5 rounded-full overflow-hidden">
-                                    <div className="h-full bg-blue-500 w-[45%] rounded-full shadow-[0_0_15px_rgba(59,130,246,0.5)]"></div>
+                                    <div
+                                        className="h-full bg-blue-500 transition-all duration-1000 rounded-full shadow-[0_0_15px_rgba(59,130,246,0.5)]"
+                                        style={{ width: `${metrics.cpu}%` }}
+                                    ></div>
                                 </div>
                             </div>
                             <div>
                                 <div className="flex justify-between text-base font-bold mb-3">
                                     <span className="text-neutral-400 flex items-center gap-2"><Server size={18} /> Memory Usage</span>
-                                    <span className="text-yellow-400 font-black">72%</span>
+                                    <span className="text-yellow-400 font-black">{Math.round(metrics.memory)}%</span>
                                 </div>
                                 <div className="h-3 bg-white/5 rounded-full overflow-hidden">
-                                    <div className="h-full bg-yellow-500 w-[72%] rounded-full shadow-[0_0_15px_rgba(234,179,8,0.5)]"></div>
+                                    <div
+                                        className="h-full bg-yellow-500 transition-all duration-1000 rounded-full shadow-[0_0_15px_rgba(234,179,8,0.5)]"
+                                        style={{ width: `${metrics.memory}%` }}
+                                    ></div>
                                 </div>
                             </div>
                             <div>
                                 <div className="flex justify-between text-base font-bold mb-3">
                                     <span className="text-neutral-400 flex items-center gap-2"><Globe size={18} /> Network Traffic</span>
-                                    <span className="text-green-400 font-black">28%</span>
+                                    <span className="text-green-400 font-black">{Math.round(metrics.network)}%</span>
                                 </div>
                                 <div className="h-3 bg-white/5 rounded-full overflow-hidden">
-                                    <div className="h-full bg-green-500 w-[28%] rounded-full shadow-[0_0_15px_rgba(34,197,94,0.5)]"></div>
+                                    <div
+                                        className="h-full bg-green-500 transition-all duration-1000 rounded-full shadow-[0_0_15px_rgba(34,197,94,0.5)]"
+                                        style={{ width: `${metrics.network}%` }}
+                                    ></div>
                                 </div>
                             </div>
                         </div>

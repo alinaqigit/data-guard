@@ -17,6 +17,8 @@ import {
     Type as Typography,
     X
 } from 'lucide-react';
+import { useSecurity } from '@/context/SecurityContext';
+import { generateAndDownloadReport, ReportFormat } from '@/lib/reportUtils';
 
 export default function ReportsPage() {
     const [reportType, setReportType] = useState('Monthly Compliance Report');
@@ -34,10 +36,28 @@ export default function ReportsPage() {
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
     const [isDownloading, setIsDownloading] = useState(false);
 
+    const { scans, alerts, policies } = useSecurity();
+
     const handleDownload = () => {
         setIsDownloading(true);
-        // Simulate download delay
+
         setTimeout(() => {
+            generateAndDownloadReport(
+                {
+                    scans,
+                    alerts,
+                    policies,
+                    generatedAt: new Date().toLocaleString(),
+                    summary: {
+                        totalScans: scans.length,
+                        totalThreats: alerts.length,
+                        activePolicies: policies.filter((p: any) => p.status === 'Active').length
+                    }
+                },
+                format.toUpperCase() as ReportFormat,
+                reportName || 'security_report'
+            );
+
             setIsDownloading(false);
             setToast({ message: 'Report generated and downloaded successfully.', type: 'success' });
         }, 1500);
@@ -104,9 +124,11 @@ export default function ReportsPage() {
                                     <div className="space-y-2">
                                         <h3 className="text-white font-bold uppercase tracking-wider border-b border-white/10 pb-2 mb-4">Executive Summary</h3>
                                         <p>This report covers security metrics for the period: <span className="text-emerald-400">{dateRange}</span>.</p>
-                                        <p>Overall system status: <span className="text-emerald-500 font-bold">SECURE</span></p>
-                                        <p>Total Scans Performed: 1,245</p>
-                                        <p>Threats Mitigated: 0</p>
+                                        <p>Overall system status: <span className={alerts.length > 0 ? "text-rose-500 font-bold" : "text-emerald-500 font-bold"}>
+                                            {alerts.length > 0 ? "ACTION REQUIRED" : "SECURE"}
+                                        </span></p>
+                                        <p>Total Scans Performed: {scans.length}</p>
+                                        <p>Threats Detected: {alerts.length}</p>
                                     </div>
 
                                     <div className="space-y-2">
@@ -280,46 +302,52 @@ export default function ReportsPage() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-white/5">
-                            {[
-                                { name: 'Threat Analysis', date: 'Jan 24, 2026', type: 'Full Security Audit', format: 'JSON', generated: '20 mins ago', size: '2.4 MB' }
-                            ].map((report, i) => (
-                                <tr key={i} className="group hover:bg-white/5 transition-colors">
-                                    <td className="py-4 px-5">
-                                        <div className="flex items-center gap-4">
-                                            <div className="p-3 bg-amber-500/10 text-amber-500 rounded-xl">
-                                                <FileJson size={24} />
-                                            </div>
-                                            <div className="flex flex-col gap-1">
-                                                <span className="text-white font-black text-lg tracking-tight">{report.name}</span>
-                                                <span className="text-neutral-500 text-sm font-bold lowercase">{report.date}</span>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="py-4 px-5">
-                                        <span className="text-neutral-400 text-base font-bold whitespace-nowrap">{report.type}</span>
-                                    </td>
-                                    <td className="py-4 px-5 text-center">
-                                        <span className="px-4 py-1.5 bg-amber-500/10 text-amber-500 text-xs font-black uppercase tracking-wider rounded-lg border border-amber-500/20">
-                                            {report.format}
-                                        </span>
-                                    </td>
-                                    <td className="py-4 px-5 text-center text-neutral-500 text-base font-bold">
-                                        {report.generated}
-                                    </td>
-                                    <td className="py-4 px-5 text-center text-neutral-500 text-base font-bold">
-                                        {report.size}
-                                    </td>
-                                    <td className="py-4 px-5">
-                                        <div className="flex items-center justify-end gap-2">
-                                            <button
-                                                onClick={handleDownload}
-                                                className="p-3 text-neutral-400 hover:text-indigo-400 hover:bg-indigo-400/10 rounded-xl transition-all" title="Download">
-                                                <Download size={22} />
-                                            </button>
-                                        </div>
+                            {scans.length === 0 ? (
+                                <tr>
+                                    <td colSpan={6} className="py-20 text-center text-neutral-500 font-bold">
+                                        No scan sessions found to report on.
                                     </td>
                                 </tr>
-                            ))}
+                            ) : (
+                                scans.slice(0, 5).map((scan: any, i: number) => (
+                                    <tr key={i} className="group hover:bg-white/5 transition-colors">
+                                        <td className="py-4 px-5">
+                                            <div className="flex items-center gap-4">
+                                                <div className="p-3 bg-indigo-500/10 text-indigo-500 rounded-xl">
+                                                    <FileText size={24} />
+                                                </div>
+                                                <div className="flex flex-col gap-1">
+                                                    <span className="text-white font-black text-lg tracking-tight">Scan Session #{1000 + i}</span>
+                                                    <span className="text-neutral-500 text-sm font-bold lowercase">{scan.time}</span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="py-4 px-5">
+                                            <span className="text-neutral-400 text-base font-bold whitespace-nowrap">{scan.type}</span>
+                                        </td>
+                                        <td className="py-4 px-5 text-center">
+                                            <span className="px-4 py-1.5 bg-indigo-500/10 text-indigo-500 text-xs font-black uppercase tracking-wider rounded-lg border border-indigo-500/20">
+                                                LOG
+                                            </span>
+                                        </td>
+                                        <td className="py-4 px-5 text-center text-neutral-500 text-base font-bold">
+                                            Recent
+                                        </td>
+                                        <td className="py-4 px-5 text-center text-neutral-500 text-base font-bold">
+                                            {scan.files}
+                                        </td>
+                                        <td className="py-4 px-5">
+                                            <div className="flex items-center justify-end gap-2">
+                                                <button
+                                                    onClick={handleDownload}
+                                                    className="p-3 text-neutral-400 hover:text-indigo-400 hover:bg-indigo-400/10 rounded-xl transition-all" title="Download">
+                                                    <Download size={22} />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
                         </tbody>
                     </table>
                 </div>

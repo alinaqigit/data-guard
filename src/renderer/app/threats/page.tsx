@@ -12,11 +12,18 @@ import {
     Trash2,
     AlertTriangle,
     Eye,
-    ShieldCheck
+    ShieldCheck,
+    Download
 } from 'lucide-react';
+import { generateAndDownloadReport } from '@/lib/reportUtils';
 
 export default function ThreatsPage() {
     const { alerts, deleteAlert } = useSecurity();
+    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+    const [confirmState, setConfirmState] = useState<{ isOpen: boolean; threatId: number | null }>({
+        isOpen: false,
+        threatId: null
+    });
 
     // Stats derivation
     const totalThreats = alerts.length;
@@ -40,15 +47,6 @@ export default function ThreatsPage() {
         }
     };
 
-
-
-    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-
-    const [confirmState, setConfirmState] = useState<{ isOpen: boolean; threatId: number | null }>({
-        isOpen: false,
-        threatId: null
-    });
-
     const handleDeleteClick = (id: number) => {
         setConfirmState({ isOpen: true, threatId: id });
     };
@@ -59,6 +57,25 @@ export default function ThreatsPage() {
             setToast({ message: 'Threat record deleted successfully', type: 'success' });
             setConfirmState({ isOpen: false, threatId: null });
         }
+    };
+
+    const handleDownloadReport = () => {
+        generateAndDownloadReport(
+            {
+                scans: [],
+                alerts,
+                policies: [],
+                generatedAt: new Date().toLocaleString(),
+                summary: {
+                    totalScans: 0,
+                    totalThreats: alerts.length,
+                    activePolicies: 0
+                }
+            },
+            'CSV',
+            'threat_intelligence_report'
+        );
+        setToast({ message: 'Threat report downloaded (CSV)', type: 'success' });
     };
 
     return (
@@ -85,6 +102,13 @@ export default function ThreatsPage() {
                 <div>
                     <h1 className="text-3xl md:text-4xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-500 tracking-tight">Threat Intelligence</h1>
                 </div>
+                <button
+                    onClick={handleDownloadReport}
+                    className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-xl text-sm font-black transition-all shadow-lg active:scale-95"
+                >
+                    <Download size={18} />
+                    Download Report
+                </button>
             </div>
 
             {/* Statistics Row */}
@@ -144,7 +168,7 @@ export default function ThreatsPage() {
                                     </td>
                                 </tr>
                             ) : (
-                                alerts.map((threat) => (
+                                alerts.map((threat: any) => (
                                     <tr key={threat.id} className="group hover:bg-white/5 transition-colors">
                                         <td className="py-4 px-5">
                                             <span className="text-sm font-mono text-neutral-500 font-bold">THR-{threat.id.toString().slice(-6)}</span>

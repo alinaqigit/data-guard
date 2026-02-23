@@ -54,7 +54,7 @@ export default function LoginPage() {
             </div>
           </div>
           <h1 className="text-5xl font-black text-white tracking-tighter mb-3">
-            DataGaurd
+            DataGuard
           </h1>
           <p className="text-neutral-400 font-bold text-lg tracking-wide uppercase opacity-75">
             Data Leak Prevention & Monitoring
@@ -146,7 +146,7 @@ export default function LoginPage() {
                 </>
               ) : (
                 <>
-                  Login to DataGaurd
+                  Login to DataGuard
                   <ArrowRight size={22} />
                 </>
               )}

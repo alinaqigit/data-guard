@@ -66,7 +66,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                                 />
                             </div>
                             <span className="text-3xl font-black text-white tracking-tight">
-                                DataGaurd
+                                DataGuard
                             </span>
                         </div>
                         {/* Mobile Close Button */}

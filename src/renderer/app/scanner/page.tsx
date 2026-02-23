@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Search,
   Trash2,
@@ -15,8 +16,10 @@ import Table from "@/components/Table";
 import Toast from "@/components/Toast";
 
 export default function ScannerPage() {
-  const { scans, runScan, clearAllScans, totalFilesScanned } =
+  const router = useRouter();
+  const { scans, runScan, clearAllScans, totalFilesScanned, policies } =
     useSecurity();
+  const activePoliciesCount = policies.filter((p: any) => p.status === 'Active').length;
   const [scanType, setScanType] = useState("Quick Scan (Fast)");
   const [scanPath, setScanPath] = useState("");
   const [isScanning, setIsScanning] = useState(false);
@@ -43,9 +46,10 @@ export default function ScannerPage() {
   };
 
   const handleStartScan = async () => {
-    if (!scanPath.trim()) {
+    // Only validate path if it's a Custom Scan
+    if (scanType === "Custom Scan" && !scanPath.trim()) {
       setToast({
-        message: "Please enter a valid scan path.",
+        message: "Please enter a valid scan path for Custom Scan.",
         type: "error",
       });
       return;
@@ -73,7 +77,7 @@ export default function ScannerPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl md:text-4xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-500 mb-8 tracking-tight">
+      <h1 className="text-4xl md:text-5xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-500 mb-8 tracking-tight">
         Content Scanner
       </h1>
 
@@ -110,24 +114,43 @@ export default function ScannerPage() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-neutral-400">
-                Scan Path (Optional)
+            <div className={`space-y-2 transition-opacity duration-300 ${scanType !== "Custom Scan" ? "opacity-50" : "opacity-100"}`}>
+              <label className="text-sm font-medium text-neutral-400 flex items-center justify-between">
+                <span>Scan Path {scanType !== "Custom Scan" && "(Automatic)"}</span>
               </label>
               <input
                 type="text"
-                placeholder="/path/to/scan"
-                className="w-full bg-neutral-950 border border-neutral-800 text-white rounded-lg px-4 py-2.5 focus:outline-none focus:border-blue-500 transition-colors placeholder:text-neutral-600"
-                value={scanPath}
+                placeholder={scanType === "Custom Scan" ? "/path/to/scan" : "Scanning default system paths..."}
+                disabled={scanType !== "Custom Scan"}
+                className={`w-full bg-neutral-950 border border-neutral-800 text-white rounded-lg px-4 py-2.5 focus:outline-none focus:border-blue-500 transition-colors placeholder:text-neutral-600 ${scanType !== "Custom Scan" ? "cursor-not-allowed" : "cursor-text"}`}
+                value={scanType === "Custom Scan" ? scanPath : ""}
                 onChange={(e) => setScanPath(e.target.value)}
               />
             </div>
 
+            {activePoliciesCount === 0 && (
+              <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-4">
+                <AlertCircle className="text-amber-500 shrink-0 mt-0.5" size={20} />
+                <div className="space-y-2">
+                  <p className="text-amber-200 text-sm font-bold">No active policies found.</p>
+                  <p className="text-neutral-400 text-xs leading-relaxed font-medium">
+                    The scanner requires at least one active policy to detect threats. Please enable or create a policy before starting a scan.
+                  </p>
+                  <button
+                    onClick={() => router.push('/policies')}
+                    className="text-xs font-black text-amber-500 hover:text-amber-400 underline underline-offset-4 uppercase tracking-widest"
+                  >
+                    Go to Policies
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="flex pt-2">
               <button
                 onClick={handleStartScan}
-                disabled={isScanning}
-                className={`w-full ${isScanning ? "bg-blue-600/50 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-500"} text-white py-2.5 rounded-lg font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-900/20 active:scale-95`}
+                disabled={isScanning || activePoliciesCount === 0}
+                className={`w-full ${isScanning || activePoliciesCount === 0 ? "bg-blue-600/50 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-500"} text-white py-2.5 rounded-lg font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-900/20 active:scale-95`}
               >
                 {isScanning ? (
                   <>
@@ -137,7 +160,7 @@ export default function ScannerPage() {
                 ) : (
                   <>
                     <Search size={18} />
-                    Start Scan
+                    {activePoliciesCount === 0 ? "Policy Required" : "Start Scan"}
                   </>
                 )}
               </button>
@@ -250,11 +273,10 @@ export default function ScannerPage() {
             <button
               onClick={handleSavePreferences}
               disabled={isSaving}
-              className={`px-8 py-2.5 rounded-lg font-bold transition-all shadow-lg active:scale-95 flex items-center gap-2 ${
-                isSaving
-                  ? "bg-indigo-600/50 cursor-not-allowed"
-                  : "bg-indigo-600 hover:bg-indigo-500"
-              } text-white`}
+              className={`px-8 py-2.5 rounded-lg font-bold transition-all shadow-lg active:scale-95 flex items-center gap-2 ${isSaving
+                ? "bg-indigo-600/50 cursor-not-allowed"
+                : "bg-indigo-600 hover:bg-indigo-500"
+                } text-white`}
             >
               {isSaving ? (
                 <>
