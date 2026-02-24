@@ -32,13 +32,41 @@ const STATUS_OPTIONS = [
 ];
 
 const REGEX_PATTERNS = [
-  { value: "^[0-9]{5}-[0-9]{7}-[0-9]{1}$", label: "CNIC", description: "Pakistani CNIC (e.g. 12345-1234567-1)" },
-  { value: "^(\\+92|0)[0-9]{10}$", label: "Phone Number (Pakistani)", description: "e.g. +923001234567 or 03001234567" },
-  { value: "^PK[0-9]{2}[A-Z]{4}[0-9]{16}$", label: "IBAN (Pakistani)", description: "e.g. PK36SCBL0000001123456702" },
-  { value: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$", label: "Email Address", description: "Standard email format" },
-  { value: "^[0-9]{16}$", label: "Credit Card Number", description: "16-digit card number" },
-  { value: "^[0-9]{3}-[0-9]{2}-[0-9]{4}$", label: "SSN (US)", description: "Social Security Number" },
-  { value: "\\b(password|passwd|secret|api_key|token)\\b", label: "Sensitive Keywords", description: "Common sensitive data keywords" },
+  {
+    value: "[0-9]{5}-[0-9]{7}-[0-9]",
+    label: "CNIC",
+    description: "Pakistani CNIC — e.g. 12345-1234567-1",
+  },
+  {
+    value: "(\\+92|0092|0)[0-9]{10}",
+    label: "Phone Number (Pakistani)",
+    description: "e.g. +923001234567, 0092300123456, 03001234567",
+  },
+  {
+    value: "PK[0-9]{2}[A-Z]{4}[0-9]{16}",
+    label: "IBAN (Pakistani)",
+    description: "e.g. PK36SCBL0000001123456702",
+  },
+  {
+    value: "\\b(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13}|6(?:011|5[0-9]{2})[0-9]{12})\\b",
+    label: "Credit Card",
+    description: "Visa, Mastercard, Amex, Discover",
+  },
+  {
+    value: "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}",
+    label: "Email Address",
+    description: "Standard email format — e.g. user@example.com",
+  },
+  {
+    value: "(?:api[_\\-]?key|apikey)[\\s]*[=:][\\s]*['\"]?([a-zA-Z0-9_\\-]{20,})['\"]?",
+    label: "API Key",
+    description: "Matches api_key=..., apikey: ... patterns",
+  },
+  {
+    value: "(?:secret|secret[_\\-]?key)[\\s]*[=:][\\s]*['\"]?([a-zA-Z0-9_\\-]{16,})['\"]?",
+    label: "Secret Key",
+    description: "Matches secret=..., secret_key: ... patterns",
+  },
 ];
 
 const DEFAULT_NEW_POLICY: Policy = {

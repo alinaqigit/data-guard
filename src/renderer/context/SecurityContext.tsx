@@ -68,7 +68,7 @@ interface SecurityContextType {
   isAuthenticated: boolean;
   user: UserProfile | null;
   systemMetrics: SystemMetrics;
-  runScan: (type: string, target: string, path: string) => Promise<void>;
+  runScan: (type: string, target: string, path: string, onComplete?: (threatsFound: number) => void) => Promise<void>;
   resolveAlert: (id: number) => void;
   clearAllAlerts: () => void;
   clearAllScans: () => void;
@@ -287,46 +287,54 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const runScan = async (type: string, target: string, path: string) => {
-    try {
-      let scanType: "full" | "quick" | "custom" = "quick";
-      if (type.toLowerCase().includes("full")) scanType = "full";
-      else if (type.toLowerCase().includes("custom")) scanType = "custom";
+  const runScan = async (
+    type: string,
+    target: string,
+    path: string,
+    onComplete?: (threatsFound: number) => void,
+  ) => {
+    let scanType: "full" | "quick" | "custom" = "quick";
+    if (type.toLowerCase().includes("full")) scanType = "full";
+    else if (type.toLowerCase().includes("custom")) scanType = "custom";
 
-      const result = await scannerService.startScan({
-        scanType,
-        targetPath: path || process.cwd(),
-        options: {},
-      });
+    // Start scan — throws if backend rejects (no policies, invalid path, etc.)
+    const result = await scannerService.startScan({
+      scanType,
+      targetPath: path || process.cwd(),
+      options: {},
+    });
 
-      const pollInterval = setInterval(async () => {
-        try {
-          const scanData = await scannerService.getScanById(result.scanId);
-          if (scanData.status !== "running") {
-            clearInterval(pollInterval);
-            await refreshScans();
-            if (scanData.totalThreats > 0) {
-              const newAlerts: Alert[] = Array.from({ length: Math.min(scanData.totalThreats, 5) }).map((_, i) => ({
-                id: Date.now() + i,
-                severity: scanData.totalThreats > 5 ? "High" : "Medium",
-                time: new Date().toISOString().replace("T", " ").split(".")[0],
-                type: "Policy Violation: Sensitive Content",
-                description: `Detected ${scanData.totalThreats} threats in ${scanData.filesWithThreats} files during ${type}.`,
-                source: type,
-                status: "New" as const,
-              }));
-              setAlerts((prev) => [...newAlerts, ...prev]);
-            }
-          }
-        } catch (error) {
-          console.error("Error polling scan status:", error);
+    // Poll in background — caller gets control back immediately after startScan resolves
+    const pollInterval = setInterval(async () => {
+      try {
+        const scanData = await scannerService.getScanById(result.scanId);
+        if (scanData.status !== "running") {
           clearInterval(pollInterval);
+          await refreshScans();
+
+          // Generate alerts for any threats found
+          if (scanData.totalThreats > 0) {
+            const newAlerts: Alert[] = Array.from({ length: Math.min(scanData.totalThreats, 5) }).map((_, i) => ({
+              id: Date.now() + i,
+              severity: scanData.totalThreats > 5 ? "High" : "Medium",
+              time: new Date().toISOString().replace("T", " ").split(".")[0],
+              type: "Policy Violation: Sensitive Content",
+              description: `Detected ${scanData.totalThreats} threats in ${scanData.filesWithThreats} files during ${type} scan.`,
+              source: type,
+              status: "New" as const,
+            }));
+            setAlerts((prev) => [...newAlerts, ...prev]);
+          }
+
+          // Notify caller that scan is complete
+          onComplete?.(scanData.totalThreats);
         }
-      }, 2000);
-    } catch (error) {
-      console.error("Failed to start scan:", error);
-      throw error;
-    }
+      } catch (error) {
+        console.error("Error polling scan status:", error);
+        clearInterval(pollInterval);
+        onComplete?.(-1); // -1 signals error
+      }
+    }, 2000);
   };
 
   const resolveAlert = (id: number) => {

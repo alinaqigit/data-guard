@@ -13,85 +13,45 @@ export class policyService {
     dto: createPolicyDTO,
     userId: number,
   ): Promise<policyResponse> {
-    // 1. Validate type field
-    if (dto.type !== "keyword" && dto.type !== "regex") {
-      return {
-        status: 400,
-        error: "Type must be either 'keyword' or 'regex'",
-      };
+    // Normalize to lowercase — frontend sends "KEYWORD"/"REGEX"
+    const type = (dto.type || "").toLowerCase() as "keyword" | "regex";
+
+    if (type !== "keyword" && type !== "regex") {
+      return { status: 400, error: "Type must be either 'keyword' or 'regex'" };
     }
 
-    // 2. Validate regex pattern if type is regex
-    if (dto.type === "regex") {
+    if (type === "regex") {
       try {
         new RegExp(dto.pattern);
       } catch (error) {
-        return {
-          status: 400,
-          error: "Invalid regex pattern",
-        };
+        return { status: 400, error: "Invalid regex pattern" };
       }
     }
 
-    // 3. Create policy
     try {
       const policy = this.policyRepository.createPolicy({
         userId,
         name: dto.name,
         pattern: dto.pattern,
-        type: dto.type as "keyword" | "regex",
+        type,
         description: dto.description || undefined,
       });
-
-      return {
-        status: 201,
-        body: policy,
-      };
+      return { status: 201, body: policy };
     } catch (error: any) {
-      return {
-        status: 500,
-        error: error.message || "Failed to create policy",
-      };
+      return { status: 500, error: error.message || "Failed to create policy" };
     }
   }
 
-  public async getPolicyById(
-    id: number,
-    userId: number,
-  ): Promise<policyResponse> {
+  public async getPolicyById(id: number, userId: number): Promise<policyResponse> {
     const policy = this.policyRepository.getPolicyById(id);
-
-    if (!policy) {
-      return {
-        status: 404,
-        error: "Policy not found",
-      };
-    }
-
-    // Ensure user owns this policy
-    if (policy.userId !== userId) {
-      return {
-        status: 403,
-        error: "Access denied",
-      };
-    }
-
-    return {
-      status: 200,
-      body: policy,
-    };
+    if (!policy) return { status: 404, error: "Policy not found" };
+    if (policy.userId !== userId) return { status: 403, error: "Access denied" };
+    return { status: 200, body: policy };
   }
 
-  public async getAllPolicies(
-    userId: number,
-  ): Promise<policyResponse> {
-    const policies =
-      this.policyRepository.getAllPoliciesByUserId(userId);
-
-    return {
-      status: 200,
-      body: policies,
-    };
+  public async getAllPolicies(userId: number): Promise<policyResponse> {
+    const policies = this.policyRepository.getAllPoliciesByUserId(userId);
+    return { status: 200, body: policies };
   }
 
   public async updatePolicy(
@@ -99,146 +59,66 @@ export class policyService {
     dto: updatePolicyDTO,
     userId: number,
   ): Promise<policyResponse> {
-    // 1. Check if policy exists and user owns it
     const existingPolicy = this.policyRepository.getPolicyById(id);
+    if (!existingPolicy) return { status: 404, error: "Policy not found" };
+    if (existingPolicy.userId !== userId) return { status: 403, error: "Access denied" };
 
-    if (!existingPolicy) {
-      return {
-        status: 404,
-        error: "Policy not found",
-      };
+    // Normalize type to lowercase
+    const type = dto.type
+      ? (dto.type.toLowerCase() as "keyword" | "regex")
+      : undefined;
+
+    if (type && type !== "keyword" && type !== "regex") {
+      return { status: 400, error: "Type must be either 'keyword' or 'regex'" };
     }
 
-    if (existingPolicy.userId !== userId) {
-      return {
-        status: 403,
-        error: "Access denied",
-      };
-    }
-
-    // 2. Validate type if provided
-    if (dto.type && dto.type !== "keyword" && dto.type !== "regex") {
-      return {
-        status: 400,
-        error: "Type must be either 'keyword' or 'regex'",
-      };
-    }
-
-    // 3. Validate regex pattern if type is regex
-    if (
-      dto.type === "regex" ||
-      (existingPolicy.type === "regex" && dto.pattern)
-    ) {
+    const effectiveType = type || existingPolicy.type;
+    if (effectiveType === "regex") {
       try {
         new RegExp(dto.pattern || existingPolicy.pattern);
       } catch (error) {
-        return {
-          status: 400,
-          error: "Invalid regex pattern",
-        };
+        return { status: 400, error: "Invalid regex pattern" };
       }
     }
 
-    // 4. Update policy
     try {
       this.policyRepository.updatePolicy(id, userId, {
         name: dto.name,
         pattern: dto.pattern,
-        type: dto.type as "keyword" | "regex" | undefined,
+        type,
         description: dto.description,
       });
-
-      // Get updated policy
       const updatedPolicy = this.policyRepository.getPolicyById(id);
-
-      return {
-        status: 200,
-        body: updatedPolicy,
-      };
+      return { status: 200, body: updatedPolicy };
     } catch (error: any) {
-      return {
-        status: 500,
-        error: error.message || "Failed to update policy",
-      };
+      return { status: 500, error: error.message || "Failed to update policy" };
     }
   }
 
-  public async togglePolicyStatus(
-    id: number,
-    userId: number,
-  ): Promise<policyResponse> {
-    // 1. Check if policy exists and user owns it
+  public async togglePolicyStatus(id: number, userId: number): Promise<policyResponse> {
     const policy = this.policyRepository.getPolicyById(id);
+    if (!policy) return { status: 404, error: "Policy not found" };
+    if (policy.userId !== userId) return { status: 403, error: "Access denied" };
 
-    if (!policy) {
-      return {
-        status: 404,
-        error: "Policy not found",
-      };
-    }
-
-    if (policy.userId !== userId) {
-      return {
-        status: 403,
-        error: "Access denied",
-      };
-    }
-
-    // 2. Toggle policy status
     try {
       this.policyRepository.togglePolicyStatus(id, userId);
-
-      // Get updated policy
       const updatedPolicy = this.policyRepository.getPolicyById(id);
-
-      return {
-        status: 200,
-        body: updatedPolicy,
-      };
+      return { status: 200, body: updatedPolicy };
     } catch (error: any) {
-      return {
-        status: 500,
-        error: error.message || "Failed to toggle policy status",
-      };
+      return { status: 500, error: error.message || "Failed to toggle policy status" };
     }
   }
 
-  public async deletePolicy(
-    id: number,
-    userId: number,
-  ): Promise<policyResponse> {
-    // 1. Check if policy exists and user owns it
+  public async deletePolicy(id: number, userId: number): Promise<policyResponse> {
     const policy = this.policyRepository.getPolicyById(id);
+    if (!policy) return { status: 404, error: "Policy not found" };
+    if (policy.userId !== userId) return { status: 403, error: "Access denied" };
 
-    if (!policy) {
-      return {
-        status: 404,
-        error: "Policy not found",
-      };
-    }
-
-    if (policy.userId !== userId) {
-      return {
-        status: 403,
-        error: "Access denied",
-      };
-    }
-
-    // 2. Delete policy
     try {
       this.policyRepository.deletePolicy(id, userId);
-
-      return {
-        status: 200,
-        body: {
-          message: "Policy deleted successfully",
-        },
-      };
+      return { status: 200, body: { message: "Policy deleted successfully" } };
     } catch (error: any) {
-      return {
-        status: 500,
-        error: error.message || "Failed to delete policy",
-      };
+      return { status: 500, error: error.message || "Failed to delete policy" };
     }
   }
 }

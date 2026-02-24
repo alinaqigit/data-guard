@@ -4,6 +4,7 @@ import { authModule } from "./modules/auth";
 import { policyModule } from "./modules/policy";
 import { scannerModule } from "./modules/scanner";
 import { liveScannerModule } from "./modules/liveScanner";
+import { reportsModule } from "./modules/reports";
 import {
   errorHandler,
   notFoundHandler,
@@ -17,11 +18,12 @@ export interface Config {
 export function createDataGuardApp(config: Config): Application {
   const app = express();
 
-  // modules setup
+  // Module setup
   const auth = new authModule(config.DB_PATH);
   const policy = new policyModule(config.DB_PATH);
   const scanner = new scannerModule(config.DB_PATH);
   const liveScanner = new liveScannerModule(config.DB_PATH);
+  const reports = new reportsModule(config.DB_PATH);
 
   // CORS
   const corsOptions = {
@@ -31,26 +33,18 @@ export function createDataGuardApp(config: Config): Application {
   };
 
   app.use(cors(corsOptions));
-
-  // Middlewares
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
   // Routes
   app.get("/api/health", (_, res) => res.json({ status: "OK" }));
-
   app.use("/api/auth", auth.authController.getRouter());
   app.use("/api/policies", policy.policyController.getRouter());
-  app.use(
-    "/api/live-scanners",
-    liveScanner.liveScannerController.getRouter(),
-  );
+  app.use("/api/live-scanners", liveScanner.liveScannerController.getRouter());
   app.use("/api/scans", scanner.scannerController.getRouter());
+  app.use("/api/reports", reports.reportsController.getRouter());
 
-  // 404 handler - must be after all routes
   app.use(notFoundHandler);
-
-  // Global error handler - must be last
   app.use(errorHandler);
 
   return app;

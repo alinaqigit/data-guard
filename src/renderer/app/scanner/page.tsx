@@ -109,7 +109,18 @@ export default function ScannerPage() {
     }
     setIsScanning(true);
     try {
-      await runScan(scanType, "All Files", scanPath || process.cwd());
+      // runScan returns immediately after the scan is registered on the backend
+      await runScan(scanType, "All Files", scanPath || process.cwd(), (threatsFound) => {
+        // This fires when the scan actually finishes (via polling)
+        if (threatsFound === -1) {
+          setToast({ message: "Scan encountered an error.", type: "error" });
+        } else if (threatsFound > 0) {
+          setToast({ message: `Scan complete — ${threatsFound} threat(s) detected!`, type: "error" });
+        } else {
+          setToast({ message: "Scan complete — no threats found.", type: "success" });
+        }
+      });
+      // Show immediately after scan is registered, not after completion
       setToast({ message: "Scan started successfully!", type: "success" });
     } catch (error) {
       setToast({ message: error instanceof Error ? error.message : "Failed to start scan", type: "error" });
