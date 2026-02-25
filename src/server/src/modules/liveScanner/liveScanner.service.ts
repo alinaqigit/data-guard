@@ -1,25 +1,57 @@
 import { liveScannerRepository } from "./liveScanner.repository";
 import { policyRepository } from "../policy/policy.repository";
 import { PolicyEngineService } from "../policyEngine/policyEngine.service";
+import { fileActionsService } from "../fileActions/fileActions.service";
+import { getQuickScanPaths, getFullScanPaths } from "../scanner/scanner.service";
 import {
   LiveScannerOptions,
   DEFAULT_LIVE_SCANNER_OPTIONS,
-  StartLiveScannerRequest,
-  LiveScanFileResult,
   LiveScannerActivity,
   LiveScannerStats,
-  UpdateLiveScannerRequest,
   FileChangeType,
 } from "./liveScanner.types";
 import { LiveScannerEntity, PolicyEntity } from "../../entities";
-import {
-  NotFoundError,
-  ForbiddenError,
-  ValidationError,
-} from "../../utils/errors";
+import { NotFoundError, ForbiddenError, ValidationError } from "../../utils/errors";
+import { getSocketService } from "../socket/socket.service";
 import fs from "fs";
 import path from "path";
+import os from "os";
 import * as chokidar from "chokidar";
+
+// ── Safe user paths to monitor ────────────────────────────────────────────────
+// Never includes system directories — only user-owned data locations
+function getUserMonitorPaths(): string[] {
+  const home = os.homedir();
+  const candidates = [
+    home,
+    path.join(home, "Desktop"),
+    path.join(home, "Documents"),
+    path.join(home, "Downloads"),
+    path.join(home, "Pictures"),
+    path.join(home, "Videos"),
+    path.join(home, "Music"),
+  ];
+  // Only include paths that actually exist on this machine
+  return candidates.filter((p) => {
+    try { return fs.existsSync(p) && fs.statSync(p).isDirectory(); }
+    catch { return false; }
+  });
+}
+
+// ── System path safety check ───────────────────────────────────────────────────
+const SYSTEM_PATH_PREFIXES = [
+  "c:\\windows",
+  "c:\\program files",
+  "c:\\program files (x86)",
+  "/usr", "/etc", "/bin", "/sbin", "/sys", "/proc", "/dev", "/boot", "/lib",
+];
+
+function isSafeToScan(filePath: string): boolean {
+  const normalized = filePath.toLowerCase().replace(/\\/g, "/");
+  return !SYSTEM_PATH_PREFIXES.some((p) => normalized.startsWith(p.replace(/\\/g, "/")));
+}
+
+
 
 interface ActiveWatcher {
   scannerId: number;
@@ -28,55 +60,127 @@ interface ActiveWatcher {
   options: Required<LiveScannerOptions>;
   policies: PolicyEntity[];
   activityLog: LiveScannerActivity[];
-  debounceTimers: Map<string, NodeJS.Timeout>;
+  autoResponse: boolean;
 }
 
 export class liveScannerService {
   private liveScannerRepo: liveScannerRepository;
   private policyRepo: policyRepository;
   private policyEngine: PolicyEngineService;
+  private fileActions: fileActionsService;
   private activeWatchers: Map<number, ActiveWatcher> = new Map();
 
   constructor(DB_PATH: string) {
     this.liveScannerRepo = new liveScannerRepository(DB_PATH);
     this.policyRepo = new policyRepository(DB_PATH);
     this.policyEngine = new PolicyEngineService();
+    this.fileActions = new fileActionsService(DB_PATH);
   }
 
-  /**
-   * Start a new live scanner
-   */
-  public async startLiveScanner(
+  // ── Start live monitoring for a user ─────────────────────────────────────────
+  // Called when the user toggles "Real-time Monitoring" ON
+  // Automatically resolves paths — no user input needed
+  public async startMonitoring(
     userId: number,
-    request: StartLiveScannerRequest,
-  ): Promise<{ scannerId: number; message: string }> {
-    // Validate target path exists
-    if (!fs.existsSync(request.targetPath)) {
-      throw new ValidationError(
-        `Target path does not exist: ${request.targetPath}`,
-      );
+    autoResponse: boolean = false,
+  ): Promise<{ scannerId: number; message: string; monitoredPaths: string[] }> {
+    // Stop any existing monitoring for this user first
+    await this.stopMonitoringForUser(userId);
+
+    const monitorPaths = getUserMonitorPaths();
+    if (monitorPaths.length === 0) {
+      throw new ValidationError("No accessible user directories found to monitor");
     }
 
-    // Validate target path is a directory
-    const stats = fs.statSync(request.targetPath);
-    if (!stats.isDirectory()) {
-      throw new ValidationError(
-        "Target path must be a directory for live scanning",
-      );
-    }
-
-    // Get active policies for the user
     const policies = this.policyRepo
       .getAllPoliciesByUserId(userId)
       .filter((p) => p.isEnabled);
 
     if (policies.length === 0) {
       throw new ValidationError(
-        "No active policies found. Please create and enable at least one policy before starting live scanner.",
+        "No active policies found. Enable at least one policy before starting live monitoring.",
       );
     }
 
-    // Create live scanner record
+    // Create a single scanner record that watches all user paths
+    const liveScanner = this.liveScannerRepo.createLiveScanner({
+      userId,
+      name: "Auto Monitor",
+      targetPath: monitorPaths.join("|"), // pipe-delimited for multi-path
+      watchMode: "both",
+      isRecursive: true,
+      status: "active",
+    });
+
+    await this.startWatching(liveScanner, userId, policies, DEFAULT_LIVE_SCANNER_OPTIONS, autoResponse);
+
+    return {
+      scannerId: liveScanner.id,
+      message: "Live monitoring started",
+      monitoredPaths: monitorPaths,
+    };
+  }
+
+  // ── Stop all monitoring for a user ───────────────────────────────────────────
+  public async stopMonitoringForUser(userId: number): Promise<void> {
+    const scanners = this.liveScannerRepo.getAllLiveScannersByUserId(userId);
+    for (const scanner of scanners) {
+      if (scanner.status === "active" || scanner.status === "paused") {
+        await this.stopWatching(scanner.id);
+        this.liveScannerRepo.updateLiveScanner(scanner.id, userId, {
+          status: "stopped",
+          stoppedAt: new Date().toISOString(),
+        });
+      }
+    }
+  }
+
+  // ── Update auto-response setting for active watchers ─────────────────────────
+  public updateAutoResponse(userId: number, autoResponse: boolean): void {
+    for (const [, watcher] of this.activeWatchers) {
+      if (watcher.userId === userId) {
+        watcher.autoResponse = autoResponse;
+      }
+    }
+  }
+
+  // ── Get monitoring status for a user ─────────────────────────────────────────
+  public getMonitoringStatus(userId: number): {
+    isActive: boolean;
+    monitoredPaths: string[];
+    scannerId?: number;
+  } {
+    const scanners = this.liveScannerRepo.getAllLiveScannersByUserId(userId);
+    const active = scanners.find((s) => s.status === "active");
+    if (!active) return { isActive: false, monitoredPaths: [] };
+
+    return {
+      isActive: true,
+      scannerId: active.id,
+      monitoredPaths: active.targetPath.split("|"),
+    };
+  }
+
+  // ── Legacy: start a specific live scanner (kept for compatibility) ────────────
+  public async startLiveScanner(
+    userId: number,
+    request: { name: string; targetPath: string; watchMode: "file-changes" | "directory-changes" | "both"; isRecursive: boolean; options?: Partial<LiveScannerOptions> },
+  ): Promise<{ scannerId: number; message: string }> {
+    if (!fs.existsSync(request.targetPath)) {
+      throw new ValidationError(`Target path does not exist: ${request.targetPath}`);
+    }
+    if (!fs.statSync(request.targetPath).isDirectory()) {
+      throw new ValidationError("Target path must be a directory");
+    }
+    if (!isSafeToScan(request.targetPath)) {
+      throw new ValidationError("Cannot monitor system paths");
+    }
+
+    const policies = this.policyRepo.getAllPoliciesByUserId(userId).filter((p) => p.isEnabled);
+    if (policies.length === 0) {
+      throw new ValidationError("No active policies found");
+    }
+
     const liveScanner = this.liveScannerRepo.createLiveScanner({
       userId,
       name: request.name,
@@ -86,242 +190,104 @@ export class liveScannerService {
       status: "active",
     });
 
-    // Start watching in background
-    try {
-      await this.startWatching(liveScanner, userId, policies, {
-        ...DEFAULT_LIVE_SCANNER_OPTIONS,
-        ...request.options,
-      });
-    } catch (error) {
-      // If watching fails, update status to stopped
-      this.liveScannerRepo.updateLiveScanner(liveScanner.id, userId, {
-        status: "stopped",
-        stoppedAt: new Date().toISOString(),
-      });
-      throw error;
-    }
+    await this.startWatching(
+      liveScanner, userId, policies,
+      { ...DEFAULT_LIVE_SCANNER_OPTIONS, ...request.options },
+      false,
+    );
 
-    return {
-      scannerId: liveScanner.id,
-      message: "Live scanner started successfully",
-    };
+    return { scannerId: liveScanner.id, message: "Live scanner started successfully" };
   }
 
-  /**
-   * Stop a live scanner
-   */
-  public async stopLiveScanner(
-    userId: number,
-    scannerId: number,
-  ): Promise<{ message: string }> {
-    const scanner =
-      this.liveScannerRepo.getLiveScannerById(scannerId);
+  public async stopLiveScanner(userId: number, scannerId: number): Promise<{ message: string }> {
+    const scanner = this.liveScannerRepo.getLiveScannerById(scannerId);
+    if (!scanner) throw new NotFoundError("Live scanner not found");
+    if (scanner.userId !== userId) throw new ForbiddenError("Unauthorized");
+    if (scanner.status === "stopped") throw new ValidationError("Already stopped");
 
-    if (!scanner) {
-      throw new NotFoundError("Live scanner not found");
-    }
-
-    if (scanner.userId !== userId) {
-      throw new ForbiddenError(
-        "You don't have permission to stop this live scanner",
-      );
-    }
-
-    if (scanner.status === "stopped") {
-      throw new ValidationError("Live scanner is already stopped");
-    }
-
-    // Stop watching
     await this.stopWatching(scannerId);
-
-    // Update status
     this.liveScannerRepo.updateLiveScanner(scannerId, userId, {
       status: "stopped",
       stoppedAt: new Date().toISOString(),
     });
-
     return { message: "Live scanner stopped successfully" };
   }
 
-  /**
-   * Pause a live scanner
-   */
-  public async pauseLiveScanner(
-    userId: number,
-    scannerId: number,
-  ): Promise<{ message: string }> {
-    const scanner =
-      this.liveScannerRepo.getLiveScannerById(scannerId);
+  public async pauseLiveScanner(userId: number, scannerId: number): Promise<{ message: string }> {
+    const scanner = this.liveScannerRepo.getLiveScannerById(scannerId);
+    if (!scanner) throw new NotFoundError("Live scanner not found");
+    if (scanner.userId !== userId) throw new ForbiddenError("Unauthorized");
+    if (scanner.status !== "active") throw new ValidationError("Only active scanners can be paused");
 
-    if (!scanner) {
-      throw new NotFoundError("Live scanner not found");
-    }
-
-    if (scanner.userId !== userId) {
-      throw new ForbiddenError(
-        "You don't have permission to pause this live scanner",
-      );
-    }
-
-    if (scanner.status !== "active") {
-      throw new ValidationError(
-        "Only active live scanners can be paused",
-      );
-    }
-
-    // Update status without stopping watcher (it will ignore events)
-    this.liveScannerRepo.updateLiveScanner(scannerId, userId, {
-      status: "paused",
-    });
-
+    this.liveScannerRepo.updateLiveScanner(scannerId, userId, { status: "paused" });
     return { message: "Live scanner paused successfully" };
   }
 
-  /**
-   * Resume a paused live scanner
-   */
-  public async resumeLiveScanner(
-    userId: number,
-    scannerId: number,
-  ): Promise<{ message: string }> {
-    const scanner =
-      this.liveScannerRepo.getLiveScannerById(scannerId);
+  public async resumeLiveScanner(userId: number, scannerId: number): Promise<{ message: string }> {
+    const scanner = this.liveScannerRepo.getLiveScannerById(scannerId);
+    if (!scanner) throw new NotFoundError("Live scanner not found");
+    if (scanner.userId !== userId) throw new ForbiddenError("Unauthorized");
+    if (scanner.status !== "paused") throw new ValidationError("Only paused scanners can be resumed");
 
-    if (!scanner) {
-      throw new NotFoundError("Live scanner not found");
-    }
-
-    if (scanner.userId !== userId) {
-      throw new ForbiddenError(
-        "You don't have permission to resume this live scanner",
-      );
-    }
-
-    if (scanner.status !== "paused") {
-      throw new ValidationError(
-        "Only paused live scanners can be resumed",
-      );
-    }
-
-    // Update status
-    this.liveScannerRepo.updateLiveScanner(scannerId, userId, {
-      status: "active",
-    });
-
+    this.liveScannerRepo.updateLiveScanner(scannerId, userId, { status: "active" });
     return { message: "Live scanner resumed successfully" };
   }
 
-  /**
-   * Get all live scanners for a user
-   */
   public getAllLiveScanners(userId: number): LiveScannerEntity[] {
     return this.liveScannerRepo.getAllLiveScannersByUserId(userId);
   }
 
-  /**
-   * Get live scanner by ID
-   */
-  public getLiveScannerById(
-    userId: number,
-    scannerId: number,
-  ): LiveScannerEntity {
-    const scanner =
-      this.liveScannerRepo.getLiveScannerById(scannerId);
-
-    if (!scanner) {
-      throw new NotFoundError("Live scanner not found");
-    }
-
-    if (scanner.userId !== userId) {
-      throw new ForbiddenError(
-        "You don't have permission to view this live scanner",
-      );
-    }
-
+  public getLiveScannerById(userId: number, scannerId: number): LiveScannerEntity {
+    const scanner = this.liveScannerRepo.getLiveScannerById(scannerId);
+    if (!scanner) throw new NotFoundError("Live scanner not found");
+    if (scanner.userId !== userId) throw new ForbiddenError("Unauthorized");
     return scanner;
   }
 
-  /**
-   * Get live scanner statistics
-   */
-  public getLiveScannerStats(
-    userId: number,
-    scannerId: number,
-  ): LiveScannerStats {
+  public getLiveScannerStats(userId: number, scannerId: number): LiveScannerStats {
     const scanner = this.getLiveScannerById(userId, scannerId);
     const watcher = this.activeWatchers.get(scannerId);
-
-    const startTime = new Date(scanner.startedAt).getTime();
-    const endTime = scanner.stoppedAt
-      ? new Date(scanner.stoppedAt).getTime()
-      : Date.now();
-    const uptime = endTime - startTime;
-
-    return {
-      scanner,
-      recentActivity: watcher?.activityLog.slice(-50) || [],
-      uptime,
-      averageResponseTime: undefined, // Could be calculated if we track response times
-    };
+    const uptime = Date.now() - new Date(scanner.startedAt).getTime();
+    return { scanner, recentActivity: watcher?.activityLog.slice(-50) || [], uptime };
   }
 
-  /**
-   * Delete a live scanner
-   */
-  public async deleteLiveScanner(
-    userId: number,
-    scannerId: number,
-  ): Promise<{ message: string }> {
-    const scanner =
-      this.liveScannerRepo.getLiveScannerById(scannerId);
+  public async deleteLiveScanner(userId: number, scannerId: number): Promise<{ message: string }> {
+    const scanner = this.liveScannerRepo.getLiveScannerById(scannerId);
+    if (!scanner) throw new NotFoundError("Live scanner not found");
+    if (scanner.userId !== userId) throw new ForbiddenError("Unauthorized");
 
-    if (!scanner) {
-      throw new NotFoundError("Live scanner not found");
-    }
-
-    if (scanner.userId !== userId) {
-      throw new ForbiddenError(
-        "You don't have permission to delete this live scanner",
-      );
-    }
-
-    // Stop watching if active
     if (scanner.status === "active" || scanner.status === "paused") {
       await this.stopWatching(scannerId);
     }
-
-    // Delete from database
     this.liveScannerRepo.deleteLiveScanner(scannerId, userId);
-
     return { message: "Live scanner deleted successfully" };
   }
 
-  /**
-   * Start watching a directory
-   */
+  // ── Core: start watching directories ─────────────────────────────────────────
   private async startWatching(
     scanner: LiveScannerEntity,
     userId: number,
     policies: PolicyEntity[],
     options: Required<LiveScannerOptions>,
+    autoResponse: boolean,
   ): Promise<void> {
-    const watcher = chokidar.watch(scanner.targetPath, {
+    // Support pipe-delimited multi-path
+    const watchPaths = scanner.targetPath.split("|").filter((p) => fs.existsSync(p));
+    if (watchPaths.length === 0) throw new ValidationError("No valid paths to watch");
+
+    const watcher = chokidar.watch(watchPaths, {
       persistent: true,
       ignoreInitial: true,
-      followSymlinks: options.followSymlinks,
+      followSymlinks: false,
       depth: scanner.isRecursive ? undefined : 0,
       ignored: [
-        ...options.excludePaths.map((p) =>
-          path.join(scanner.targetPath, p),
-        ),
-        ...(options.includeExtensions.length > 0
-          ? [
-              (filePath: string) => {
-                const ext = path.extname(filePath);
-                return !options.includeExtensions.includes(ext);
-              },
-            ]
-          : []),
+        // Ignore hidden files, node_modules, and system-like patterns
+        /(^|[\/\\])\../,
+        "**/node_modules/**",
+        "**/.git/**",
+        "**/*.tmp",
+        "**/*.temp",
+        "**/*.enc", // Don't re-scan already encrypted files
       ],
       awaitWriteFinish: {
         stabilityThreshold: options.debounceDelay,
@@ -336,191 +302,135 @@ export class liveScannerService {
       options,
       policies,
       activityLog: [],
-      debounceTimers: new Map(),
+      autoResponse,
     };
 
-    // Set up event handlers based on watch mode
-    if (
-      scanner.watchMode === "file-changes" ||
-      scanner.watchMode === "both"
-    ) {
-      watcher.on("add", (filePath) =>
-        this.handleFileChange(activeWatcher, filePath, "add"),
-      );
-      watcher.on("change", (filePath) =>
-        this.handleFileChange(activeWatcher, filePath, "change"),
-      );
-      watcher.on("unlink", (filePath) =>
-        this.handleFileChange(activeWatcher, filePath, "unlink"),
-      );
-    }
-
-    if (
-      scanner.watchMode === "directory-changes" ||
-      scanner.watchMode === "both"
-    ) {
-      watcher.on("addDir", (dirPath) => {
-        // Log directory addition
-        this.logActivity(activeWatcher, dirPath, "add", 0);
-      });
-      watcher.on("unlinkDir", (dirPath) => {
-        // Log directory removal
-        this.logActivity(activeWatcher, dirPath, "unlink", 0);
-      });
-    }
-
-    watcher.on("error", (error) => {
-      console.error(`Error in live scanner ${scanner.id}:`, error);
-    });
+    watcher.on("add",    (fp) => this.handleFileChange(activeWatcher, fp, "add"));
+    watcher.on("change", (fp) => this.handleFileChange(activeWatcher, fp, "change"));
+    watcher.on("unlink", (fp) => this.handleFileChange(activeWatcher, fp, "unlink"));
+    watcher.on("addDir",    (dp) => this.logActivity(activeWatcher, dp, "add", 0));
+    watcher.on("unlinkDir", (dp) => this.logActivity(activeWatcher, dp, "unlink", 0));
+    watcher.on("error", (error) => console.error(`[LiveScanner ${scanner.id}] Error:`, error));
 
     this.activeWatchers.set(scanner.id, activeWatcher);
 
-    return new Promise((resolve) => {
-      watcher.on("ready", () => {
-        resolve();
-      });
-    });
+    return new Promise((resolve) => watcher.on("ready", resolve));
   }
 
-  /**
-   * Stop watching a directory
-   */
   private async stopWatching(scannerId: number): Promise<void> {
-    const activeWatcher = this.activeWatchers.get(scannerId);
-
-    if (activeWatcher) {
-      // Clear all debounce timers
-      activeWatcher.debounceTimers.forEach((timer) =>
-        clearTimeout(timer),
-      );
-      activeWatcher.debounceTimers.clear();
-
-      // Close watcher
-      await activeWatcher.watcher.close();
-
-      // Remove from active watchers
+    const aw = this.activeWatchers.get(scannerId);
+    if (aw) {
+      await aw.watcher.close();
       this.activeWatchers.delete(scannerId);
     }
   }
 
-  /**
-   * Handle file change event
-   */
+  // ── Handle a file change event ────────────────────────────────────────────────
   private async handleFileChange(
-    activeWatcher: ActiveWatcher,
+    aw: ActiveWatcher,
     filePath: string,
     changeType: FileChangeType,
   ): Promise<void> {
-    const { scannerId, userId, options } = activeWatcher;
+    const scanner = this.liveScannerRepo.getLiveScannerById(aw.scannerId);
+    if (!scanner || scanner.status !== "active") return;
+    if (!isSafeToScan(filePath)) return;
 
-    // Check if scanner is still active
-    const scanner =
-      this.liveScannerRepo.getLiveScannerById(scannerId);
-    if (!scanner || scanner.status !== "active") {
-      return;
-    }
-
-    // Skip if file is too large or doesn't exist anymore
-    if (changeType !== "unlink") {
-      try {
-        const stats = fs.statSync(filePath);
-        if (stats.size > options.maxFileSize) {
-          return;
-        }
-      } catch (error) {
-        // File might have been deleted
-        return;
-      }
-    }
-
-    // Don't scan deleted files, just log them
     if (changeType === "unlink") {
-      this.logActivity(activeWatcher, filePath, changeType, 0);
-      this.updateScannerFileCount(scannerId, userId);
+      this.logActivity(aw, filePath, changeType, 0);
+      this.updateScannerStats(aw.scannerId, aw.userId, 0);
       return;
     }
 
-    // Scan the file
     try {
-      const fileContent = fs.readFileSync(filePath, "utf-8");
-      const result = this.policyEngine.evaluate(
-        fileContent,
-        activeWatcher.policies,
-        { maxMatchesPerPolicy: options.maxMatchesPerFile },
-      );
+      const stats = fs.statSync(filePath);
+      if (stats.size > aw.options.maxFileSize) return;
+      if (stats.size === 0) return;
+    } catch { return; }
 
-      const threatsFound = result.totalMatches;
+    let fileContent: string;
+    try {
+      fileContent = fs.readFileSync(filePath, "utf-8");
+    } catch {
+      return; // Binary or unreadable file — skip
+    }
 
-      // Log activity
-      this.logActivity(
-        activeWatcher,
-        filePath,
-        changeType,
-        threatsFound,
-      );
+    const result = this.policyEngine.evaluate(fileContent, aw.policies, {
+      maxMatchesPerPolicy: aw.options.maxMatchesPerFile,
+    });
 
-      // Update scanner statistics
-      this.updateScannerStats(scannerId, userId, threatsFound);
-    } catch (error) {
-      // If file can't be read (binary, permissions, etc), just skip it
-      console.error(
-        `Error scanning file ${filePath} in scanner ${scannerId}:`,
-        error,
-      );
+    const threatsFound = result.totalMatches;
+    this.logActivity(aw, filePath, changeType, threatsFound);
+    this.updateScannerStats(aw.scannerId, aw.userId, threatsFound);
+
+    if (threatsFound > 0) {
+      const socketService = getSocketService();
+      const timestamp = new Date().toISOString().replace("T", " ").split(".")[0];
+
+      // Emit alert via socket so frontend receives it immediately
+      if (socketService) {
+        socketService.emitAlert({
+          id: Date.now(),
+          severity: threatsFound > 5 ? "High" : "Medium",
+          time: timestamp,
+          type: "Live Monitor: Policy Violation",
+          description: `${threatsFound} threat(s) found in ${path.basename(filePath)}`,
+          source: "Live Monitor",
+          status: "New",
+          filePath, // ← actual file path for actions
+        });
+
+        socketService.emitLiveScannerActivity({
+          scannerId: aw.scannerId,
+          filePath,
+          changeType,
+          threatsFound,
+          timestamp,
+        });
+      }
+
+      // Auto-response: encrypt the file automatically if enabled
+      if (aw.autoResponse) {
+        try {
+          this.fileActions.encryptFile(aw.userId, filePath);
+          console.log(`[LiveScanner] Auto-encrypted: ${filePath}`);
+          if (socketService) {
+            socketService.emitAlert({
+              id: Date.now() + 1,
+              severity: "Low",
+              time: timestamp,
+              type: "Auto-Response: File Encrypted",
+              description: `File automatically encrypted: ${path.basename(filePath)}`,
+              source: "Auto-Response",
+              status: "Resolved",
+              filePath: filePath + ".enc",
+            });
+          }
+        } catch (err: any) {
+          console.error(`[LiveScanner] Auto-encrypt failed for ${filePath}:`, err.message);
+        }
+      }
     }
   }
 
-  /**
-   * Log activity
-   */
   private logActivity(
-    activeWatcher: ActiveWatcher,
+    aw: ActiveWatcher,
     filePath: string,
     changeType: FileChangeType,
     threatsFound: number,
   ): void {
     const activity: LiveScannerActivity = {
-      scannerId: activeWatcher.scannerId,
+      scannerId: aw.scannerId,
       filePath,
       changeType,
       timestamp: new Date().toISOString(),
       threatsFound,
     };
-
-    // Keep only last 100 activities in memory
-    activeWatcher.activityLog.push(activity);
-    if (activeWatcher.activityLog.length > 100) {
-      activeWatcher.activityLog.shift();
-    }
+    aw.activityLog.push(activity);
+    if (aw.activityLog.length > 100) aw.activityLog.shift();
   }
 
-  /**
-   * Update scanner file count
-   */
-  private updateScannerFileCount(
-    scannerId: number,
-    userId: number,
-  ): void {
-    const scanner =
-      this.liveScannerRepo.getLiveScannerById(scannerId);
-    if (scanner) {
-      this.liveScannerRepo.updateLiveScanner(scannerId, userId, {
-        filesMonitored: scanner.filesMonitored + 1,
-        lastActivityAt: new Date().toISOString(),
-      });
-    }
-  }
-
-  /**
-   * Update scanner statistics
-   */
-  private updateScannerStats(
-    scannerId: number,
-    userId: number,
-    threatsFound: number,
-  ): void {
-    const scanner =
-      this.liveScannerRepo.getLiveScannerById(scannerId);
+  private updateScannerStats(scannerId: number, userId: number, threatsFound: number): void {
+    const scanner = this.liveScannerRepo.getLiveScannerById(scannerId);
     if (scanner) {
       this.liveScannerRepo.updateLiveScanner(scannerId, userId, {
         filesMonitored: scanner.filesMonitored + 1,
@@ -531,11 +441,7 @@ export class liveScannerService {
     }
   }
 
-  /**
-   * Cleanup - stop all active watchers
-   */
   public async cleanup(): Promise<void> {
-    const scannerIds = Array.from(this.activeWatchers.keys());
-    await Promise.all(scannerIds.map((id) => this.stopWatching(id)));
+    await Promise.all(Array.from(this.activeWatchers.keys()).map((id) => this.stopWatching(id)));
   }
 }

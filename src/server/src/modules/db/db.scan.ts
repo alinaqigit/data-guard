@@ -66,4 +66,8 @@ export class Scan {
 
     return this.dbRepository.deleteScanById(id);
   }
+
+  public deleteAllScansByUserId(userId: number): void {
+    this.dbRepository.deleteAllScansByUserId(userId);
+  }
 }

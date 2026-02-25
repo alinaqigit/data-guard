@@ -5,10 +5,8 @@ import { policyModule } from "./modules/policy";
 import { scannerModule } from "./modules/scanner";
 import { liveScannerModule } from "./modules/liveScanner";
 import { reportsModule } from "./modules/reports";
-import {
-  errorHandler,
-  notFoundHandler,
-} from "./middleware/errorHandler";
+import { fileActionsModule } from "./modules/fileActions";
+import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 
 export interface Config {
   IS_PRODUCTION: boolean;
@@ -18,14 +16,13 @@ export interface Config {
 export function createDataGuardApp(config: Config): Application {
   const app = express();
 
-  // Module setup
   const auth = new authModule(config.DB_PATH);
   const policy = new policyModule(config.DB_PATH);
   const scanner = new scannerModule(config.DB_PATH);
   const liveScanner = new liveScannerModule(config.DB_PATH);
   const reports = new reportsModule(config.DB_PATH);
+  const fileActions = new fileActionsModule(config.DB_PATH);
 
-  // CORS
   const corsOptions = {
     origin: config.IS_PRODUCTION ? "null" : "*",
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
@@ -36,13 +33,13 @@ export function createDataGuardApp(config: Config): Application {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
-  // Routes
   app.get("/api/health", (_, res) => res.json({ status: "OK" }));
   app.use("/api/auth", auth.authController.getRouter());
   app.use("/api/policies", policy.policyController.getRouter());
   app.use("/api/live-scanners", liveScanner.liveScannerController.getRouter());
   app.use("/api/scans", scanner.scannerController.getRouter());
   app.use("/api/reports", reports.reportsController.getRouter());
+  app.use("/api/files", fileActions.controller.getRouter());
 
   app.use(notFoundHandler);
   app.use(errorHandler);

@@ -13,45 +13,35 @@ export function getSocket(): Socket {
       reconnectionAttempts: 5,
       reconnectionDelay: 2000,
     });
-
-    socket.on("connect", () => {
-      console.log("[Socket] Connected to server:", socket?.id);
-    });
-
-    socket.on("disconnect", (reason) => {
-      console.log("[Socket] Disconnected:", reason);
-    });
-
-    socket.on("connect_error", (error) => {
-      console.error("[Socket] Connection error:", error.message);
-    });
+    socket.on("connect", () => console.log("[Socket] Connected:", socket?.id));
+    socket.on("disconnect", (reason) => console.log("[Socket] Disconnected:", reason));
+    socket.on("connect_error", (error) => console.error("[Socket] Error:", error.message));
   }
-
   return socket;
 }
 
 export function disconnectSocket() {
-  if (socket) {
-    socket.disconnect();
-    socket = null;
-  }
+  if (socket) { socket.disconnect(); socket = null; }
 }
 
 export type SystemMetrics = {
-  cpu: number;
-  memory: number;
-  network: number;
-  activeSessions: number;
+  cpu: number; memory: number; network: number; activeSessions: number;
 };
 
 export type SocketAlert = {
   id: number;
   severity: "High" | "Medium" | "Low";
-  time: string;
-  type: string;
-  description: string;
-  source: string;
+  time: string; type: string; description: string; source: string;
   status: "New" | "Resolved" | "Quarantined" | "Investigating";
+  filePath?: string;
+};
+
+// Emitted once when scan starts — provides totalFiles for % calculation
+export type ScanStart = {
+  scanId: number;
+  totalFiles: number;
+  scanType: string;
+  targetPath: string;
 };
 
 export type ScanProgress = {
@@ -60,6 +50,7 @@ export type ScanProgress = {
   filesScanned: number;
   filesWithThreats: number;
   totalThreats: number;
+  totalFiles: number;       // now included
   currentFile?: string;
 };
 

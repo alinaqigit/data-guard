@@ -1,22 +1,12 @@
 "use client";
 
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  useRef,
-} from "react";
+import React, { createContext, useContext, useState, useEffect, useRef } from "react";
 import {
-  authService,
-  policyService,
-  scannerService,
-  getSessionId,
-  Policy as ApiPolicy,
-  Scan as ApiScan,
-  User,
+  authService, policyService, scannerService, getSessionId,
+  Policy as ApiPolicy, Scan as ApiScan, User,
 } from "@/lib/api";
 import { getSocket, disconnectSocket, SystemMetrics, SocketAlert } from "@/lib/api/socket";
+import { fileActionsService, monitoringApiService } from "@/lib/api/fileActions.service";
 
 interface Scan {
   id: number;
@@ -35,29 +25,19 @@ interface Alert {
   description: string;
   source: string;
   status: "New" | "Resolved" | "Quarantined" | "Investigating";
+  filePath?: string; // actual file path for quarantine/encrypt/delete actions
 }
 
-interface UserProfile {
-  name: string;
-  email: string;
-  role: string;
-  bio: string;
-}
+interface UserProfile { name: string; email: string; role: string; bio: string; }
 
 interface Policy {
-  id: string;
-  name: string;
-  description: string;
-  type: string;
-  pattern: string;
-  status: "Active" | "Disabled";
+  id: string; name: string; description: string;
+  type: string; pattern: string; status: "Active" | "Disabled";
 }
 
 interface MonitoringSettings {
-  realTime: boolean;
-  autoResponse: boolean;
-  notifications: boolean;
-  sensitivity: "Low" | "Medium" | "High";
+  realTime: boolean; autoResponse: boolean;
+  notifications: boolean; sensitivity: "Low" | "Medium" | "High";
 }
 
 interface SecurityContextType {
@@ -70,9 +50,11 @@ interface SecurityContextType {
   systemMetrics: SystemMetrics;
   runScan: (type: string, target: string, path: string, onComplete?: (threatsFound: number) => void) => Promise<void>;
   resolveAlert: (id: number) => void;
+  updateAlertStatus: (id: number, status: Alert["status"]) => void;
   clearAllAlerts: () => void;
-  clearAllScans: () => void;
+  clearAllScans: () => Promise<void>;
   deleteAlert: (id: number) => void;
+  deleteAllAlerts: () => void;
   login: (username: string, pass: string) => Promise<void>;
   logout: () => Promise<void>;
   updateUserProfile: (profile: UserProfile) => void;
@@ -86,34 +68,34 @@ interface SecurityContextType {
   refreshScans: () => Promise<void>;
   monitoringSettings: MonitoringSettings;
   updateMonitoringSettings: (settings: Partial<MonitoringSettings>) => void;
+  // File actions
+  quarantineFile: (alertId: number, filePath: string) => Promise<void>;
+  encryptFile: (alertId: number, filePath: string) => Promise<void>;
+  deleteFile: (alertId: number, filePath: string) => Promise<void>;
 }
 
 const SecurityContext = createContext<SecurityContextType | undefined>(undefined);
-
 const DEFAULT_METRICS: SystemMetrics = { cpu: 0, memory: 0, network: 0, activeSessions: 0 };
 
-function mapApiPolicyToUi(apiPolicy: ApiPolicy): Policy {
+function mapApiPolicyToUi(p: ApiPolicy): Policy {
   return {
-    id: apiPolicy.id.toString(),
-    name: apiPolicy.name,
-    description: apiPolicy.description || "",
-    type: apiPolicy.type.toUpperCase(),
-    pattern: apiPolicy.pattern,
-    status: apiPolicy.isEnabled ? "Active" : "Disabled",
+    id: p.id.toString(), name: p.name, description: p.description || "",
+    type: p.type.toUpperCase(), pattern: p.pattern,
+    status: p.isEnabled ? "Active" : "Disabled",
   };
 }
 
-function mapApiScanToUi(apiScan: ApiScan): Scan {
-  const completedTime = apiScan.completedAt
-    ? new Date(apiScan.completedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+function mapApiScanToUi(s: ApiScan): Scan {
+  const completedTime = s.completedAt
+    ? new Date(s.completedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     : "N/A";
   return {
-    id: apiScan.id,
+    id: s.id,
     time: completedTime,
-    type: apiScan.scanType.charAt(0).toUpperCase() + apiScan.scanType.slice(1),
-    files: apiScan.filesScanned.toLocaleString(),
-    threats: apiScan.totalThreats,
-    status: apiScan.status.charAt(0).toUpperCase() + apiScan.status.slice(1),
+    type: s.scanType.charAt(0).toUpperCase() + s.scanType.slice(1),
+    files: s.filesScanned.toLocaleString(),
+    threats: s.totalThreats,
+    status: s.status.charAt(0).toUpperCase() + s.status.slice(1),
   };
 }
 
@@ -127,37 +109,26 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [systemMetrics, setSystemMetrics] = useState<SystemMetrics>(DEFAULT_METRICS);
   const [monitoringSettings, setMonitoringSettings] = useState<MonitoringSettings>({
-    realTime: true,
-    autoResponse: false,
-    notifications: true,
-    sensitivity: "Medium",
+    realTime: true, autoResponse: false, notifications: true, sensitivity: "Medium",
   });
 
   const socketInitialized = useRef(false);
-  // Keep a ref that always reflects latest realTime value
-  // so socket callbacks don't need to re-register on every change
   const realTimeRef = useRef(true);
 
-  // Keep realTimeRef in sync with monitoringSettings.realTime
-  useEffect(() => {
-    realTimeRef.current = monitoringSettings.realTime;
-  }, [monitoringSettings.realTime]);
+  useEffect(() => { realTimeRef.current = monitoringSettings.realTime; }, [monitoringSettings.realTime]);
 
-  // Initialize socket listeners once
   useEffect(() => {
     if (socketInitialized.current) return;
     socketInitialized.current = true;
-
     const socket = getSocket();
 
-    // Metrics: only update when realTime is on
     socket.on("metrics:update", (metrics: SystemMetrics) => {
       if (!realTimeRef.current) return;
       setSystemMetrics(metrics);
     });
 
-    // New alert: only process when realTime is on
-    socket.on("alert:new", (alert: SocketAlert) => {
+    // Alerts now include filePath from the backend
+    socket.on("alert:new", (alert: Alert) => {
       if (!realTimeRef.current) return;
       setAlerts((prev) => {
         if (prev.find((a) => a.id === alert.id)) return prev;
@@ -165,7 +136,6 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
       });
     });
 
-    // Scan progress: only update when realTime is on
     socket.on("scan:progress", (progress: any) => {
       if (!realTimeRef.current) return;
       setScans((prev) =>
@@ -177,12 +147,8 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
       );
     });
 
-    // Scan complete: refresh regardless (user triggered this action)
-    socket.on("scan:complete", async () => {
-      await refreshScans();
-    });
+    socket.on("scan:complete", async () => { await refreshScans(); });
 
-    // Live scanner activity: only when realTime is on
     socket.on("liveScanner:activity", (activity: any) => {
       if (!realTimeRef.current) return;
       if (activity.threatsFound > 0) {
@@ -194,6 +160,7 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
           description: `${activity.threatsFound} threat(s) found in ${activity.filePath}`,
           source: "Live Monitor",
           status: "New",
+          filePath: activity.filePath,
         };
         setAlerts((prev) => [newAlert, ...prev]);
       }
@@ -208,7 +175,6 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  // Check authentication on mount
   useEffect(() => {
     const checkAuth = async () => {
       const sessionId = getSessionId();
@@ -224,8 +190,7 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
           });
           await refreshPolicies();
           await refreshScans();
-        } catch (error) {
-          console.error("Session verification failed:", error);
+        } catch {
           setIsAuthenticated(false);
           setUser(null);
         }
@@ -234,17 +199,13 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
     checkAuth();
   }, []);
 
-  // Theme persistence
   useEffect(() => {
     const savedTheme = localStorage.getItem("dlp_theme") as "light" | "dark";
     if (savedTheme) setTheme(savedTheme);
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem("dlp_theme", theme);
-  }, [theme]);
+  useEffect(() => { localStorage.setItem("dlp_theme", theme); }, [theme]);
 
-  // Load saved monitoring settings
   useEffect(() => {
     const saved = localStorage.getItem("dlp_monitoring_settings");
     if (saved) {
@@ -256,55 +217,68 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const updateMonitoringSettings = (settings: Partial<MonitoringSettings>) => {
+  const updateMonitoringSettings = async (settings: Partial<MonitoringSettings>) => {
     setMonitoringSettings((prev) => {
       const updated = { ...prev, ...settings };
       localStorage.setItem("dlp_monitoring_settings", JSON.stringify(updated));
-      // Keep ref in sync immediately
-      if (settings.realTime !== undefined) {
-        realTimeRef.current = settings.realTime;
-      }
+      if (settings.realTime !== undefined) realTimeRef.current = settings.realTime;
       return updated;
     });
+
+    // Wire real-time toggle to backend monitoring
+    if (settings.realTime === true) {
+      try {
+        await monitoringApiService.startMonitoring(monitoringSettings.autoResponse);
+      } catch (err) {
+        console.warn("[Monitor] Could not start live monitoring:", err);
+      }
+    } else if (settings.realTime === false) {
+      try {
+        await monitoringApiService.stopMonitoring();
+      } catch (err) {
+        console.warn("[Monitor] Could not stop live monitoring:", err);
+      }
+    }
+
+    // Wire auto-response toggle to backend
+    if (settings.autoResponse !== undefined) {
+      try {
+        await monitoringApiService.updateAutoResponse(settings.autoResponse);
+      } catch (err) {
+        console.warn("[Monitor] Could not update auto-response:", err);
+      }
+    }
   };
 
   const refreshPolicies = async () => {
     try {
       const apiPolicies = await policyService.getAllPolicies();
       setPolicies(apiPolicies.map(mapApiPolicyToUi));
-    } catch (error) {
-      console.error("Failed to load policies:", error);
-    }
+    } catch {}
   };
 
   const refreshScans = async () => {
     try {
       const { scans: apiScans } = await scannerService.getAllScans();
       setScans(apiScans.map(mapApiScanToUi));
-      setTotalFilesScanned(apiScans.reduce((sum, scan) => sum + scan.filesScanned, 0));
-    } catch (error) {
-      console.error("Failed to load scans:", error);
-    }
+      setTotalFilesScanned(apiScans.reduce((sum, s) => sum + s.filesScanned, 0));
+    } catch {}
   };
 
   const runScan = async (
-    type: string,
-    target: string,
-    path: string,
+    type: string, target: string, scanPath: string,
     onComplete?: (threatsFound: number) => void,
   ) => {
     let scanType: "full" | "quick" | "custom" = "quick";
     if (type.toLowerCase().includes("full")) scanType = "full";
     else if (type.toLowerCase().includes("custom")) scanType = "custom";
 
-    // Start scan — throws if backend rejects (no policies, invalid path, etc.)
     const result = await scannerService.startScan({
       scanType,
-      targetPath: path || process.cwd(),
+      targetPath: scanPath || process.cwd(),
       options: {},
     });
 
-    // Poll in background — caller gets control back immediately after startScan resolves
     const pollInterval = setInterval(async () => {
       try {
         const scanData = await scannerService.getScanById(result.scanId);
@@ -312,60 +286,81 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
           clearInterval(pollInterval);
           await refreshScans();
 
-          // Generate alerts for any threats found
           if (scanData.totalThreats > 0) {
             const newAlerts: Alert[] = Array.from({ length: Math.min(scanData.totalThreats, 5) }).map((_, i) => ({
               id: Date.now() + i,
               severity: scanData.totalThreats > 5 ? "High" : "Medium",
               time: new Date().toISOString().replace("T", " ").split(".")[0],
               type: "Policy Violation: Sensitive Content",
-              description: `Detected ${scanData.totalThreats} threats in ${scanData.filesWithThreats} files during ${type} scan.`,
+              description: `Detected ${scanData.totalThreats} threat(s) in ${scanData.filesWithThreats} file(s) during ${type} scan.`,
               source: type,
               status: "New" as const,
+              filePath: scanData.targetPath, // best available path from scan
             }));
             setAlerts((prev) => [...newAlerts, ...prev]);
           }
 
-          // Notify caller that scan is complete
           onComplete?.(scanData.totalThreats);
         }
-      } catch (error) {
-        console.error("Error polling scan status:", error);
+      } catch {
         clearInterval(pollInterval);
-        onComplete?.(-1); // -1 signals error
+        onComplete?.(-1);
       }
     }, 2000);
   };
 
+  // ── Alert management ──────────────────────────────────────────────────────────
   const resolveAlert = (id: number) => {
     setAlerts((prev) => prev.map((a) => (a.id === id ? { ...a, status: "Resolved" } : a)));
   };
+  const updateAlertStatus = (id: number, status: Alert["status"]) => {
+    setAlerts((prev) => prev.map((a) => (a.id === id ? { ...a, status } : a)));
+  };
   const deleteAlert = (id: number) => setAlerts((prev) => prev.filter((a) => a.id !== id));
+  const deleteAllAlerts = () => setAlerts([]);
   const clearAllAlerts = () => setAlerts([]);
-  const clearAllScans = () => setScans([]);
 
-  const login = async (username: string, password: string) => {
+  // clearAllScans hits the backend to delete records, then refreshes
+  const clearAllScans = async () => {
     try {
-      const response = await authService.login({ username, password });
-      setIsAuthenticated(true);
-      setUser({
-        name: response.user.username,
-        email: `${response.user.username.toLowerCase()}@example.com`,
-        role: "Security Administrator",
-        bio: "Dashboard administrator managing Data Leak Prevention policies.",
-      });
-      await refreshPolicies();
-      await refreshScans();
-    } catch (error) {
-      console.error("Login failed:", error);
-      throw error;
-    }
+      await scannerService.deleteAllScans();
+    } catch {}
+    setScans([]);
+    setTotalFilesScanned(0);
+  };
+
+  // ── File actions ──────────────────────────────────────────────────────────────
+  const quarantineFile = async (alertId: number, filePath: string) => {
+    await fileActionsService.quarantine(filePath);
+    updateAlertStatus(alertId, "Quarantined");
+  };
+
+  const encryptFile = async (alertId: number, filePath: string) => {
+    await fileActionsService.encrypt(filePath);
+    updateAlertStatus(alertId, "Resolved");
+  };
+
+  const deleteFile = async (alertId: number, filePath: string) => {
+    await fileActionsService.deleteFile(filePath);
+    deleteAlert(alertId);
+  };
+
+  // ── Auth ──────────────────────────────────────────────────────────────────────
+  const login = async (username: string, password: string) => {
+    const response = await authService.login({ username, password });
+    setIsAuthenticated(true);
+    setUser({
+      name: response.user.username,
+      email: `${response.user.username.toLowerCase()}@example.com`,
+      role: "Security Administrator",
+      bio: "Dashboard administrator managing Data Leak Prevention policies.",
+    });
+    await refreshPolicies();
+    await refreshScans();
   };
 
   const logout = async () => {
-    try {
-      await authService.logout();
-    } finally {
+    try { await authService.logout(); } finally {
       disconnectSocket();
       socketInitialized.current = false;
       setIsAuthenticated(false);
@@ -381,70 +376,48 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem("dlp_user", JSON.stringify(profile));
   };
 
+  // ── Policy management (unchanged) ─────────────────────────────────────────────
   const addPolicy = async (p: Omit<Policy, "id">) => {
-    try {
-      const newPolicy = await policyService.createPolicy({
-        name: p.name,
-        pattern: p.pattern,
-        type: p.type.toLowerCase() === "regex" ? "regex" : "keyword",
-        description: p.description,
-      });
-      setPolicies((prev) => [mapApiPolicyToUi(newPolicy), ...prev]);
-    } catch (error) {
-      console.error("Failed to create policy:", error);
-      throw error;
-    }
+    const newPolicy = await policyService.createPolicy({
+      name: p.name, pattern: p.pattern,
+      type: p.type.toLowerCase() === "regex" ? "regex" : "keyword",
+      description: p.description,
+    });
+    setPolicies((prev) => [mapApiPolicyToUi(newPolicy), ...prev]);
   };
 
   const updatePolicy = async (p: Policy) => {
-    try {
-      const updated = await policyService.updatePolicy(parseInt(p.id), {
-        name: p.name,
-        pattern: p.pattern,
-        type: p.type.toLowerCase() === "regex" ? "regex" : "keyword",
-        description: p.description,
-        isEnabled: p.status === "Active",
-      });
-      setPolicies((prev) => prev.map((policy) => (policy.id === p.id ? mapApiPolicyToUi(updated) : policy)));
-    } catch (error) {
-      console.error("Failed to update policy:", error);
-      throw error;
-    }
+    const updated = await policyService.updatePolicy(parseInt(p.id), {
+      name: p.name, pattern: p.pattern,
+      type: p.type.toLowerCase() === "regex" ? "regex" : "keyword",
+      description: p.description, isEnabled: p.status === "Active",
+    });
+    setPolicies((prev) => prev.map((pol) => (pol.id === p.id ? mapApiPolicyToUi(updated) : pol)));
   };
 
   const togglePolicyStatus = async (id: string) => {
-    try {
-      const updated = await policyService.togglePolicy(parseInt(id));
-      setPolicies((prev) => prev.map((p) => (p.id === id ? mapApiPolicyToUi(updated) : p)));
-    } catch (error) {
-      console.error("Failed to toggle policy:", error);
-      throw error;
-    }
+    const updated = await policyService.togglePolicy(parseInt(id));
+    setPolicies((prev) => prev.map((p) => (p.id === id ? mapApiPolicyToUi(updated) : p)));
   };
 
   const deletePolicy = async (id: string) => {
-    try {
-      await policyService.deletePolicy(parseInt(id));
-      setPolicies((prev) => prev.filter((p) => p.id !== id));
-    } catch (error) {
-      console.error("Failed to delete policy:", error);
-      throw error;
-    }
+    await policyService.deletePolicy(parseInt(id));
+    setPolicies((prev) => prev.filter((p) => p.id !== id));
   };
 
   const toggleTheme = () => setTheme((prev) => (prev === "light" ? "dark" : "light"));
 
   return (
-    <SecurityContext.Provider
-      value={{
-        scans, alerts, policies, totalFilesScanned, isAuthenticated, user,
-        systemMetrics, theme, monitoringSettings,
-        runScan, resolveAlert, clearAllAlerts, clearAllScans, deleteAlert,
-        login, logout, updateUserProfile,
-        addPolicy, updatePolicy, togglePolicyStatus, deletePolicy,
-        toggleTheme, refreshPolicies, refreshScans, updateMonitoringSettings,
-      }}
-    >
+    <SecurityContext.Provider value={{
+      scans, alerts, policies, totalFilesScanned, isAuthenticated, user,
+      systemMetrics, theme, monitoringSettings,
+      runScan, resolveAlert, updateAlertStatus, clearAllAlerts, clearAllScans,
+      deleteAlert, deleteAllAlerts,
+      login, logout, updateUserProfile,
+      addPolicy, updatePolicy, togglePolicyStatus, deletePolicy,
+      toggleTheme, refreshPolicies, refreshScans, updateMonitoringSettings,
+      quarantineFile, encryptFile, deleteFile,
+    }}>
       {children}
     </SecurityContext.Provider>
   );
@@ -452,8 +425,6 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
 
 export function useSecurity() {
   const context = useContext(SecurityContext);
-  if (context === undefined) {
-    throw new Error("useSecurity must be used within a SecurityProvider");
-  }
+  if (!context) throw new Error("useSecurity must be used within a SecurityProvider");
   return context;
 }

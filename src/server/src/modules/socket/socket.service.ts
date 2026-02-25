@@ -19,7 +19,6 @@ export class SocketService {
         methods: ["GET", "POST"],
       },
     });
-
     this.setupConnectionHandlers();
     this.startMetricsBroadcast();
   }
@@ -37,25 +36,17 @@ export class SocketService {
   private getSystemMetrics(): SystemMetrics {
     const os = require("os");
     const cpus: any[] = os.cpus();
-    const cpuLoad =
-      cpus.reduce((acc: number, cpu: any) => {
-        const times: Record<string, number> = cpu.times;
-        const total: number = Object.values(times).reduce(
-          (t: number, v: number) => t + v,
-          0
-        );
-        const idle: number = times.idle;
-        return acc + ((total - idle) / total) * 100;
-      }, 0) / cpus.length;
-
-    const totalMem: number = os.totalmem();
-    const freeMem: number = os.freemem();
-    const memUsage = ((totalMem - freeMem) / totalMem) * 100;
+    const cpuLoad = cpus.reduce((acc: number, cpu: any) => {
+      const times: Record<string, number> = cpu.times;
+      const total = Object.values(times).reduce((t: number, v: number) => t + v, 0);
+      return acc + ((total - times.idle) / total) * 100;
+    }, 0) / cpus.length;
+    const totalMem = os.totalmem();
+    const freeMem = os.freemem();
     const networkLoad = Math.min(100, Math.abs(Math.sin(Date.now() / 10000) * 40 + 15));
-
     return {
       cpu: Math.round(cpuLoad),
-      memory: Math.round(memUsage),
+      memory: Math.round(((totalMem - freeMem) / totalMem) * 100),
       network: Math.round(networkLoad),
       activeSessions: this.io.sockets.sockets.size,
     };
@@ -71,6 +62,16 @@ export class SocketService {
     }, 3000);
   }
 
+  // Emitted once when a scan begins — tells frontend total file count for progress %
+  public emitScanStart(data: {
+    scanId: number;
+    totalFiles: number;
+    scanType: string;
+    targetPath: string;
+  }) {
+    this.io.emit("scan:start", data);
+  }
+
   public emitAlert(alert: {
     id: number;
     severity: "High" | "Medium" | "Low";
@@ -79,6 +80,7 @@ export class SocketService {
     description: string;
     source: string;
     status: "New" | "Resolved" | "Quarantined" | "Investigating";
+    filePath?: string;
   }) {
     this.io.emit("alert:new", alert);
   }
@@ -89,6 +91,7 @@ export class SocketService {
     filesScanned: number;
     filesWithThreats: number;
     totalThreats: number;
+    totalFiles: number;
     currentFile?: string;
   }) {
     this.io.emit("scan:progress", progress);
@@ -99,6 +102,7 @@ export class SocketService {
     status: string;
     filesScanned: number;
     totalThreats: number;
+    totalFiles: number;
   }) {
     this.io.emit("scan:complete", scan);
   }
@@ -113,9 +117,7 @@ export class SocketService {
     this.io.emit("liveScanner:activity", activity);
   }
 
-  public getIO(): SocketIOServer {
-    return this.io;
-  }
+  public getIO(): SocketIOServer { return this.io; }
 
   public destroy() {
     if (this.metricsInterval) clearInterval(this.metricsInterval);

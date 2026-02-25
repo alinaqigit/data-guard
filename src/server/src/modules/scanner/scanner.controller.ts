@@ -131,7 +131,7 @@ export class scannerController {
         },
       ),
     );
-
+    
     // Get scan progress
     this.scannerRouter.get(
       "/:id/progress",
@@ -210,6 +210,20 @@ export class scannerController {
           res.status(200).json({
             message: "Scan deleted successfully",
           });
+        },
+      ),
+    );
+
+    // Delete all scans for current user
+    this.scannerRouter.delete(
+      "/",
+      asyncHandler(
+        async (req: AuthenticatedRequest, res: Response) => {
+          if (!req.user) {
+            throw new UnauthorizedError();
+          }
+          this.scannerService.deleteAllScans(req.user.userId);
+          res.status(200).json({ message: "All scans deleted successfully" });
         },
       ),
     );
