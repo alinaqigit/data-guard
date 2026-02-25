@@ -47,3 +47,59 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #404040;
 }
+
+/* Custom Title Bar Styles */
+.titlebar {
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(to bottom, #1a1a1a, #0f0f0f);
+  border-bottom: 1px solid #2a2a2a;
+  user-select: none;
+  position: relative;
+  z-index: 1000;
+}
+
+.titlebar-drag-region {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  -webkit-app-region: drag;
+  padding-left: 12px;
+}
+
+.titlebar-title {
+  -webkit-app-region: no-drag;
+}
+
+.titlebar-controls {
+  display: flex;
+  height: 100%;
+  -webkit-app-region: no-drag;
+}
+
+.titlebar-button {
+  width: 46px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: #e5e5e5;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  outline: none;
+}
+
+.titlebar-button:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: -2px;
+}
+
+.titlebar-close:hover {
+  background-color: #dc2626 !important;
+  color: white;
+}
