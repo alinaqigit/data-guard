@@ -1,10 +1,13 @@
-const { app, BrowserWindow } = require("electron");
+const { app, BrowserWindow, ipcMain } = require("electron");
 const path = require("node:path");
 import started from "electron-squirrel-startup";
 
 const BrowserWindowConfig = {
-  width: 800,
-  height: 600,
+  width: 1200,
+  height: 800,
+  minWidth: 800,
+  minHeight: 600,
+  frame: false,
   webPreferences: {
     preload: MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY,
     webSecurity: app.isPackaged,
@@ -12,22 +15,26 @@ const BrowserWindowConfig = {
     contextIsolation: true,
     devTools: !app.isPackaged,
   },
-  titleBarStyle: "hidden",
-  ...(process.platform !== "darwin"
-    ? {
-        titleBarOverlay: {
-          color: "rgba(0, 0, 0, 0)", // transparent,
-        },
-      }
-    : {}),
 };
 
 function getServerPath() {
   if (app.isPackaged) {
-    return path.join(process.resourcesPath, "server", "dist", "index.js");
+    return path.join(
+      process.resourcesPath,
+      "server",
+      "dist",
+      "index.js",
+    );
   } else {
     // In development, use source folder
-    return path.join(app.getAppPath(), "src", "server", "dist", "src", "index.js");
+    return path.join(
+      app.getAppPath(),
+      "src",
+      "server",
+      "dist",
+      "src",
+      "index.js",
+    );
   }
 }
 
@@ -39,7 +46,6 @@ let server;
 if (started) app.quit();
 
 const createWindow = () => {
-
   const serverConfig = {
     DB_PATH: app.getPath("userData"),
     IS_PRODUCTION: app.isPackaged,
@@ -56,6 +62,33 @@ const createWindow = () => {
 
   mainWindow.loadURL(url);
 };
+
+// Window control IPC handlers
+ipcMain.on("window-minimize", (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win) win.minimize();
+});
+
+ipcMain.on("window-maximize", (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win) {
+    if (win.isMaximized()) {
+      win.unmaximize();
+    } else {
+      win.maximize();
+    }
+  }
+});
+
+ipcMain.on("window-close", (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win) win.close();
+});
+
+ipcMain.handle("window-is-maximized", (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  return win ? win.isMaximized() : false;
+});
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
