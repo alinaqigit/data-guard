@@ -1,5 +1,8 @@
+"use client";
+
 import React, { useState, useEffect } from "react";
 import { X, Save, Shield } from "lucide-react";
+import CustomSelect from "@/components/CustomSelect";
 
 interface Policy {
   id: string;
@@ -15,54 +18,122 @@ interface PolicyModalProps {
   onClose: () => void;
   policy: Policy | null;
   onSave: (policy: Policy) => void;
+  isNew?: boolean;
 }
+
+const TYPE_OPTIONS = [
+  { value: "KEYWORD", label: "Keyword", description: "Match exact words or phrases" },
+  { value: "REGEX", label: "RegEx Pattern", description: "Match using a regular expression" },
+];
+
+const STATUS_OPTIONS = [
+  { value: "Active", label: "Active" },
+  { value: "Disabled", label: "Disabled" },
+];
+
+const REGEX_PATTERNS = [
+  {
+    value: "[0-9]{5}-[0-9]{7}-[0-9]",
+    label: "CNIC",
+    description: "Pakistani CNIC — e.g. 12345-1234567-1",
+  },
+  {
+    value: "(\\+92|0092|0)[0-9]{10}",
+    label: "Phone Number (Pakistani)",
+    description: "e.g. +923001234567, 0092300123456, 03001234567",
+  },
+  {
+    value: "PK[0-9]{2}[A-Z]{4}[0-9]{16}",
+    label: "IBAN (Pakistani)",
+    description: "e.g. PK36SCBL0000001123456702",
+  },
+  {
+    value: "\\b(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13}|6(?:011|5[0-9]{2})[0-9]{12})\\b",
+    label: "Credit Card",
+    description: "Visa, Mastercard, Amex, Discover",
+  },
+  {
+    value: "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}",
+    label: "Email Address",
+    description: "Standard email format — e.g. user@example.com",
+  },
+  {
+    value: "(?:api[_\\-]?key|apikey)[\\s]*[=:][\\s]*['\"]?([a-zA-Z0-9_\\-]{20,})['\"]?",
+    label: "API Key",
+    description: "Matches api_key=..., apikey: ... patterns",
+  },
+  {
+    value: "(?:secret|secret[_\\-]?key)[\\s]*[=:][\\s]*['\"]?([a-zA-Z0-9_\\-]{16,})['\"]?",
+    label: "Secret Key",
+    description: "Matches secret=..., secret_key: ... patterns",
+  },
+];
+
+const DEFAULT_NEW_POLICY: Policy = {
+  id: "",
+  name: "",
+  description: "",
+  type: "KEYWORD",
+  pattern: "",
+  status: "Active",
+};
 
 const PolicyModal: React.FC<PolicyModalProps> = ({
   isOpen,
   onClose,
   policy,
   onSave,
+  isNew = false,
 }) => {
-  const [formData, setFormData] = useState<Policy | null>(null);
+  const [formData, setFormData] = useState<Policy>(DEFAULT_NEW_POLICY);
+  const [visible, setVisible] = useState(false);
+  const [animating, setAnimating] = useState(false);
 
   useEffect(() => {
-    if (policy) {
-      setFormData({ ...policy });
+    if (isOpen) {
+      setFormData(policy ? { ...policy, type: policy.type?.toUpperCase() || 'KEYWORD' } : { ...DEFAULT_NEW_POLICY });
+      setVisible(true);
+      requestAnimationFrame(() => requestAnimationFrame(() => setAnimating(true)));
+    } else {
+      setAnimating(false);
+      const t = setTimeout(() => setVisible(false), 250);
+      return () => clearTimeout(t);
     }
-  }, [policy]);
+  }, [isOpen, policy]);
 
-  if (!isOpen || !formData) return null;
+  if (!visible) return null;
 
-  const handleChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >,
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => (prev ? { ...prev, [name]: value } : null));
-  };
+  const isRegex = formData.type === "REGEX";
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (formData) {
-      onSave(formData);
-    }
+    if (formData) onSave(formData);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{
+        backgroundColor: `rgba(0,0,0,${animating ? 0.6 : 0})`,
+        backdropFilter: `blur(${animating ? 6 : 0}px)`,
+        transition: "background-color 250ms ease, backdrop-filter 250ms ease",
+      }}
+    >
       <div
-        className="bg-black/90 border border-white/10 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200"
         style={{
-          background:
-            "linear-gradient(135deg, #0f172a 0%, #020617 100%)",
-          boxShadow: "0 0 50px -12px rgba(0, 0, 0, 0.5)",
+          background: "linear-gradient(135deg, #0f172a 0%, #020617 100%)",
+          boxShadow: "0 0 50px -12px rgba(0,0,0,0.5)",
+          opacity: animating ? 1 : 0,
+          transform: animating ? "scale(1)" : "scale(0.92)",
+          transition: "opacity 250ms cubic-bezier(0.16,1,0.3,1), transform 250ms cubic-bezier(0.16,1,0.3,1)",
         }}
+        className="border border-white/10 rounded-2xl w-full max-w-lg"
       >
+        {/* Header */}
         <div className="p-6 border-b border-white/5 flex justify-between items-center">
           <h3 className="text-xl font-bold text-white flex items-center gap-3">
             <Shield className="text-indigo-500" size={24} />
-            Edit Policy
+            {isNew ? "New Policy" : "Edit Policy"}
           </h3>
           <button
             onClick={onClose}
@@ -72,92 +143,101 @@ const PolicyModal: React.FC<PolicyModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          {/* Policy Name */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-neutral-400">
-              Policy Name
-            </label>
+            <label className="text-sm font-medium text-neutral-400">Policy Name</label>
             <input
               type="text"
-              name="name"
               value={formData.name}
-              onChange={handleChange}
+              onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
               required
-              className="w-full bg-black/50 border border-white/10 text-white rounded-lg px-4 py-2.5 focus:outline-none focus:border-indigo-500 transition-colors"
+              placeholder="e.g. CNIC Detection Policy"
+              className="w-full bg-black/50 border border-white/10 text-white rounded-xl px-4 py-2.5 focus:outline-none focus:border-indigo-500 transition-colors placeholder:text-neutral-600"
             />
           </div>
 
+          {/* Description */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-neutral-400">
-              Description
-            </label>
+            <label className="text-sm font-medium text-neutral-400">Description</label>
             <textarea
-              name="description"
               value={formData.description}
-              onChange={handleChange}
-              rows={3}
-              className="w-full bg-black/50 border border-white/10 text-white rounded-lg px-4 py-2.5 focus:outline-none focus:border-indigo-500 transition-colors resize-none"
+              onChange={(e) => setFormData((p) => ({ ...p, description: e.target.value }))}
+              rows={2}
+              placeholder="Describe what this policy detects..."
+              className="w-full bg-black/50 border border-white/10 text-white rounded-xl px-4 py-2.5 focus:outline-none focus:border-indigo-500 transition-colors resize-none placeholder:text-neutral-600"
             />
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-neutral-400">
-              Pattern
-            </label>
-            <input
-              type="text"
-              name="pattern"
-              value={formData.pattern}
-              onChange={handleChange}
-              required
-              placeholder="keyword or regex pattern"
-              className="w-full bg-black/50 border border-white/10 text-white rounded-lg px-4 py-2.5 focus:outline-none focus:border-indigo-500 transition-colors"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-6">
+          {/* Type + Status row */}
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-neutral-400">
-                Type
-              </label>
-              <input
-                type="text"
-                name="type"
+              <label className="text-sm font-medium text-neutral-400">Type</label>
+              <CustomSelect
                 value={formData.type}
-                onChange={handleChange}
-                className="w-full bg-black/50 border border-white/10 text-white rounded-lg px-4 py-2.5 focus:outline-none focus:border-indigo-500 transition-colors"
+                onChange={(val) => setFormData((p) => ({ ...p, type: val, pattern: "" }))}
+                options={TYPE_OPTIONS}
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-neutral-400">
-                Status
-              </label>
-              <select
-                name="status"
+              <label className="text-sm font-medium text-neutral-400">Status</label>
+              <CustomSelect
                 value={formData.status}
-                onChange={handleChange}
-                className="w-full bg-black/50 border border-white/10 text-white rounded-lg px-4 py-2.5 focus:outline-none focus:border-indigo-500 transition-colors"
-              >
-                <option value="Active">Active</option>
-                <option value="Disabled">Disabled</option>
-              </select>
+                onChange={(val) => setFormData((p) => ({ ...p, status: val as "Active" | "Disabled" }))}
+                options={STATUS_OPTIONS}
+              />
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4">
+          {/* Pattern / Value — label and input change based on type */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-neutral-400">
+              {isRegex ? "RegEx Pattern" : "Keyword or Phrase"}
+            </label>
+
+            {isRegex ? (
+              <>
+                <CustomSelect
+                  value={formData.pattern}
+                  onChange={(val) => setFormData((p) => ({ ...p, pattern: val }))}
+                  options={REGEX_PATTERNS}
+                  placeholder="Select a predefined pattern..."
+                />
+                {formData.pattern && (
+                  <div className="mt-2 px-3 py-2 bg-white/5 border border-white/10 rounded-lg">
+                    <p className="text-xs text-neutral-500 font-medium mb-1">Pattern preview</p>
+                    <code className="text-xs text-indigo-300 break-all">{formData.pattern}</code>
+                  </div>
+                )}
+              </>
+            ) : (
+              <input
+                type="text"
+                value={formData.pattern}
+                onChange={(e) => setFormData((p) => ({ ...p, pattern: e.target.value }))}
+                required
+                placeholder="e.g. confidential, salary, passport"
+                className="w-full bg-black/50 border border-white/10 text-white rounded-xl px-4 py-2.5 focus:outline-none focus:border-indigo-500 transition-colors placeholder:text-neutral-600"
+              />
+            )}
+          </div>
+
+          {/* Actions */}
+          <div className="flex justify-end gap-3 pt-2">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-lg font-bold text-neutral-400 hover:text-white hover:bg-white/5 transition-all"
+              className="px-4 py-2 rounded-xl font-bold text-neutral-400 hover:text-white hover:bg-white/5 transition-all"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-lg font-bold transition-all shadow-lg active:scale-95 flex items-center gap-2"
+              disabled={isRegex && !formData.pattern}
+              className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2 rounded-xl font-bold transition-all shadow-lg active:scale-95 flex items-center gap-2"
             >
               <Save size={18} />
-              Save Changes
+              {isNew ? "Create Policy" : "Save Changes"}
             </button>
           </div>
         </form>

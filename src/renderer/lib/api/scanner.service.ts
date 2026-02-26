@@ -59,4 +59,8 @@ export const scannerService = {
   async deleteScan(id: number): Promise<{ message: string }> {
     return api.delete<{ message: string }>(`/api/scans/${id}`, true);
   },
+  
+  async deleteAllScans(): Promise<void> {
+    await api.delete("/api/scans", true);
+  }
 };

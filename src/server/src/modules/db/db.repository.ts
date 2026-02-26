@@ -407,6 +407,10 @@ export class dbRepository {
     const stmt = this.db.prepare("DELETE FROM scans WHERE id = ?");
     stmt.run(id);
   }
+  
+  public deleteAllScansByUserId(userId: number): void {
+    this.db.prepare("DELETE FROM scans WHERE user_id = ?").run(userId);
+  }
 
   // Live Scanner CRUD operations
 
@@ -646,4 +650,6 @@ export class dbRepository {
     );
     stmt.run(id);
   }
+
+  
 }
