@@ -9,23 +9,14 @@ import { getSocket, disconnectSocket, SystemMetrics, SocketAlert } from "@/lib/a
 import { fileActionsService, monitoringApiService } from "@/lib/api/fileActions.service";
 
 interface Scan {
-  id: number;
-  time: string;
-  type: string;
-  files: string;
-  threats: number;
-  status: string;
+  id: number; time: string; type: string; files: string; threats: number; status: string;
 }
 
 interface Alert {
-  id: number;
-  severity: "High" | "Medium" | "Low";
-  time: string;
-  type: string;
-  description: string;
-  source: string;
+  id: number; severity: "High" | "Medium" | "Low"; time: string; type: string;
+  description: string; source: string;
   status: "New" | "Resolved" | "Quarantined" | "Investigating";
-  filePath?: string; // actual file path for quarantine/encrypt/delete actions
+  filePath?: string;
 }
 
 interface UserProfile { name: string; email: string; role: string; bio: string; }
@@ -40,6 +31,25 @@ interface MonitoringSettings {
   notifications: boolean; sensitivity: "Low" | "Medium" | "High";
 }
 
+// ── Scan progress — lives in context so it survives page navigation ───────────
+export interface ScanState {
+  activeScanId: number | null;
+  totalFiles: number;
+  filesScanned: number;
+  filesWithThreats: number;
+  totalThreats: number;
+  currentFile: string;
+  startTime: number | null;
+  endTime: number | null;
+  status: "idle" | "running" | "completed" | "failed";
+}
+
+export const IDLE_SCAN: ScanState = {
+  activeScanId: null, totalFiles: 0, filesScanned: 0,
+  filesWithThreats: 0, totalThreats: 0, currentFile: "",
+  startTime: null, endTime: null, status: "idle",
+};
+
 interface SecurityContextType {
   scans: Scan[];
   alerts: Alert[];
@@ -48,7 +58,20 @@ interface SecurityContextType {
   isAuthenticated: boolean;
   user: UserProfile | null;
   systemMetrics: SystemMetrics;
-  runScan: (type: string, target: string, path: string, onComplete?: (threatsFound: number) => void) => Promise<void>;
+  // Scan progress — persists across navigation
+  scanState: ScanState;
+  setScanState: (updates: Partial<ScanState>) => void;
+  runScan: (
+    type: string,
+    target: string,
+    scanPath: string,
+    onComplete?: (threatsFound: number) => void,
+    extraOptions?: {
+      mlTier?: "base" | "small" | "tiny";
+      excludedKeywords?: string[];
+      whitelistedPaths?: string[];
+    }
+  ) => Promise<any>;
   resolveAlert: (id: number) => void;
   updateAlertStatus: (id: number, status: Alert["status"]) => void;
   clearAllAlerts: () => void;
@@ -68,7 +91,6 @@ interface SecurityContextType {
   refreshScans: () => Promise<void>;
   monitoringSettings: MonitoringSettings;
   updateMonitoringSettings: (settings: Partial<MonitoringSettings>) => void;
-  // File actions
   quarantineFile: (alertId: number, filePath: string) => Promise<void>;
   encryptFile: (alertId: number, filePath: string) => Promise<void>;
   deleteFile: (alertId: number, filePath: string) => Promise<void>;
@@ -100,17 +122,29 @@ function mapApiScanToUi(s: ApiScan): Scan {
 }
 
 export function SecurityProvider({ children }: { children: React.ReactNode }) {
-  const [scans, setScans] = useState<Scan[]>([]);
-  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [scans, setScans]                   = useState<Scan[]>([]);
+  const [alerts, setAlerts]                 = useState<Alert[]>([]);
   const [totalFilesScanned, setTotalFilesScanned] = useState(0);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState<UserProfile | null>(null);
-  const [theme, setTheme] = useState<"light" | "dark">("dark");
-  const [policies, setPolicies] = useState<Policy[]>([]);
-  const [systemMetrics, setSystemMetrics] = useState<SystemMetrics>(DEFAULT_METRICS);
+  const [user, setUser]                     = useState<UserProfile | null>(null);
+  const [theme, setTheme]                   = useState<"light" | "dark">("dark");
+  const [policies, setPolicies]             = useState<Policy[]>([]);
+  const [systemMetrics, setSystemMetrics]   = useState<SystemMetrics>(DEFAULT_METRICS);
   const [monitoringSettings, setMonitoringSettings] = useState<MonitoringSettings>({
     realTime: true, autoResponse: false, notifications: true, sensitivity: "Medium",
   });
+
+  // ── Scan progress state — survives navigation because it's in context ─────
+  const [scanState, setScanStateRaw] = useState<ScanState>(IDLE_SCAN);
+  const scanStateRef = useRef<ScanState>(IDLE_SCAN);
+
+  const setScanState = (updates: Partial<ScanState>) => {
+    setScanStateRaw((prev) => {
+      const next = { ...prev, ...updates };
+      scanStateRef.current = next;
+      return next;
+    });
+  };
 
   const socketInitialized = useRef(false);
   const realTimeRef = useRef(true);
@@ -127,7 +161,6 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
       setSystemMetrics(metrics);
     });
 
-    // Alerts now include filePath from the backend
     socket.on("alert:new", (alert: Alert) => {
       if (!realTimeRef.current) return;
       setAlerts((prev) => {
@@ -136,18 +169,46 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
       });
     });
 
-    socket.on("scan:progress", (progress: any) => {
-      if (!realTimeRef.current) return;
+    // ── Scan progress socket events — handled here so they survive navigation ─
+    socket.on("scan:start", (data: any) => {
+      if (scanStateRef.current.activeScanId !== data.scanId) return;
+      setScanState({ totalFiles: data.totalFiles, startTime: Date.now() });
+    });
+
+    socket.on("scan:progress", (data: any) => {
+      // Update scans list in sidebar
       setScans((prev) =>
         prev.map((s) =>
-          s.id === progress.scanId
-            ? { ...s, files: progress.filesScanned.toString(), threats: progress.totalThreats, status: progress.status }
+          s.id === data.scanId
+            ? { ...s, files: data.filesScanned.toString(), threats: data.totalThreats, status: data.status }
             : s
         )
       );
+      // Update progress bar — only if this is the active scan
+      if (scanStateRef.current.activeScanId !== data.scanId) return;
+      setScanState({
+        filesScanned:     data.filesScanned,
+        filesWithThreats: data.filesWithThreats,
+        totalThreats:     data.totalThreats,
+        totalFiles:       data.totalFiles,
+        currentFile:      data.currentFile || "",
+      });
     });
 
-    socket.on("scan:complete", async () => { await refreshScans(); });
+    socket.on("scan:complete", async (data: any) => {
+      await refreshScans();
+      // Update progress bar — only if this is the active scan
+      if (scanStateRef.current.activeScanId !== data.scanId) return;
+      setScanState({
+        filesScanned: data.filesScanned,
+        totalThreats: data.totalThreats,
+        totalFiles:   data.totalFiles ?? scanStateRef.current.totalFiles,
+        currentFile:  "",
+        endTime:      Date.now(),
+        status:       "completed",
+        activeScanId: null,
+      });
+    });
 
     socket.on("liveScanner:activity", (activity: any) => {
       if (!realTimeRef.current) return;
@@ -169,6 +230,7 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
     return () => {
       socket.off("metrics:update");
       socket.off("alert:new");
+      socket.off("scan:start");
       socket.off("scan:progress");
       socket.off("scan:complete");
       socket.off("liveScanner:activity");
@@ -225,28 +287,17 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
       return updated;
     });
 
-    // Wire real-time toggle to backend monitoring
     if (settings.realTime === true) {
-      try {
-        await monitoringApiService.startMonitoring(monitoringSettings.autoResponse);
-      } catch (err) {
-        console.warn("[Monitor] Could not start live monitoring:", err);
-      }
+      try { await monitoringApiService.startMonitoring(monitoringSettings.autoResponse); }
+      catch (err) { console.warn("[Monitor] Could not start live monitoring:", err); }
     } else if (settings.realTime === false) {
-      try {
-        await monitoringApiService.stopMonitoring();
-      } catch (err) {
-        console.warn("[Monitor] Could not stop live monitoring:", err);
-      }
+      try { await monitoringApiService.stopMonitoring(); }
+      catch (err) { console.warn("[Monitor] Could not stop live monitoring:", err); }
     }
 
-    // Wire auto-response toggle to backend
     if (settings.autoResponse !== undefined) {
-      try {
-        await monitoringApiService.updateAutoResponse(settings.autoResponse);
-      } catch (err) {
-        console.warn("[Monitor] Could not update auto-response:", err);
-      }
+      try { await monitoringApiService.updateAutoResponse(settings.autoResponse); }
+      catch (err) { console.warn("[Monitor] Could not update auto-response:", err); }
     }
   };
 
@@ -266,86 +317,69 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
   };
 
   const runScan = async (
-    type: string, target: string, scanPath: string,
+    type: string,
+    target: string,
+    scanPath: string,
     onComplete?: (threatsFound: number) => void,
+    extraOptions?: {
+      mlTier?: "base" | "small" | "tiny";
+      excludedKeywords?: string[];
+      whitelistedPaths?: string[];
+    },
   ) => {
     let scanType: "full" | "quick" | "custom" = "quick";
-    if (type.toLowerCase().includes("full")) scanType = "full";
+    if (type.toLowerCase().includes("full"))        scanType = "full";
     else if (type.toLowerCase().includes("custom")) scanType = "custom";
 
     const result = await scannerService.startScan({
       scanType,
       targetPath: scanPath || process.cwd(),
-      options: {},
+      options: { ...(extraOptions || {}) },
     });
 
-    const pollInterval = setInterval(async () => {
-      try {
-        const scanData = await scannerService.getScanById(result.scanId);
-        if (scanData.status !== "running") {
-          clearInterval(pollInterval);
-          await refreshScans();
+    // Register onComplete callback against this scanId
+    // The scan:complete socket listener above fires setScanState,
+    // this just additionally calls the page's toast callback
+    const socket = getSocket();
+    const handler = (data: any) => {
+      if (data.scanId !== result.scanId) return;
+      socket.off("scan:complete", handler);
+      onComplete?.(data.totalThreats ?? 0);
+    };
+    socket.on("scan:complete", handler);
+    setTimeout(() => socket.off("scan:complete", handler), 10 * 60 * 1000);
 
-          if (scanData.totalThreats > 0) {
-            const newAlerts: Alert[] = Array.from({ length: Math.min(scanData.totalThreats, 5) }).map((_, i) => ({
-              id: Date.now() + i,
-              severity: scanData.totalThreats > 5 ? "High" : "Medium",
-              time: new Date().toISOString().replace("T", " ").split(".")[0],
-              type: "Policy Violation: Sensitive Content",
-              description: `Detected ${scanData.totalThreats} threat(s) in ${scanData.filesWithThreats} file(s) during ${type} scan.`,
-              source: type,
-              status: "New" as const,
-              filePath: scanData.targetPath, // best available path from scan
-            }));
-            setAlerts((prev) => [...newAlerts, ...prev]);
-          }
-
-          onComplete?.(scanData.totalThreats);
-        }
-      } catch {
-        clearInterval(pollInterval);
-        onComplete?.(-1);
-      }
-    }, 2000);
+    return result;
   };
 
-  // ── Alert management ──────────────────────────────────────────────────────────
-  const resolveAlert = (id: number) => {
-    setAlerts((prev) => prev.map((a) => (a.id === id ? { ...a, status: "Resolved" } : a)));
-  };
-  const updateAlertStatus = (id: number, status: Alert["status"]) => {
-    setAlerts((prev) => prev.map((a) => (a.id === id ? { ...a, status } : a)));
-  };
-  const deleteAlert = (id: number) => setAlerts((prev) => prev.filter((a) => a.id !== id));
-  const deleteAllAlerts = () => setAlerts([]);
-  const clearAllAlerts = () => setAlerts([]);
+  // ── Alert management ──────────────────────────────────────────────────────
+  const resolveAlert     = (id: number) => setAlerts((prev) => prev.map((a) => a.id === id ? { ...a, status: "Resolved" } : a));
+  const updateAlertStatus = (id: number, status: Alert["status"]) => setAlerts((prev) => prev.map((a) => a.id === id ? { ...a, status } : a));
+  const deleteAlert      = (id: number) => setAlerts((prev) => prev.filter((a) => a.id !== id));
+  const deleteAllAlerts  = () => setAlerts([]);
+  const clearAllAlerts   = () => setAlerts([]);
 
-  // clearAllScans hits the backend to delete records, then refreshes
   const clearAllScans = async () => {
-    try {
-      await scannerService.deleteAllScans();
-    } catch {}
+    try { await scannerService.deleteAllScans(); } catch {}
     setScans([]);
     setTotalFilesScanned(0);
   };
 
-  // ── File actions ──────────────────────────────────────────────────────────────
+  // ── File actions ──────────────────────────────────────────────────────────
   const quarantineFile = async (alertId: number, filePath: string) => {
     await fileActionsService.quarantine(filePath);
     updateAlertStatus(alertId, "Quarantined");
   };
-
   const encryptFile = async (alertId: number, filePath: string) => {
     await fileActionsService.encrypt(filePath);
     updateAlertStatus(alertId, "Resolved");
   };
-
   const deleteFile = async (alertId: number, filePath: string) => {
     await fileActionsService.deleteFile(filePath);
     deleteAlert(alertId);
   };
 
-  // ── Auth ──────────────────────────────────────────────────────────────────────
+  // ── Auth ──────────────────────────────────────────────────────────────────
   const login = async (username: string, password: string) => {
     const response = await authService.login({ username, password });
     setIsAuthenticated(true);
@@ -368,6 +402,7 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
       setPolicies([]);
       setScans([]);
       setAlerts([]);
+      setScanState(IDLE_SCAN);
     }
   };
 
@@ -376,7 +411,7 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem("dlp_user", JSON.stringify(profile));
   };
 
-  // ── Policy management (unchanged) ─────────────────────────────────────────────
+  // ── Policy management ─────────────────────────────────────────────────────
   const addPolicy = async (p: Omit<Policy, "id">) => {
     const newPolicy = await policyService.createPolicy({
       name: p.name, pattern: p.pattern,
@@ -392,12 +427,12 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
       type: p.type.toLowerCase() === "regex" ? "regex" : "keyword",
       description: p.description, isEnabled: p.status === "Active",
     });
-    setPolicies((prev) => prev.map((pol) => (pol.id === p.id ? mapApiPolicyToUi(updated) : pol)));
+    setPolicies((prev) => prev.map((pol) => pol.id === p.id ? mapApiPolicyToUi(updated) : pol));
   };
 
   const togglePolicyStatus = async (id: string) => {
     const updated = await policyService.togglePolicy(parseInt(id));
-    setPolicies((prev) => prev.map((p) => (p.id === id ? mapApiPolicyToUi(updated) : p)));
+    setPolicies((prev) => prev.map((p) => p.id === id ? mapApiPolicyToUi(updated) : p));
   };
 
   const deletePolicy = async (id: string) => {
@@ -405,12 +440,13 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
     setPolicies((prev) => prev.filter((p) => p.id !== id));
   };
 
-  const toggleTheme = () => setTheme((prev) => (prev === "light" ? "dark" : "light"));
+  const toggleTheme = () => setTheme((prev) => prev === "light" ? "dark" : "light");
 
   return (
     <SecurityContext.Provider value={{
       scans, alerts, policies, totalFilesScanned, isAuthenticated, user,
       systemMetrics, theme, monitoringSettings,
+      scanState, setScanState,
       runScan, resolveAlert, updateAlertStatus, clearAllAlerts, clearAllScans,
       deleteAlert, deleteAllAlerts,
       login, logout, updateUserProfile,
