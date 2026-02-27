@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, KeyboardEvent } from "react";
 import { Search, Trash2, Shield, X, FileSearch, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { useSecurity } from "@/context/SecurityContext";
 import { getSocket } from "@/lib/api/socket";
+import { scannerService } from "@/lib/api/scanner.service";
 import type { ScanStart, ScanProgress } from "@/lib/api/socket";
 import Table from "@/components/Table";
 import Toast from "@/components/Toast";
@@ -49,8 +50,8 @@ const INITIAL_SCAN_STATE: ScanState = {
 
 function formatETA(filesScanned: number, totalFiles: number, startTime: number): string {
   if (filesScanned === 0 || totalFiles === 0) return "Calculating...";
-  const elapsed = (Date.now() - startTime) / 1000; // seconds
-  const rate = filesScanned / elapsed; // files per second
+  const elapsed = (Date.now() - startTime) / 1000;
+  const rate = filesScanned / elapsed;
   const remaining = (totalFiles - filesScanned) / rate;
   if (remaining < 60) return `~${Math.round(remaining)}s left`;
   if (remaining < 3600) return `~${Math.round(remaining / 60)}m left`;
@@ -85,8 +86,9 @@ export default function ScannerPage() {
   const [scanState, setScanState] = useState<ScanState>(INITIAL_SCAN_STATE);
   const scanStateRef = useRef<ScanState>(INITIAL_SCAN_STATE);
   const completionTimeRef = useRef<number | null>(null);
+  // FIX: Track cancellation so the onComplete callback doesn't fire a toast after cancel
+  const cancelledRef = useRef(false);
 
-  // Keep ref in sync so socket callbacks have latest state
   const updateScanState = (updates: Partial<ScanState>) => {
     setScanState((prev) => {
       const next = { ...prev, ...updates };
@@ -95,12 +97,10 @@ export default function ScannerPage() {
     });
   };
 
-  // Socket listeners for scan progress
   useEffect(() => {
     const socket = getSocket();
 
     socket.on("scan:start", (data: ScanStart) => {
-      // Accept any scan:start when we're in pending state (scanId === -1 or null)
       const currentId = scanStateRef.current.scanId;
       if (currentId !== null && currentId !== -1 && data.scanId !== currentId) return;
       updateScanState({
@@ -115,6 +115,8 @@ export default function ScannerPage() {
     socket.on("scan:progress", (data: ScanProgress) => {
       const currentId = scanStateRef.current.scanId;
       if (currentId !== null && currentId !== -1 && data.scanId !== currentId) return;
+      // FIX: Stop updating progress after cancel
+      if (scanStateRef.current.status === "cancelled") return;
       updateScanState({
         scanId: data.scanId,
         filesScanned: data.filesScanned,
@@ -130,6 +132,8 @@ export default function ScannerPage() {
     socket.on("scan:complete", (data: any) => {
       const currentId = scanStateRef.current.scanId;
       if (currentId !== null && currentId !== -1 && data.scanId !== currentId) return;
+      // FIX: Ignore completion event if scan was cancelled
+      if (scanStateRef.current.status === "cancelled") return;
       completionTimeRef.current = Date.now();
       updateScanState({
         filesScanned: data.filesScanned,
@@ -199,14 +203,15 @@ export default function ScannerPage() {
     }
     setIsScanning(true);
     completionTimeRef.current = null;
+    // FIX: Reset cancelled flag on new scan
+    cancelledRef.current = false;
 
-    // Reset to pending state — scanId -1 means "accept the next scan:start"
     updateScanState({ ...INITIAL_SCAN_STATE, isActive: true, status: "running", startTime: Date.now(), scanId: -1 });
 
     try {
       await runScan(scanType, "All Files", scanPath || process.cwd(), (threatsFound) => {
-        // onComplete fires via polling when scan finishes
-        // Only use this for the toast — socket events handle the progress UI
+        // FIX: Don't fire completion toast if scan was cancelled
+        if (cancelledRef.current) return;
         if (threatsFound === -1) {
           setToast({ message: "Scan encountered an error.", type: "error" });
         } else if (threatsFound > 0) {
@@ -225,13 +230,27 @@ export default function ScannerPage() {
     }
   };
 
+  const handleCancelScan = async () => {
+    try {
+      cancelledRef.current = true;
+      await scannerService.cancelScan(scanState.scanId!);
+      updateScanState({ status: "cancelled", isActive: false, currentFile: "" });
+      setIsScanning(false);
+      setToast({ message: "Scan cancelled.", type: "success" });
+    } catch {
+      cancelledRef.current = false;
+      setToast({ message: "Failed to cancel scan.", type: "error" });
+    }
+  };
+
   const percentage = scanState.totalFiles > 0
     ? Math.min(100, Math.round((scanState.filesScanned / scanState.totalFiles) * 100))
     : 0;
 
   const isCompleted = scanState.status === "completed";
-  const isFailed = scanState.status === "failed";
-  const showProgress = scanState.isActive || isCompleted || isFailed;
+  const isFailed    = scanState.status === "failed";
+  const isCancelled = scanState.status === "cancelled";
+  const showProgress = scanState.isActive || isCompleted || isFailed || isCancelled;
 
   return (
     <div className="space-y-6 pb-12">
@@ -265,10 +284,9 @@ export default function ScannerPage() {
               </div>
             )}
 
-            {/* Scan type descriptions */}
             <div className="text-xs text-neutral-500 px-1">
-              {scanType === "quick" && "Scans top-level files across all drives and user folders. Fast."}
-              {scanType === "full"  && "Recursively scans every accessible file across all drives. May take several minutes."}
+              {scanType === "quick"  && "Scans top-level files across all drives and user folders. Fast."}
+              {scanType === "full"   && "Recursively scans every accessible file across all drives. May take several minutes."}
               {scanType === "custom" && "Scans only the path you specify, recursively."}
             </div>
 
@@ -316,8 +334,9 @@ export default function ScannerPage() {
         <div className={`border rounded-2xl p-5 shadow-lg transition-all duration-300 ${
           isCompleted ? "border-emerald-500/30 bg-emerald-950/20" :
           isFailed    ? "border-rose-500/30 bg-rose-950/20" :
+          isCancelled ? "border-amber-500/30 bg-amber-950/20" :
                         "border-blue-500/30"
-        }`} style={isCompleted || isFailed ? {} : cardStyle}>
+        }`} style={isCompleted || isFailed || isCancelled ? {} : cardStyle}>
 
           <div className="flex items-center justify-between mb-5">
             <h3 className="text-lg font-black text-white flex items-center gap-3">
@@ -325,11 +344,33 @@ export default function ScannerPage() {
                 <><CheckCircle2 className="text-emerald-500" size={22} />Scan Complete</>
               ) : isFailed ? (
                 <><AlertTriangle className="text-rose-500" size={22} />Scan Failed</>
+              ) : isCancelled ? (
+                <><X className="text-amber-500" size={22} />Scan Cancelled</>
               ) : (
                 <><div className="w-5 h-5 border-2 border-blue-400/30 border-t-blue-400 rounded-full animate-spin" />Scanning in Progress</>
               )}
             </h3>
-            <span className="text-2xl font-black text-white tabular-nums">{percentage}%</span>
+            <div className="flex items-center gap-3">
+              {/* Dismiss button — only when cancelled */}
+              {isCancelled && (
+                <button
+                  onClick={() => updateScanState(INITIAL_SCAN_STATE)}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 text-neutral-400 hover:text-white hover:bg-white/10 rounded-xl text-sm font-black transition-colors"
+                >
+                  <X size={14} />Dismiss
+                </button>
+              )}
+              {/* Cancel button — only while actively scanning */}
+              {isScanning && scanState.scanId && scanState.scanId !== -1 && (
+                <button
+                  onClick={handleCancelScan}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500/20 rounded-xl text-sm font-black transition-colors"
+                >
+                  <X size={14} />Cancel
+                </button>
+              )}
+              <span className="text-2xl font-black text-white tabular-nums">{percentage}%</span>
+            </div>
           </div>
 
           {/* Progress bar */}
@@ -338,12 +379,12 @@ export default function ScannerPage() {
               className={`absolute top-0 left-0 h-full rounded-full transition-all duration-500 ${
                 isCompleted ? "bg-emerald-500" :
                 isFailed    ? "bg-rose-500" :
+                isCancelled ? "bg-amber-500" :
                               "bg-gradient-to-r from-blue-600 to-indigo-400"
               }`}
               style={{ width: `${percentage}%` }}
             />
-            {/* Shimmer animation while running */}
-            {!isCompleted && !isFailed && (
+            {!isCompleted && !isFailed && !isCancelled && (
               <div
                 className="absolute top-0 left-0 h-full w-full rounded-full opacity-30"
                 style={{
@@ -380,7 +421,7 @@ export default function ScannerPage() {
               <p className="text-xl font-black text-white">
                 {isCompleted && scanState.startTime && completionTimeRef.current
                   ? formatDuration(completionTimeRef.current - scanState.startTime)
-                  : scanState.startTime
+                  : scanState.startTime && !isCancelled
                   ? formatETA(scanState.filesScanned, scanState.totalFiles, scanState.startTime)
                   : "—"}
               </p>
@@ -390,6 +431,7 @@ export default function ScannerPage() {
               <p className={`text-sm font-black uppercase tracking-wide ${
                 isCompleted ? "text-emerald-400" :
                 isFailed    ? "text-rose-400" :
+                isCancelled ? "text-amber-400" :
                               "text-blue-400"
               }`}>
                 {scanState.status}
@@ -398,7 +440,7 @@ export default function ScannerPage() {
           </div>
 
           {/* Current file */}
-          {scanState.currentFile && !isCompleted && (
+          {scanState.currentFile && !isCompleted && !isCancelled && (
             <div className="flex items-center gap-2 text-xs text-neutral-500 font-mono truncate px-1">
               <FileSearch size={12} className="flex-shrink-0 text-neutral-600" />
               <span className="truncate">{scanState.currentFile}</span>
