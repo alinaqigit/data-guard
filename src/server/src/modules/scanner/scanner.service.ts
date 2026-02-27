@@ -293,7 +293,7 @@ export class scannerService {
     try {
       const stats = fs.statSync(filePath);
       if (stats.size > options.maxFileSize) {
-        return { filePath, success: false, error: "File too large", threatsFound: 0 };
+        return { filePath, success: true, error: "File too large", threatsFound: 0 };
       }
 
       // Extract text — documents need format-specific extraction,
@@ -312,7 +312,7 @@ export class scannerService {
         const sample = buffer.slice(0, 8000);
         for (let i = 0; i < sample.length; i++) {
           if (sample[i] === 0) {
-            return { filePath, success: false, error: "Binary file", threatsFound: 0 };
+            return { filePath, success: true, error: "Binary file", threatsFound: 0 };
           }
         }
         content = buffer.toString("utf-8");
