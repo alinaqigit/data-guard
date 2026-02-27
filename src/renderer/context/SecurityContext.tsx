@@ -190,6 +190,14 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
           });
           await refreshPolicies();
           await refreshScans();
+          // Auto-start live monitor if realTime was enabled in last session
+          const saved = localStorage.getItem("dlp_monitoring_settings");
+          const savedSettings = saved ? JSON.parse(saved) : null;
+          if (!savedSettings || savedSettings.realTime !== false) {
+            monitoringApiService
+              .startMonitoring(savedSettings?.autoResponse ?? false)
+              .catch((err) => console.warn("[Monitor] Auto-start failed:", err));
+          }
         } catch {
           setIsAuthenticated(false);
           setUser(null);

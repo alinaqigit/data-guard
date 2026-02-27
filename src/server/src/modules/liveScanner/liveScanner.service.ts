@@ -410,12 +410,25 @@ export class liveScannerService {
       if (stats.size === 0) return;
     } catch { return; }
 
-    let fileContent: string;
-    try {
-      fileContent = fs.readFileSync(filePath, "utf-8");
-    } catch {
-      return; // Binary or unreadable file — skip
+    // ── Extract text using document extractor (supports PDF, DOCX, XLSX, etc.) ──
+    let fileContent: string | null = null;
+    const { isExtractable, extractText } = require("../documentExtractor/documentExtractor.service");
+
+    if (isExtractable(filePath)) {
+      fileContent = await extractText(filePath);
+    } else {
+      // Plain text — skip binaries using null byte heuristic
+      try {
+        const buffer = fs.readFileSync(filePath);
+        const sample = buffer.slice(0, 8000);
+        for (let i = 0; i < sample.length; i++) {
+          if (sample[i] === 0) return; // binary file, skip
+        }
+        fileContent = buffer.toString("utf-8");
+      } catch { return; }
     }
+
+    if (!fileContent) return;
 
     const result = this.policyEngine.evaluate(fileContent, aw.policies, {
       maxMatchesPerPolicy: aw.options.maxMatchesPerFile,
@@ -429,7 +442,6 @@ export class liveScannerService {
       const socketService = getSocketService();
       const timestamp = new Date().toISOString().replace("T", " ").split(".")[0];
 
-      // Emit alert via socket so frontend receives it immediately
       if (socketService) {
         socketService.emitAlert({
           id: Date.now(),
@@ -439,7 +451,7 @@ export class liveScannerService {
           description: `${threatsFound} threat(s) found in ${path.basename(filePath)}`,
           source: "Live Monitor",
           status: "New",
-          filePath, // ← actual file path for actions
+          filePath,
         });
 
         socketService.emitLiveScannerActivity({
@@ -451,8 +463,6 @@ export class liveScannerService {
         });
       }
 
-
-      // Auto-response: encrypt the file automatically if enabled
       if (aw.autoResponse) {
         try {
           this.fileActions.encryptFile(aw.userId, filePath);
@@ -474,7 +484,6 @@ export class liveScannerService {
         }
       }
     }
-
   }
 
   private logActivity(
