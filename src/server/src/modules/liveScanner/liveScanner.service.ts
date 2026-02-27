@@ -22,8 +22,10 @@ import * as chokidar from "chokidar";
 // Never includes system directories — only user-owned data locations
 function getUserMonitorPaths(): string[] {
   const home = os.homedir();
-  const candidates = [
-    home,
+  const paths: string[] = [];
+
+  // Always watch key user folders (not home root — too broad)
+  const userDirs = [
     path.join(home, "Desktop"),
     path.join(home, "Documents"),
     path.join(home, "Downloads"),
@@ -31,8 +33,45 @@ function getUserMonitorPaths(): string[] {
     path.join(home, "Videos"),
     path.join(home, "Music"),
   ];
-  // Only include paths that actually exist on this machine
-  return candidates.filter((p) => {
+  paths.push(...userDirs.filter((p) => {
+    try { return fs.existsSync(p) && fs.statSync(p).isDirectory(); }
+    catch { return false; }
+  }));
+
+  // Add non-system drives (D:\, E:\, etc.)
+  if (process.platform === "win32") {
+    const skipFolders = new Set([
+      "system volume information",
+      "windowsapps",
+      "recovery",
+      "$recycle.bin",
+      "config.msi",
+      "perflogs",
+    ]);
+
+    for (let i = 65; i <= 90; i++) {
+      const drive = `${String.fromCharCode(i)}:\\`;
+      try {
+        if (!fs.existsSync(drive) || !fs.statSync(drive).isDirectory()) continue;
+        const isSystemDrive =
+          fs.existsSync(path.join(drive, "Windows")) &&
+          fs.existsSync(path.join(drive, "Windows", "System32"));
+        if (isSystemDrive) continue;
+
+        // Watch top-level subdirectories individually, not the drive root
+        const entries = fs.readdirSync(drive);
+        for (const entry of entries) {
+          if (skipFolders.has(entry.toLowerCase())) continue;
+          const full = path.join(drive, entry);
+          try {
+            if (fs.statSync(full).isDirectory()) paths.push(full);
+          } catch { /* skip inaccessible */ }
+        }
+      } catch { /* skip inaccessible drives */ }
+    }
+  }
+
+  return [...new Set(paths)].filter((p) => {
     try { return fs.existsSync(p) && fs.statSync(p).isDirectory(); }
     catch { return false; }
   });
@@ -112,7 +151,8 @@ export class liveScannerService {
       status: "active",
     });
 
-    await this.startWatching(liveScanner, userId, policies, DEFAULT_LIVE_SCANNER_OPTIONS, autoResponse);
+    this.startWatching(liveScanner, userId, policies, DEFAULT_LIVE_SCANNER_OPTIONS, autoResponse)
+      .catch((err) => console.error("[LiveScanner] Failed to start watcher:", err));
 
     return {
       scannerId: liveScanner.id,
@@ -274,27 +314,34 @@ export class liveScannerService {
     // Support pipe-delimited multi-path
     const watchPaths = scanner.targetPath.split("|").filter((p) => fs.existsSync(p));
     if (watchPaths.length === 0) throw new ValidationError("No valid paths to watch");
-
+    console.log(`[LiveScanner] Starting watcher for paths:`, watchPaths);
     const watcher = chokidar.watch(watchPaths, {
       persistent: true,
       ignoreInitial: true,
       followSymlinks: false,
-      depth: scanner.isRecursive ? undefined : 0,
+      usePolling: false,
+      depth: 1,                    // ← only watch 1 level deep, not recursive
+      awaitWriteFinish: {
+        stabilityThreshold: 1500,
+        pollInterval: 200,
+      },
       ignored: [
-        // Ignore hidden files, node_modules, and system-like patterns
         /(^|[\/\\])\../,
         "**/node_modules/**",
+        "**/AppData/**",
         "**/.git/**",
         "**/*.tmp",
         "**/*.temp",
-        "**/*.enc", // Don't re-scan already encrypted files
+        "**/*.enc",
+        "**/*.lnk",
+        "**/*.db",
+        "**/*.db-journal",
+        "**/System Volume Information/**",
+        "**/WindowsApps/**",
+        "**/Recovery/**",
+        "**/$Recycle.Bin/**",
       ],
-      awaitWriteFinish: {
-        stabilityThreshold: options.debounceDelay,
-        pollInterval: 100,
-      },
     });
-
     const activeWatcher: ActiveWatcher = {
       scannerId: scanner.id,
       userId,
@@ -305,12 +352,21 @@ export class liveScannerService {
       autoResponse,
     };
 
-    watcher.on("add",    (fp) => this.handleFileChange(activeWatcher, fp, "add"));
-    watcher.on("change", (fp) => this.handleFileChange(activeWatcher, fp, "change"));
-    watcher.on("unlink", (fp) => this.handleFileChange(activeWatcher, fp, "unlink"));
-    watcher.on("addDir",    (dp) => this.logActivity(activeWatcher, dp, "add", 0));
-    watcher.on("unlinkDir", (dp) => this.logActivity(activeWatcher, dp, "unlink", 0));
-    watcher.on("error", (error) => console.error(`[LiveScanner ${scanner.id}] Error:`, error));
+    let isReady = false;
+
+    watcher.on("add", (fp) => { if (isReady) this.handleFileChange(activeWatcher, fp, "add"); });
+    watcher.on("change", (fp) => { if (isReady) this.handleFileChange(activeWatcher, fp, "change"); });
+    watcher.on("unlink", (fp) => { if (isReady) this.handleFileChange(activeWatcher, fp, "unlink"); });
+    watcher.on("addDir", (dp) => { if (isReady) this.logActivity(activeWatcher, dp, "add", 0); });
+    watcher.on("unlinkDir", (dp) => { if (isReady) this.logActivity(activeWatcher, dp, "unlink", 0); });
+    watcher.on("error", (error: any) => {
+      if (error.code === "EPERM" || error.code === "EACCES") return; // silently skip protected paths
+      console.error(`[LiveScanner ${scanner.id}] Error:`, error);
+    });
+    watcher.on("ready", () => {
+      isReady = true;
+      console.log(`[LiveScanner] Watcher ready. Watching:`, watchPaths);
+    });
 
     this.activeWatchers.set(scanner.id, activeWatcher);
 
@@ -331,9 +387,16 @@ export class liveScannerService {
     filePath: string,
     changeType: FileChangeType,
   ): Promise<void> {
+    console.log(`[LiveScanner] File change detected: ${filePath} (${changeType})`);
     const scanner = this.liveScannerRepo.getLiveScannerById(aw.scannerId);
-    if (!scanner || scanner.status !== "active") return;
-    if (!isSafeToScan(filePath)) return;
+    if (!scanner || scanner.status !== "active") {
+      console.log(`[LiveScanner] Scanner not active, skipping`);
+      return;
+    }
+    if (!isSafeToScan(filePath)) {
+      console.log(`[LiveScanner] Path not safe, skipping`);
+      return;
+    }
 
     if (changeType === "unlink") {
       this.logActivity(aw, filePath, changeType, 0);
@@ -357,7 +420,7 @@ export class liveScannerService {
     const result = this.policyEngine.evaluate(fileContent, aw.policies, {
       maxMatchesPerPolicy: aw.options.maxMatchesPerFile,
     });
-
+    console.log(`[LiveScanner] Policy result for ${filePath}: ${result.totalMatches} matches, policies: ${aw.policies.length}`);
     const threatsFound = result.totalMatches;
     this.logActivity(aw, filePath, changeType, threatsFound);
     this.updateScannerStats(aw.scannerId, aw.userId, threatsFound);
@@ -388,6 +451,7 @@ export class liveScannerService {
         });
       }
 
+
       // Auto-response: encrypt the file automatically if enabled
       if (aw.autoResponse) {
         try {
@@ -410,6 +474,7 @@ export class liveScannerService {
         }
       }
     }
+
   }
 
   private logActivity(
