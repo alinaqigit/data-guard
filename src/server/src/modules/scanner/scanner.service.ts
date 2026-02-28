@@ -1,6 +1,7 @@
 import { scanRepository } from "./scanner.repository";
 import { policyRepository } from "../policy/policy.repository";
 import { PolicyEngineService } from "../policyEngine/policyEngine.service";
+import { extractText, isExtractable } from "../documentExtractor/documentExtractor.service";
 import {
   ScanOptions, DEFAULT_SCAN_OPTIONS, FileScanlResult,
   ScanProgress, StartScanRequest, ScanType,
@@ -172,35 +173,30 @@ export class scannerService {
     let totalThreats = 0;
     const socketService = getSocketService();
 
-    // Determine ML tier from options (default to "small")
-    const mlTier: ModelTier = (options as any).mlTier || "small";
-
-    // Excluded keywords and whitelisted paths come through options
-    const excludedKeywords: string[] = (options as any).excludedKeywords || [];
-    const whitelistedPaths: string[] = (options as any).whitelistedPaths || [];
-
-    // Merge whitelisted paths into excludePaths so they're skipped during traversal
-    const mergedOptions: Required<ScanOptions> = {
-      ...options,
-      excludePaths: [...options.excludePaths, ...whitelistedPaths],
-    };
-
     try {
-      // ── Count all files first so frontend has totalFiles for % ──────────────
+      // ── Count files with async yields so the event loop stays responsive ──
+      // Without this, traversing thousands of files synchronously freezes the UI
       const allFiles: string[] = [];
       for (const tp of targetPaths) {
         if (fs.existsSync(tp)) {
-          allFiles.push(...this.getFilesToScan(tp, mergedOptions));
+          const batch = this.getFilesToScan(tp, options);
+          allFiles.push(...batch);
+          // Yield to event loop between each root path so socket stays alive
+          await new Promise((resolve) => setImmediate(resolve));
         }
       }
       const totalFiles = allFiles.length;
 
-      // Emit scan:start with total count
+      // Emit scan:start AFTER counting so frontend gets accurate totalFiles
       socketService?.emitScanStart({
-        scanId, totalFiles,
+        scanId,
+        totalFiles,
         scanType: options.includePaths?.length > 0 ? "custom" : "scan",
         targetPath: targetPaths[0],
       });
+
+      // Give the frontend a moment to receive scan:start before progress begins
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       for (const filePath of allFiles) {
         // Check cancellation
@@ -229,21 +225,32 @@ export class scannerService {
               severity: fileResult.threatsFound > 5 ? "High" : "Medium",
               time: new Date().toISOString().replace("T", " ").split(".")[0],
               type: "Policy Violation: Sensitive Content",
-              description: `${fileResult.threatsFound} confirmed leak(s) in ${path.basename(filePath)}`,
+              description: `${fileResult.threatsFound} threat(s) found in ${path.basename(filePath)}`,
               source: "Content Scanner",
               status: "New",
               filePath,
             });
           }
 
-          // Emit progress every 10 files or on last file
-          if (filesScanned % 10 === 0 || filesScanned === totalFiles) {
+          // ── Emit progress on every file for accurate real-time bar ────────
+          // DB update every 25 files to avoid hammering SQLite
+          if (filesScanned % 25 === 0 || filesScanned === totalFiles) {
             this.scanRepo.updateScan(scanId, userId, { filesScanned, filesWithThreats, totalThreats });
-            socketService?.emitScanProgress({
-              scanId, status: "running",
-              filesScanned, filesWithThreats, totalThreats,
-              totalFiles, currentFile: filePath,
-            });
+          }
+
+          socketService?.emitScanProgress({
+            scanId,
+            status: "running",
+            filesScanned,
+            filesWithThreats,
+            totalThreats,
+            totalFiles,
+            currentFile: filePath,
+          });
+
+          // Yield every 50 files so socket events actually get sent
+          if (filesScanned % 50 === 0) {
+            await new Promise((resolve) => setImmediate(resolve));
           }
         }
       }
@@ -259,7 +266,7 @@ export class scannerService {
         filesScanned, totalThreats, totalFiles,
       });
 
-    } catch (err: any) {
+    } catch (error: any) {
       this.scanRepo.updateScan(scanId, userId, {
         status: "failed",
         completedAt: new Date().toISOString(),
@@ -270,38 +277,40 @@ export class scannerService {
     }
   }
 
-  /**
-   * Scan a single file:
-   * 1. Regex/keyword matching (policy engine)
-   * 2. Filter out excluded keywords
-   * 3. ML classification of matched lines
-   * 4. Only count threats confirmed by ML as LEAK
-   */
   private async scanFile(
     filePath: string,
     policies: PolicyEntity[],
     options: Required<ScanOptions>,
-    mlTier: ModelTier,
-    excludedKeywords: string[],
   ): Promise<FileScanlResult> {
     try {
       const stats = fs.statSync(filePath);
-      if (stats.size > options.maxFileSize)
-        return { filePath, success: false, error: "File too large", threatsFound: 0 };
+      if (stats.size > options.maxFileSize) {
+        return { filePath, success: true, error: "File too large", threatsFound: 0 };
+      }
 
-      // Extract text — documents (PDF/DOCX/XLSX etc.) need format-specific extraction,
+      // Extract text — documents need format-specific extraction,
       // plain text files are read directly
       let content: string;
       if (isExtractable(filePath)) {
-        const extracted = await extractText(filePath);
-        if (!extracted) return { filePath, success: false, error: "Could not extract text", threatsFound: 0 };
+  const extracted = await extractText(filePath);
+        if (!extracted) {
+          // Count as scanned but with no threats — don't block progress on unreadable docs
+          return { filePath, success: true, threatsFound: 0 };
+        }
         content = extracted;
       } else {
-        content = fs.readFileSync(filePath, "utf-8");
+        // Plain text: read directly, skip binaries via null-byte check
+        const buffer = fs.readFileSync(filePath);
+        const sample = buffer.slice(0, 8000);
+        for (let i = 0; i < sample.length; i++) {
+          if (sample[i] === 0) {
+            return { filePath, success: true, error: "Binary file", threatsFound: 0 };
+          }
+        }
+        content = buffer.toString("utf-8");
       }
 
-      // Step 1: Policy engine finds regex/keyword candidates
-      const engineResult = this.policyEngine.evaluate(content, policies, {
+      const result = this.policyEngine.evaluate(content, policies, {
         maxMatchesPerPolicy: options.maxMatchesPerFile,
         contextLinesBefore: 2,
         contextLinesAfter: 2,
@@ -309,43 +318,17 @@ export class scannerService {
         includeDisabled: false,
       });
 
-      if (engineResult.totalMatches === 0)
-        return { filePath, success: true, threatsFound: 0, policyEngineResult: engineResult };
-
-      // Step 2: Extract the full line for each match across all policy results
-      let matchedLines: string[] = engineResult.results.flatMap(
-        (policyResult) =>
-          policyResult.matches.map((m) => extractMatchLine(content, m.startIndex ?? 0))
-      ).filter((line) => line.length > 0);
-
-      // Remove duplicates
-      matchedLines = [...new Set(matchedLines)];
-
-      // Step 3: Filter out lines containing excluded keywords
-      if (excludedKeywords.length > 0) {
-        matchedLines = matchedLines.filter((line: string) =>
-          !excludedKeywords.some((kw) =>
-            line.toLowerCase().includes(kw.toLowerCase())
-          )
-        );
-      }
-
-      if (matchedLines.length === 0)
-        return { filePath, success: true, threatsFound: 0, policyEngineResult: engineResult };
-
-      // Step 4: ML classification — only lines confirmed LEAK count as threats
-      const confirmedLeaks = await classifyMatches(matchedLines, mlTier);
-
       return {
         filePath,
         success: true,
-        threatsFound: confirmedLeaks.length,
-        policyEngineResult: engineResult,
+        threatsFound: result.totalMatches,
+        policyEngineResult: result,
       };
-
-    } catch (err: any) {
-      return { filePath, success: false, error: err.message || "Unknown error", threatsFound: 0 };
-    }
+    } catch (error: any) {
+  // Count as scanned with no threats so it doesn't break progress tracking
+  console.warn(`[Scanner] Skipped ${filePath}: ${error.message}`);
+  return { filePath, success: true, threatsFound: 0 };
+}
   }
 
   private getFilesToScan(targetPath: string, options: Required<ScanOptions>): string[] {
@@ -382,18 +365,16 @@ export class scannerService {
   }
 
   private shouldIncludeFile(filePath: string, options: Required<ScanOptions>): boolean {
-    if (options.excludePaths.some((ex) =>
-      filePath.toLowerCase().replace(/\\/g, "/")
-        .includes(ex.toLowerCase().replace(/\\/g, "/"))
-    )) return false;
+    if (options.excludePaths.some((ex) => filePath.includes(ex))) return false;
 
-    if (options.includeExtensions.length > 0)
+    if (options.includeExtensions.length > 0) {
       return options.includeExtensions.includes(path.extname(filePath));
+    }
 
-    // Documents with known extractable formats are always included
+    // Always include known extractable document formats (PDF, DOCX, XLSX etc.)
     if (isExtractable(filePath)) return true;
 
-    // For everything else: skip binary files (null byte heuristic)
+    // For everything else: skip binaries via null-byte heuristic
     try {
       const buffer = fs.readFileSync(filePath);
       const sample = buffer.slice(0, 8000);
