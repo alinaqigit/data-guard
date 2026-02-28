@@ -4,11 +4,13 @@ import { PolicyEngineService } from "../policyEngine/policyEngine.service";
 import { extractText, isExtractable } from "../documentExtractor/documentExtractor.service";
 import {
   ScanOptions, DEFAULT_SCAN_OPTIONS, FileScanlResult,
-  ScanProgress, ScanResult, StartScanRequest, ScanType,
+  ScanProgress, StartScanRequest, ScanType,
 } from "./scanner.types";
 import { ScanEntity, PolicyEntity } from "../../entities";
 import { NotFoundError, ForbiddenError, ValidationError } from "../../utils/errors";
 import { getSocketService } from "../socket/socket.service";
+import { classifyMatches, sensitivityToTier, ModelTier } from "../mlModel/mlModel.service";
+import { extractText, isExtractable } from "../documentExtractor/documentExtractor.service";
 import fs from "fs";
 import path from "path";
 import os from "os";
@@ -19,9 +21,9 @@ const SYSTEM_PATH_PREFIXES = [
   "/usr", "/etc", "/bin", "/sbin", "/sys", "/proc", "/dev", "/boot", "/lib",
 ];
 
-function isSafeToScan(filePath: string): boolean {
-  const n = filePath.toLowerCase().replace(/\\/g, "/");
-  return !SYSTEM_PATH_PREFIXES.some((p) => n.startsWith(p.replace(/\\/g, "/")));
+function isSafeToScan(p: string): boolean {
+  const n = p.toLowerCase().replace(/\\/g, "/");
+  return !SYSTEM_PATH_PREFIXES.some((s) => n.startsWith(s.replace(/\\/g, "/")));
 }
 
 // ── Multi-drive path resolution ───────────────────────────────────────────────
@@ -30,85 +32,77 @@ function getAllDrivePaths(): string[] {
   const platform = process.platform;
 
   if (platform === "win32") {
-    // Enumerate all drive letters A-Z
     for (let i = 65; i <= 90; i++) {
       const drive = `${String.fromCharCode(i)}:\\`;
       try {
-        if (fs.existsSync(drive) && fs.statSync(drive).isDirectory()) {
-          // Skip drives that are clearly system drives (contain Windows folder)
-          const isSystemDrive = fs.existsSync(path.join(drive, "Windows")) &&
-            fs.existsSync(path.join(drive, "Windows", "System32"));
-          if (!isSystemDrive) {
-            paths.push(drive);
-          } else {
-            // For the system drive, only add safe user subdirectories
-            const home = os.homedir();
-            const userDirs = [
-              home,
-              path.join(home, "Desktop"),
-              path.join(home, "Documents"),
-              path.join(home, "Downloads"),
-              path.join(home, "Pictures"),
-              path.join(home, "Videos"),
-              path.join(home, "Music"),
-            ];
-            paths.push(...userDirs.filter((p) => fs.existsSync(p)));
-          }
+        if (!fs.existsSync(drive) || !fs.statSync(drive).isDirectory()) continue;
+        const isSystemDrive =
+          fs.existsSync(path.join(drive, "Windows")) &&
+          fs.existsSync(path.join(drive, "Windows", "System32"));
+        if (isSystemDrive) {
+          // Only safe user subdirectories on system drive
+          const home = os.homedir();
+          [
+            home,
+            path.join(home, "Desktop"),
+            path.join(home, "Documents"),
+            path.join(home, "Downloads"),
+            path.join(home, "Pictures"),
+            path.join(home, "Videos"),
+            path.join(home, "Music"),
+          ].filter((p) => { try { return fs.existsSync(p); } catch { return false; } })
+           .forEach((p) => paths.push(p));
+        } else {
+          paths.push(drive); // Non-system drives: add root
         }
-      } catch { /* skip inaccessible drives */ }
+      } catch { /* skip inaccessible */ }
     }
   } else if (platform === "darwin") {
-    // macOS: home dir + mounted volumes
     paths.push(os.homedir());
     try {
-      const volumes = fs.readdirSync("/Volumes");
-      for (const vol of volumes) {
-        const volPath = path.join("/Volumes", vol);
-        if (fs.statSync(volPath).isDirectory()) paths.push(volPath);
+      for (const vol of fs.readdirSync("/Volumes")) {
+        const p = path.join("/Volumes", vol);
+        if (fs.statSync(p).isDirectory()) paths.push(p);
       }
     } catch { /* /Volumes may not exist */ }
   } else {
-    // Linux: home dir + /media/$USER + /mnt
+    // Linux
     paths.push(os.homedir());
-    const mediaPaths = [
-      `/media/${os.userInfo().username}`,
-      "/media",
-      "/mnt",
-    ];
-    for (const mp of mediaPaths) {
+    for (const base of [`/media/${os.userInfo().username}`, "/media", "/mnt"]) {
       try {
-        if (fs.existsSync(mp)) {
-          const entries = fs.readdirSync(mp);
-          for (const entry of entries) {
-            const full = path.join(mp, entry);
-            if (fs.statSync(full).isDirectory()) paths.push(full);
-          }
+        if (!fs.existsSync(base)) continue;
+        for (const entry of fs.readdirSync(base)) {
+          const p = path.join(base, entry);
+          if (fs.statSync(p).isDirectory()) paths.push(p);
         }
       } catch { /* skip */ }
     }
   }
 
-  // Deduplicate
   return [...new Set(paths)].filter((p) => {
     try { return fs.existsSync(p) && fs.statSync(p).isDirectory(); }
     catch { return false; }
   });
 }
 
-// Quick: all drives/roots, shallow (depth 1)
-export function getQuickScanPaths(): string[] {
-  return getAllDrivePaths();
-}
-
-// Full: all drives/roots, recursive (unlimited depth)
-export function getFullScanPaths(): string[] {
-  return getAllDrivePaths();
-}
+export function getQuickScanPaths(): string[] { return getAllDrivePaths(); }
+export function getFullScanPaths():  string[] { return getAllDrivePaths(); }
 
 function resolveTargetPath(scanType: ScanType, providedPath: string): { paths: string[]; recursive: boolean } {
   if (scanType === "quick") return { paths: getQuickScanPaths(), recursive: false };
-  if (scanType === "full")  return { paths: getFullScanPaths(),  recursive: true };
+  if (scanType === "full")  return { paths: getFullScanPaths(),  recursive: true  };
   return { paths: [providedPath], recursive: true };
+}
+
+// ── Extract the full line containing a match position ────────────────────────
+function extractMatchLine(content: string, matchIndex: number): string {
+  const lines = content.split("\n");
+  let pos = 0;
+  for (const line of lines) {
+    if (pos + line.length >= matchIndex) return line.trim();
+    pos += line.length + 1; // +1 for \n
+  }
+  return content.slice(Math.max(0, matchIndex - 100), matchIndex + 100).trim();
 }
 
 export class scannerService {
@@ -123,33 +117,30 @@ export class scannerService {
     this.policyEngine = new PolicyEngineService();
   }
 
-  public async startScan(userId: number, request: StartScanRequest): Promise<{ scanId: number; message: string }> {
+  public async startScan(
+    userId: number,
+    request: StartScanRequest,
+  ): Promise<{ scanId: number; message: string }> {
     const { paths, recursive } = resolveTargetPath(request.scanType, request.targetPath);
 
     if (request.scanType === "custom") {
-      if (!request.targetPath || !fs.existsSync(request.targetPath)) {
+      if (!request.targetPath || !fs.existsSync(request.targetPath))
         throw new ValidationError(`Target path does not exist: ${request.targetPath}`);
-      }
-      if (!isSafeToScan(request.targetPath)) {
+      if (!isSafeToScan(request.targetPath))
         throw new ValidationError("Cannot scan system paths");
-      }
     }
 
-    if (paths.length === 0) {
+    if (paths.length === 0)
       throw new ValidationError("No accessible directories found to scan");
-    }
 
     const policies = this.policyRepo.getAllPoliciesByUserId(userId).filter((p) => p.isEnabled);
-    if (policies.length === 0) {
+    if (policies.length === 0)
       throw new ValidationError("No active policies found. Please create and enable at least one policy before scanning.");
-    }
-
-    const displayPath = request.scanType === "custom" ? request.targetPath : paths[0];
 
     const scan = this.scanRepo.createScan({
       userId,
       scanType: request.scanType,
-      targetPath: displayPath,
+      targetPath: request.scanType === "custom" ? request.targetPath : paths[0],
       status: "running",
     });
 
@@ -159,13 +150,11 @@ export class scannerService {
       maxDepth: recursive ? 0 : 1,
     };
 
-    // Count files first so frontend can show accurate progress %
-    // Do this async so we don't block the response
-    this.performScan(scan.id, userId, paths, policies, options).catch((error) => {
+    this.performScan(scan.id, userId, paths, policies, options).catch((err) => {
       this.scanRepo.updateScan(scan.id, userId, {
         status: "failed",
         completedAt: new Date().toISOString(),
-        errorMessage: error.message || "Unknown error occurred",
+        errorMessage: err.message || "Unknown error",
       });
     });
 
@@ -210,6 +199,7 @@ export class scannerService {
       await new Promise((resolve) => setTimeout(resolve, 100));
 
       for (const filePath of allFiles) {
+        // Check cancellation
         if (this.activeScansCancellation.get(scanId)) {
           this.scanRepo.updateScan(scanId, userId, {
             status: "cancelled",
@@ -220,7 +210,9 @@ export class scannerService {
           return;
         }
 
-        const fileResult = await this.scanFile(filePath, policies, options);
+        const fileResult = await this.scanFile(
+          filePath, policies, mergedOptions, mlTier, excludedKeywords,
+        );
 
         if (fileResult.success) {
           filesScanned++;
@@ -279,9 +271,9 @@ export class scannerService {
         status: "failed",
         completedAt: new Date().toISOString(),
         filesScanned, filesWithThreats, totalThreats,
-        errorMessage: error.message || "Unknown error occurred",
+        errorMessage: err.message || "Unknown error",
       });
-      throw error;
+      throw err;
     }
   }
 
@@ -350,7 +342,10 @@ export class scannerService {
         if (stats.isFile()) {
           if (this.shouldIncludeFile(currentPath, options)) files.push(currentPath);
         } else if (stats.isDirectory()) {
-          if (options.excludePaths.some((ex) => currentPath.includes(ex))) return;
+          if (options.excludePaths.some((ex) =>
+            currentPath.toLowerCase().replace(/\\/g, "/")
+              .includes(ex.toLowerCase().replace(/\\/g, "/"))
+          )) return;
           for (const entry of fs.readdirSync(currentPath)) {
             traverse(path.join(currentPath, entry), depth + 1);
           }
