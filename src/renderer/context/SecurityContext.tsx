@@ -1,12 +1,13 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useRef } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
 import {
   authService, policyService, scannerService, getSessionId,
   Policy as ApiPolicy, Scan as ApiScan, User,
 } from "@/lib/api";
 import { getSocket, disconnectSocket, SystemMetrics, SocketAlert } from "@/lib/api/socket";
 import { fileActionsService, monitoringApiService } from "@/lib/api/fileActions.service";
+import Toast from "@/components/Toast";
 
 interface Scan {
   id: number;
@@ -25,7 +26,7 @@ interface Alert {
   description: string;
   source: string;
   status: "New" | "Resolved" | "Quarantined" | "Investigating";
-  filePath?: string; // actual file path for quarantine/encrypt/delete actions
+  filePath?: string;
 }
 
 interface UserProfile { name: string; email: string; role: string; bio: string; }
@@ -67,8 +68,7 @@ interface SecurityContextType {
   refreshPolicies: () => Promise<void>;
   refreshScans: () => Promise<void>;
   monitoringSettings: MonitoringSettings;
-  updateMonitoringSettings: (settings: Partial<MonitoringSettings>) => void;
-  // File actions
+  updateMonitoringSettings: (settings: Partial<MonitoringSettings>) => Promise<void>;
   quarantineFile: (alertId: number, filePath: string) => Promise<void>;
   encryptFile: (alertId: number, filePath: string) => Promise<void>;
   deleteFile: (alertId: number, filePath: string) => Promise<void>;
@@ -108,15 +108,49 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<"light" | "dark">("dark");
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [systemMetrics, setSystemMetrics] = useState<SystemMetrics>(DEFAULT_METRICS);
-  const [monitoringSettings, setMonitoringSettings] = useState<MonitoringSettings>({
-    realTime: true, autoResponse: false, notifications: true, sensitivity: "Medium",
-  });
+
+  // Load saved settings from localStorage as initial state
+  const loadSavedSettings = (): MonitoringSettings => {
+    try {
+      const saved = localStorage.getItem("dlp_monitoring_settings");
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return { realTime: true, autoResponse: false, notifications: true, sensitivity: "Medium" };
+  };
+
+  const [monitoringSettings, setMonitoringSettings] = useState<MonitoringSettings>(loadSavedSettings);
 
   const socketInitialized = useRef(false);
-  const realTimeRef = useRef(true);
+  // realTimeRef always mirrors monitoringSettings.realTime for use in socket callbacks
+  const realTimeRef = useRef(monitoringSettings.realTime);
 
-  useEffect(() => { realTimeRef.current = monitoringSettings.realTime; }, [monitoringSettings.realTime]);
+  // Global toast state — shown on any page
+  const [globalToast, setGlobalToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const prevAlertsLengthRef = useRef(0);
 
+  // Keep realTimeRef in sync with state
+  useEffect(() => {
+    realTimeRef.current = monitoringSettings.realTime;
+  }, [monitoringSettings.realTime]);
+
+  // ── Show global toast when new alerts arrive ────────────────────────────────
+  useEffect(() => {
+    if (alerts.length > prevAlertsLengthRef.current) {
+      const newest = alerts[0];
+      if (newest && monitoringSettings.notifications) {
+        const isEncryption = newest.source === "Auto-Response";
+        setGlobalToast({
+          message: isEncryption
+            ? `Auto-encrypted: ${newest.description}`
+            : `⚠️ Threat detected: ${newest.description}`,
+          type: isEncryption ? "success" : "error",
+        });
+      }
+    }
+    prevAlertsLengthRef.current = alerts.length;
+  }, [alerts, monitoringSettings.notifications]);
+
+  // ── Socket setup ────────────────────────────────────────────────────────────
   useEffect(() => {
     if (socketInitialized.current) return;
     socketInitialized.current = true;
@@ -127,9 +161,7 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
       setSystemMetrics(metrics);
     });
 
-    // Alerts now include filePath from the backend
     socket.on("alert:new", (alert: Alert) => {
-      if (!realTimeRef.current) return;
       setAlerts((prev) => {
         if (prev.find((a) => a.id === alert.id)) return prev;
         return [alert, ...prev];
@@ -150,7 +182,6 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
     socket.on("scan:complete", async () => { await refreshScans(); });
 
     socket.on("liveScanner:activity", (activity: any) => {
-      if (!realTimeRef.current) return;
       if (activity.threatsFound > 0) {
         const newAlert: Alert = {
           id: Date.now(),
@@ -175,33 +206,36 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // ── Auth check on mount ─────────────────────────────────────────────────────
   useEffect(() => {
     const checkAuth = async () => {
       const sessionId = getSessionId();
-      if (sessionId) {
-        try {
-          const userData = await authService.verifySession();
-          setIsAuthenticated(true);
-          setUser({
-            name: userData.username,
-            email: `${userData.username.toLowerCase()}@example.com`,
-            role: "Security Administrator",
-            bio: "Dashboard administrator managing Data Leak Prevention policies.",
-          });
-          await refreshPolicies();
-          await refreshScans();
-          // Auto-start live monitor if realTime was enabled in last session
-          const saved = localStorage.getItem("dlp_monitoring_settings");
-          const savedSettings = saved ? JSON.parse(saved) : null;
-          if (!savedSettings || savedSettings.realTime !== false) {
+      if (!sessionId) return;
+      try {
+        const userData = await authService.verifySession();
+        setIsAuthenticated(true);
+        setUser({
+          name: userData.username,
+          email: `${userData.username.toLowerCase()}@example.com`,
+          role: "Security Administrator",
+          bio: "Dashboard administrator managing Data Leak Prevention policies.",
+        });
+        await refreshPolicies();
+        await refreshScans();
+
+        // Auto-start live monitor based on saved settings
+        // Delay slightly to ensure socket connection is established
+        const saved = loadSavedSettings();
+        if (saved.realTime !== false) {
+          setTimeout(() => {
             monitoringApiService
-              .startMonitoring(savedSettings?.autoResponse ?? false)
+              .startMonitoring(saved.autoResponse ?? false)
               .catch((err) => console.warn("[Monitor] Auto-start failed:", err));
-          }
-        } catch {
-          setIsAuthenticated(false);
-          setUser(null);
+          }, 1500);
         }
+      } catch {
+        setIsAuthenticated(false);
+        setUser(null);
       }
     };
     checkAuth();
@@ -214,29 +248,20 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => { localStorage.setItem("dlp_theme", theme); }, [theme]);
 
-  useEffect(() => {
-    const saved = localStorage.getItem("dlp_monitoring_settings");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setMonitoringSettings(parsed);
-        realTimeRef.current = parsed.realTime ?? true;
-      } catch {}
-    }
-  }, []);
-
+  // ── Update monitoring settings and persist ──────────────────────────────────
   const updateMonitoringSettings = async (settings: Partial<MonitoringSettings>) => {
-    setMonitoringSettings((prev) => {
-      const updated = { ...prev, ...settings };
-      localStorage.setItem("dlp_monitoring_settings", JSON.stringify(updated));
-      if (settings.realTime !== undefined) realTimeRef.current = settings.realTime;
-      return updated;
-    });
+    const current = monitoringSettings;
+    const updated = { ...current, ...settings };
 
-    // Wire real-time toggle to backend monitoring
+    // Update state and persist to localStorage
+    setMonitoringSettings(updated);
+    realTimeRef.current = updated.realTime;
+    localStorage.setItem("dlp_monitoring_settings", JSON.stringify(updated));
+
+    // Start/stop backend monitoring based on realTime toggle
     if (settings.realTime === true) {
       try {
-        await monitoringApiService.startMonitoring(monitoringSettings.autoResponse);
+        await monitoringApiService.startMonitoring(updated.autoResponse);
       } catch (err) {
         console.warn("[Monitor] Could not start live monitoring:", err);
       }
@@ -248,7 +273,7 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    // Wire auto-response toggle to backend
+    // Update auto-response on backend if changed
     if (settings.autoResponse !== undefined) {
       try {
         await monitoringApiService.updateAutoResponse(settings.autoResponse);
@@ -293,7 +318,6 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
         if (scanData.status !== "running") {
           clearInterval(pollInterval);
           await refreshScans();
-
           if (scanData.totalThreats > 0) {
             const newAlerts: Alert[] = Array.from({ length: Math.min(scanData.totalThreats, 5) }).map((_, i) => ({
               id: Date.now() + i,
@@ -303,11 +327,10 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
               description: `Detected ${scanData.totalThreats} threat(s) in ${scanData.filesWithThreats} file(s) during ${type} scan.`,
               source: type,
               status: "New" as const,
-              filePath: scanData.targetPath, // best available path from scan
+              filePath: scanData.targetPath,
             }));
             setAlerts((prev) => [...newAlerts, ...prev]);
           }
-
           onComplete?.(scanData.totalThreats);
         }
       } catch {
@@ -317,7 +340,7 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
     }, 2000);
   };
 
-  // ── Alert management ──────────────────────────────────────────────────────────
+  // ── Alert management ────────────────────────────────────────────────────────
   const resolveAlert = (id: number) => {
     setAlerts((prev) => prev.map((a) => (a.id === id ? { ...a, status: "Resolved" } : a)));
   };
@@ -328,16 +351,13 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
   const deleteAllAlerts = () => setAlerts([]);
   const clearAllAlerts = () => setAlerts([]);
 
-  // clearAllScans hits the backend to delete records, then refreshes
   const clearAllScans = async () => {
-    try {
-      await scannerService.deleteAllScans();
-    } catch {}
+    try { await scannerService.deleteAllScans(); } catch {}
     setScans([]);
     setTotalFilesScanned(0);
   };
 
-  // ── File actions ──────────────────────────────────────────────────────────────
+  // ── File actions ────────────────────────────────────────────────────────────
   const quarantineFile = async (alertId: number, filePath: string) => {
     await fileActionsService.quarantine(filePath);
     updateAlertStatus(alertId, "Quarantined");
@@ -353,7 +373,7 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
     deleteAlert(alertId);
   };
 
-  // ── Auth ──────────────────────────────────────────────────────────────────────
+  // ── Auth ────────────────────────────────────────────────────────────────────
   const login = async (username: string, password: string) => {
     const response = await authService.login({ username, password });
     setIsAuthenticated(true);
@@ -365,10 +385,22 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
     });
     await refreshPolicies();
     await refreshScans();
+    // Start monitoring on login if realTime is enabled
+    const saved = loadSavedSettings();
+    if (saved.realTime !== false) {
+      setTimeout(() => {
+        monitoringApiService
+          .startMonitoring(saved.autoResponse ?? false)
+          .catch((err) => console.warn("[Monitor] Auto-start on login failed:", err));
+      }, 1500);
+    }
   };
 
   const logout = async () => {
-    try { await authService.logout(); } finally {
+    try {
+      await monitoringApiService.stopMonitoring().catch(() => {});
+      await authService.logout();
+    } finally {
       disconnectSocket();
       socketInitialized.current = false;
       setIsAuthenticated(false);
@@ -384,7 +416,7 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem("dlp_user", JSON.stringify(profile));
   };
 
-  // ── Policy management (unchanged) ─────────────────────────────────────────────
+  // ── Policy management ───────────────────────────────────────────────────────
   const addPolicy = async (p: Omit<Policy, "id">) => {
     const newPolicy = await policyService.createPolicy({
       name: p.name, pattern: p.pattern,
@@ -427,6 +459,14 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
       quarantineFile, encryptFile, deleteFile,
     }}>
       {children}
+      {/* Global toast — visible on any page */}
+      {globalToast && (
+        <Toast
+          message={globalToast.message}
+          type={globalToast.type}
+          onClose={() => setGlobalToast(null)}
+        />
+      )}
     </SecurityContext.Provider>
   );
 }
