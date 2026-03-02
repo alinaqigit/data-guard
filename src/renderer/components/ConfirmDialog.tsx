@@ -15,72 +15,98 @@ interface ConfirmDialogProps {
 }
 
 const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
-    isOpen,
-    title,
-    message,
-    confirmText = 'Confirm',
-    cancelText = 'Cancel',
-    onConfirm,
-    onCancel,
-    isDestructive = false
+    isOpen, title, message,
+    confirmText = 'Confirm', cancelText = 'Cancel',
+    onConfirm, onCancel, isDestructive = false,
 }) => {
-    // visible controls whether we're mounted
-    // animating controls which direction we're animating
-    const [visible, setVisible] = useState(false);
+    const [visible, setVisible]     = useState(false);
     const [animating, setAnimating] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
             setVisible(true);
-            // Small delay so the DOM is mounted before we trigger the enter animation
-            requestAnimationFrame(() => {
-                requestAnimationFrame(() => setAnimating(true));
-            });
+            requestAnimationFrame(() => requestAnimationFrame(() => setAnimating(true)));
         } else {
-            // Trigger exit animation, then unmount after it finishes
             setAnimating(false);
-            const timer = setTimeout(() => setVisible(false), 250);
-            return () => clearTimeout(timer);
+            const t = setTimeout(() => setVisible(false), 250);
+            return () => clearTimeout(t);
         }
     }, [isOpen]);
 
     if (!visible) return null;
 
+    const iconColor  = isDestructive ? '#F85149' : '#5272C5';
+    const iconBg     = isDestructive ? 'rgba(248,81,73,0.1)' : 'rgba(82,114,197,0.1)';
+    const confirmBg  = isDestructive ? '#F85149' : '#5272C5';
+    const confirmHov = isDestructive ? '#FD5658' : '#445C9A';
+
     return (
         <div
-            className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+            onClick={onCancel}
             style={{
-                backgroundColor: `rgba(0,0,0,${animating ? 0.6 : 0})`,
+                position: 'fixed', inset: 0, zIndex: 60,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px',
+                backgroundColor: `rgba(0,0,0,${animating ? 0.7 : 0})`,
                 backdropFilter: `blur(${animating ? 6 : 0}px)`,
                 transition: 'background-color 250ms ease, backdrop-filter 250ms ease',
             }}
         >
             <div
+                onClick={e => e.stopPropagation()}
                 style={{
-                    background: 'linear-gradient(135deg, #0f172a 0%, #020617 100%)',
-                    boxShadow: '0 0 50px -12px rgba(0,0,0,0.5)',
+                    background: '#12161B',
+                    border: '1px solid #30363D',
+                    borderRadius: '16px',
+                    width: '100%',
+                    maxWidth: '380px',
+                    boxShadow: '0 24px 64px rgba(0,0,0,0.6)',
                     opacity: animating ? 1 : 0,
-                    transform: animating ? 'scale(1)' : 'scale(0.92)',
-                    transition: 'opacity 250ms cubic-bezier(0.16, 1, 0.3, 1), transform 250ms cubic-bezier(0.16, 1, 0.3, 1)',
+                    transform: animating ? 'scale(1) translateY(0)' : 'scale(0.94) translateY(8px)',
+                    transition: 'opacity 250ms cubic-bezier(0.16,1,0.3,1), transform 250ms cubic-bezier(0.16,1,0.3,1)',
                 }}
-                className="border border-white/10 rounded-2xl w-full max-w-sm overflow-hidden"
             >
-                <div className="p-6 text-center">
-                    <div className={`mx-auto w-12 h-12 rounded-full flex items-center justify-center mb-4 ${isDestructive ? 'bg-rose-500/10 text-rose-500' : 'bg-indigo-500/10 text-indigo-500'}`}>
-                        <AlertTriangle size={24} />
+                <div style={{ padding: '28px 24px 24px', textAlign: 'center' }}>
+                    {/* Icon */}
+                    <div style={{
+                        width: '48px', height: '48px', borderRadius: '12px',
+                        background: iconBg, border: `1px solid ${iconColor}30`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        margin: '0 auto 16px',
+                    }}>
+                        <AlertTriangle size={22} style={{ color: iconColor }} />
                     </div>
-                    <h3 className="text-xl font-bold text-white mb-2">{title}</h3>
-                    <p className="text-neutral-400 text-sm leading-relaxed mb-6">{message}</p>
-                    <div className="flex gap-3 justify-center">
+
+                    <p style={{ fontSize: '16px', fontWeight: 600, color: '#FFFFFF', marginBottom: '8px' }}>
+                        {title}
+                    </p>
+                    <p style={{ fontSize: '13px', fontWeight: 400, color: '#989898', lineHeight: 1.6, marginBottom: '24px' }}>
+                        {message}
+                    </p>
+
+                    <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
                         <button
                             onClick={onCancel}
-                            className="px-4 py-2 rounded-lg font-bold text-neutral-400 hover:text-white hover:bg-white/5 transition-all text-sm"
+                            style={{
+                                padding: '9px 20px', borderRadius: '10px',
+                                background: '#161B22', border: '1px solid #30363D',
+                                color: '#989898', fontSize: '13px', fontWeight: 500,
+                                cursor: 'pointer', transition: 'all 0.15s ease',
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.color = '#FFFFFF'; e.currentTarget.style.borderColor = '#535865'; }}
+                            onMouseLeave={e => { e.currentTarget.style.color = '#989898'; e.currentTarget.style.borderColor = '#30363D'; }}
                         >
                             {cancelText}
                         </button>
                         <button
                             onClick={onConfirm}
-                            className={`px-6 py-2 rounded-lg font-bold text-white transition-all shadow-lg active:scale-95 text-sm ${isDestructive ? 'bg-rose-600 hover:bg-rose-500 shadow-rose-600/20' : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/20'}`}
+                            style={{
+                                padding: '9px 20px', borderRadius: '10px',
+                                background: confirmBg, border: 'none',
+                                color: '#FFFFFF', fontSize: '13px', fontWeight: 600,
+                                cursor: 'pointer', transition: 'background 0.15s ease',
+                            }}
+                            onMouseEnter={e => (e.currentTarget.style.background = confirmHov)}
+                            onMouseLeave={e => (e.currentTarget.style.background = confirmBg)}
                         >
                             {confirmText}
                         </button>

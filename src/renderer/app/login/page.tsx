@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSecurity } from "@/context/SecurityContext";
-import { Shield, Lock, User, ArrowRight } from "lucide-react";
+import { Lock, User, ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -12,156 +12,107 @@ export default function LoginPage() {
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError]       = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      router.push("/");
-    }
-  }, [isAuthenticated, router]);
+  useEffect(() => { if (isAuthenticated) router.push("/"); }, [isAuthenticated, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setIsLoading(true);
-
-    try {
-      await login(username, password);
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Login failed. Please check your credentials.",
-      );
-    } finally {
-      setIsLoading(false);
-    }
+    try { await login(username, password); }
+    catch (err) { setError(err instanceof Error ? err.message : "Login failed. Please check your credentials."); }
+    finally { setIsLoading(false); }
   };
 
+  const inputStyle = {
+    width: '100%', background: '#0D1117', border: '1px solid #30363D',
+    borderRadius: '12px', paddingLeft: '44px', paddingRight: '16px',
+    paddingTop: '12px', paddingBottom: '12px',
+    color: '#FFFFFF', fontSize: '14px', fontWeight: 400, outline: 'none',
+    transition: 'border-color 0.2s',
+  };
+  const labelStyle = { fontSize: '11px', fontWeight: 600, color: '#535865', textTransform: 'uppercase' as const, letterSpacing: '0.08em', display: 'block', marginBottom: '8px' };
+
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-12">
-          <div className="inline-flex p-6 mb-4 group transition-all duration-500">
-            <div className="w-24 h-24 relative">
-              <Image
-                src="/images/logo.png"
-                alt="DataGuard Logo"
-                fill
-                className="object-contain drop-shadow-[0_0_15px_rgba(59,130,246,0.5)]"
-              />
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: '#000000' }}>
+      <div style={{ width: '100%', maxWidth: '400px' }}>
+        {/* Logo */}
+        <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+          <div style={{ display: 'inline-flex', marginBottom: '16px' }}>
+            <div style={{ width: '64px', height: '64px', position: 'relative' }}>
+              <Image src="/images/logo.png" alt="DataGuard" fill className="object-contain" />
             </div>
           </div>
-          <h1 className="text-5xl font-black text-white tracking-tighter mb-3">
-            DataGaurd
-          </h1>
-          <p className="text-neutral-400 font-bold text-lg tracking-wide uppercase opacity-75">
-            Data Leak Prevention & Monitoring
-          </p>
+          <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.02em', marginBottom: '8px' }}>DataGuard</h1>
+          <p style={{ fontSize: '13px', fontWeight: 400, color: '#535865', letterSpacing: '0.04em' }}>Data Leak Prevention & Monitoring</p>
         </div>
 
-        <div
-          className="border border-white/5 rounded-[2.5rem] p-10 shadow-2xl transition-all duration-500"
-          style={{
-            background:
-              "linear-gradient(135deg, #020617 0%, #000000 100%)",
-          }}
-        >
-          <h2 className="text-2xl font-black text-white mb-8 tracking-tight">
-            Sign In
-          </h2>
+        {/* Card */}
+        <div style={{ background: '#12161B', border: '1px solid #30363D', borderRadius: '20px', padding: '32px' }}>
+          <h2 style={{ fontSize: '18px', fontWeight: 600, color: '#FFFFFF', marginBottom: '24px' }}>Sign In</h2>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-3">
-              <label className="text-sm font-black text-neutral-400 uppercase tracking-widest ml-1">
-                Username
-              </label>
-              <div className="relative group">
-                <User
-                  className="absolute left-5 top-1/2 -translate-y-1/2 text-neutral-500 group-focus-within:text-blue-500 transition-colors"
-                  size={20}
-                />
-                <input
-                  type="text"
-                  required
-                  className="w-full bg-black/40 border border-white/5 rounded-2xl pl-12 pr-6 py-4.5 text-white focus:outline-none focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none font-bold text-lg placeholder:text-neutral-700"
-                  placeholder="Enter username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label style={labelStyle}>Username</label>
+              <div style={{ position: 'relative' }}>
+                <User size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#535865' }} />
+                <input type="text" required placeholder="Enter username" value={username} onChange={e => setUsername(e.target.value)}
+                  style={inputStyle}
+                  onFocus={e => (e.currentTarget.style.borderColor = '#445C9A')}
+                  onBlur={e => (e.currentTarget.style.borderColor = '#30363D')}
                 />
               </div>
             </div>
-            <div className="space-y-3">
-              <label className="text-sm font-black text-neutral-400 uppercase tracking-widest ml-1">
-                Password
-              </label>
-              <div className="relative group">
-                <Lock
-                  className="absolute left-5 top-1/2 -translate-y-1/2 text-neutral-500 group-focus-within:text-blue-500 transition-colors"
-                  size={20}
-                />
-                <input
-                  type="password"
-                  required
-                  className="w-full bg-black/40 border border-white/5 rounded-2xl pl-12 pr-6 py-4.5 text-white focus:outline-none focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none font-bold text-lg placeholder:text-neutral-700"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+            <div>
+              <label style={labelStyle}>Password</label>
+              <div style={{ position: 'relative' }}>
+                <Lock size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#535865' }} />
+                <input type="password" required placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)}
+                  style={inputStyle}
+                  onFocus={e => (e.currentTarget.style.borderColor = '#445C9A')}
+                  onBlur={e => (e.currentTarget.style.borderColor = '#30363D')}
                 />
               </div>
             </div>
 
-            <div className="flex items-center justify-between text-sm">
-              <label className="flex items-center gap-2 text-neutral-400 cursor-pointer hover:text-neutral-300">
-                <input
-                  type="checkbox"
-                  className="rounded border-neutral-800 bg-neutral-950 text-blue-600 focus:ring-blue-500"
-                />
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 cursor-pointer" style={{ fontSize: '13px', fontWeight: 400, color: '#989898' }}>
+                <input type="checkbox" style={{ accentColor: '#5272C5' }} />
                 Remember me
               </label>
-              <a
-                href="#"
-                className="text-blue-500 hover:text-blue-400 font-medium transition-colors"
-              >
-                Forgot Password?
-              </a>
+              <a href="#" style={{ fontSize: '13px', fontWeight: 500, color: '#5272C5', textDecoration: 'none' }}
+                onMouseEnter={e => (e.currentTarget.style.color = '#BABABA')}
+                onMouseLeave={e => (e.currentTarget.style.color = '#5272C5')}
+              >Forgot Password?</a>
             </div>
 
             {error && (
-              <div className="bg-red-500/10 border border-red-500/20 text-red-500 px-4 py-3 rounded-xl text-sm font-bold">
+              <div style={{ background: 'rgba(248,81,73,0.1)', border: '1px solid rgba(248,81,73,0.25)', borderRadius: '10px', padding: '10px 14px', color: '#F85149', fontSize: '13px', fontWeight: 400 }}>
                 {error}
               </div>
             )}
 
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-4.5 rounded-2xl transition-all shadow-xl shadow-blue-600/20 active:scale-[0.98] flex items-center justify-center gap-3 mt-6 text-xl tracking-tight disabled:opacity-50 disabled:cursor-not-allowed"
+            <button type="submit" disabled={isLoading}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl transition-all"
+              style={{ background: isLoading ? '#3B5189' : '#5272C5', color: '#FFFFFF', fontSize: '14px', fontWeight: 600, border: 'none', cursor: isLoading ? 'not-allowed' : 'pointer', opacity: isLoading ? 0.7 : 1 }}
+              onMouseEnter={e => { if (!isLoading) (e.currentTarget as HTMLButtonElement).style.background = '#445C9A'; }}
+              onMouseLeave={e => { if (!isLoading) (e.currentTarget as HTMLButtonElement).style.background = '#5272C5'; }}
             >
-              {isLoading ? (
-                <>
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Logging in...
-                </>
-              ) : (
-                <>
-                  Login to DataGaurd
-                  <ArrowRight size={22} />
-                </>
-              )}
+              {isLoading
+                ? <><div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(255,255,255,0.2)', borderTopColor: '#fff' }} /> Signing in...</>
+                : <>Login to DataGuard <ArrowRight size={16} /></>}
             </button>
           </form>
 
-          <div className="mt-10 pt-10 border-t border-white/5 text-center">
-            <p className="text-neutral-500 font-bold text-lg">
-              Don't have an account?{" "}
-              <Link
-                href="/signup"
-                className="text-blue-500 hover:text-blue-400 font-black transition-all hover:tracking-tight"
-              >
-                Create Account
-              </Link>
+          <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid #1A1F28', textAlign: 'center' }}>
+            <p style={{ fontSize: '13px', fontWeight: 400, color: '#535865' }}>
+              Don't have an account?{' '}
+              <Link href="/signup" style={{ color: '#5272C5', fontWeight: 500, textDecoration: 'none' }}
+                onMouseEnter={e => (e.currentTarget.style.color = '#BABABA')}
+                onMouseLeave={e => (e.currentTarget.style.color = '#5272C5')}
+              >Create Account</Link>
             </p>
           </div>
         </div>

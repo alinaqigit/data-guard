@@ -5,161 +5,153 @@ import { ChevronDown, Check } from "lucide-react";
 import { createPortal } from "react-dom";
 
 interface Option {
-  value: string;
-  label: string;
-  description?: string;
+    value: string;
+    label: string;
+    description?: string;
 }
 
 interface CustomSelectProps {
-  value: string;
-  onChange: (value: string) => void;
-  options: Option[];
-  placeholder?: string;
-  className?: string;
+    value: string;
+    onChange: (value: string) => void;
+    options: Option[];
+    placeholder?: string;
+    className?: string;
 }
 
 export default function CustomSelect({
-  value,
-  onChange,
-  options,
-  placeholder = "Select...",
-  className = "",
+    value, onChange, options,
+    placeholder = "Select...", className = "",
 }: CustomSelectProps) {
-  const [open, setOpen] = useState(false);
-  const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+    const [open, setOpen]                     = useState(false);
+    const [dropdownStyle, setDropdownStyle]   = useState<React.CSSProperties>({});
+    const triggerRef  = useRef<HTMLButtonElement>(null);
+    const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const selected = options.find((o) => o.value === value);
+    const selected = options.find(o => o.value === value);
 
-  // Position the dropdown based on trigger button's position in viewport
-  const updatePosition = () => {
-    if (!triggerRef.current) return;
-    const rect = triggerRef.current.getBoundingClientRect();
-    const viewportHeight = window.innerHeight;
-    const spaceBelow = viewportHeight - rect.bottom;
-    const spaceAbove = rect.top;
-    const dropdownHeight = Math.min(options.length * 56 + 8, 280);
-
-    // Open upward if not enough space below
-    const openUpward = spaceBelow < dropdownHeight && spaceAbove > spaceBelow;
-
-    setDropdownStyle({
-      position: "fixed",
-      left: rect.left,
-      width: rect.width,
-      zIndex: 9999,
-      ...(openUpward
-        ? { bottom: viewportHeight - rect.top + 4 }
-        : { top: rect.bottom + 4 }),
-    });
-  };
-
-  const handleOpen = () => {
-    updatePosition();
-    setOpen(true);
-  };
-
-  // Close on outside click
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (
-        triggerRef.current?.contains(e.target as Node) ||
-        dropdownRef.current?.contains(e.target as Node)
-      ) return;
-      setOpen(false);
+    const updatePosition = () => {
+        if (!triggerRef.current) return;
+        const rect           = triggerRef.current.getBoundingClientRect();
+        const spaceBelow     = window.innerHeight - rect.bottom;
+        const dropdownHeight = Math.min(options.length * 56 + 8, 280);
+        const openUpward     = spaceBelow < dropdownHeight && rect.top > spaceBelow;
+        setDropdownStyle({
+            position: 'fixed',
+            left: rect.left,
+            width: rect.width,
+            zIndex: 9999,
+            ...(openUpward ? { bottom: window.innerHeight - rect.top + 4 } : { top: rect.bottom + 4 }),
+        });
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
 
-  // Close on Escape
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
-  }, []);
+    useEffect(() => {
+        if (!open) return;
+        const close = (e: MouseEvent) => {
+            if (triggerRef.current?.contains(e.target as Node) || dropdownRef.current?.contains(e.target as Node)) return;
+            setOpen(false);
+        };
+        document.addEventListener('mousedown', close);
+        return () => document.removeEventListener('mousedown', close);
+    }, [open]);
 
-  // Reposition on scroll/resize
-  useEffect(() => {
-    if (!open) return;
-    const handler = () => updatePosition();
-    window.addEventListener("scroll", handler, true);
-    window.addEventListener("resize", handler);
-    return () => {
-      window.removeEventListener("scroll", handler, true);
-      window.removeEventListener("resize", handler);
-    };
-  }, [open]);
+    useEffect(() => {
+        const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+        document.addEventListener('keydown', esc);
+        return () => document.removeEventListener('keydown', esc);
+    }, []);
 
-  const dropdown = open ? (
-    <div
-      ref={dropdownRef}
-      style={{
-        ...dropdownStyle,
-        background: "linear-gradient(135deg, #0a0f1e 0%, #050505 100%)",
-      }}
-      className="rounded-xl border border-white/10 shadow-2xl shadow-black/50 overflow-y-auto"
-    >
-      <div className="py-1 max-h-[280px] overflow-y-auto">
-        {options.map((option) => {
-          const isSelected = option.value === value;
-          return (
+    useEffect(() => {
+        if (!open) return;
+        const reposition = () => updatePosition();
+        window.addEventListener('scroll', reposition, true);
+        window.addEventListener('resize', reposition);
+        return () => { window.removeEventListener('scroll', reposition, true); window.removeEventListener('resize', reposition); };
+    }, [open]);
+
+    const dropdown = open ? (
+        <div
+            ref={dropdownRef}
+            style={{
+                ...dropdownStyle,
+                background: '#12161B',
+                border: '1px solid #30363D',
+                borderRadius: '12px',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                overflow: 'hidden',
+            }}
+        >
+            <div style={{ maxHeight: '280px', overflowY: 'auto', padding: '6px' }}>
+                {options.map(option => {
+                    const isSelected = option.value === value;
+                    return (
+                        <button
+                            key={option.value}
+                            type="button"
+                            onMouseDown={e => { e.preventDefault(); onChange(option.value); setOpen(false); }}
+                            style={{
+                                width: '100%', display: 'flex', alignItems: 'center',
+                                justifyContent: 'space-between', gap: '12px',
+                                padding: '10px 12px', textAlign: 'left',
+                                borderRadius: '8px', border: 'none', cursor: 'pointer',
+                                background: isSelected ? 'rgba(82,114,197,0.12)' : 'transparent',
+                                color: isSelected ? '#FFFFFF' : '#BABABA',
+                                transition: 'background 0.12s ease, color 0.12s ease',
+                            }}
+                            onMouseEnter={e => { if (!isSelected) { e.currentTarget.style.background = '#161B22'; e.currentTarget.style.color = '#FFFFFF'; } }}
+                            onMouseLeave={e => { if (!isSelected) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#BABABA'; } }}
+                        >
+                            <div>
+                                <p style={{ fontSize: '13px', fontWeight: isSelected ? 600 : 400, margin: 0 }}>
+                                    {option.label}
+                                </p>
+                                {option.description && (
+                                    <p style={{ fontSize: '11px', color: '#535865', marginTop: '2px' }}>
+                                        {option.description}
+                                    </p>
+                                )}
+                            </div>
+                            {isSelected && <Check size={14} style={{ color: '#5272C5', flexShrink: 0 }} />}
+                        </button>
+                    );
+                })}
+            </div>
+        </div>
+    ) : null;
+
+    return (
+        <div style={{ position: 'relative' }} className={className}>
             <button
-              key={option.value}
-              type="button"
-              onMouseDown={(e) => {
-                e.preventDefault();
-                onChange(option.value);
-                setOpen(false);
-              }}
-              className={`w-full flex items-center justify-between gap-3 px-4 py-3 text-left transition-colors duration-150
-                ${isSelected
-                  ? "bg-indigo-600/20 text-white"
-                  : "text-neutral-300 hover:bg-white/5 hover:text-white"
-                }`}
+                ref={triggerRef}
+                type="button"
+                onClick={() => open ? setOpen(false) : (updatePosition(), setOpen(true))}
+                style={{
+                    width: '100%', display: 'flex', alignItems: 'center',
+                    justifyContent: 'space-between', gap: '8px',
+                    padding: '9px 12px', borderRadius: '10px',
+                    background: '#0D1117',
+                    border: `1px solid ${open ? '#445C9A' : '#30363D'}`,
+                    color: selected ? '#FFFFFF' : '#535865',
+                    fontSize: '13px', fontWeight: 400,
+                    cursor: 'pointer', textAlign: 'left',
+                    transition: 'border-color 0.15s ease',
+                    outline: open ? '3px solid rgba(82,114,197,0.15)' : 'none',
+                    outlineOffset: '0px',
+                }}
+                onMouseEnter={e => { if (!open) e.currentTarget.style.borderColor = '#535865'; }}
+                onMouseLeave={e => { if (!open) e.currentTarget.style.borderColor = '#30363D'; }}
             >
-              <div>
-                <p className="text-sm font-bold">{option.label}</p>
-                {option.description && (
-                  <p className="text-xs text-neutral-500 mt-0.5">{option.description}</p>
-                )}
-              </div>
-              {isSelected && <Check size={15} className="text-indigo-400 flex-shrink-0" />}
+                <span>{selected ? selected.label : placeholder}</span>
+                <ChevronDown
+                    size={15}
+                    style={{
+                        color: open ? '#5272C5' : '#535865',
+                        flexShrink: 0,
+                        transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
+                        transition: 'transform 0.2s ease, color 0.15s ease',
+                    }}
+                />
             </button>
-          );
-        })}
-      </div>
-    </div>
-  ) : null;
-
-  return (
-    <div className={`relative ${className}`}>
-      <button
-        ref={triggerRef}
-        type="button"
-        onClick={() => (open ? setOpen(false) : handleOpen())}
-        className={`w-full flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl
-          bg-black/40 border text-left font-bold text-sm transition-all duration-200
-          ${open
-            ? "border-indigo-500 ring-2 ring-indigo-500/20 text-white"
-            : "border-white/10 text-white hover:border-white/20 hover:bg-black/60"
-          }`}
-      >
-        <span className={selected ? "text-white" : "text-neutral-500"}>
-          {selected ? selected.label : placeholder}
-        </span>
-        <ChevronDown
-          size={16}
-          className={`text-neutral-400 transition-transform duration-200 flex-shrink-0 ${open ? "rotate-180 text-indigo-400" : ""}`}
-        />
-      </button>
-
-      {/* Render dropdown via portal so it escapes any overflow:hidden parent */}
-      {typeof window !== "undefined" && dropdown
-        ? createPortal(dropdown, document.body)
-        : null}
-    </div>
-  );
+            {typeof window !== 'undefined' && dropdown ? createPortal(dropdown, document.body) : null}
+        </div>
+    );
 }

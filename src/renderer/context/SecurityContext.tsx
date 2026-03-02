@@ -125,7 +125,7 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
   const realTimeRef = useRef(monitoringSettings.realTime);
 
   // Global toast state — shown on any page
-  const [globalToast, setGlobalToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [globalToast, setGlobalToast] = useState<{ message: string; type: "success" | "error" | "warning" } | null>(null);
   const prevAlertsLengthRef = useRef(0);
 
   // Keep realTimeRef in sync with state
@@ -142,8 +142,8 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
         setGlobalToast({
           message: isEncryption
             ? `Auto-encrypted: ${newest.description}`
-            : `⚠️ Threat detected: ${newest.description}`,
-          type: isEncryption ? "success" : "error",
+            : `Threat detected: ${newest.description}`,
+          type: isEncryption ? "success" : "warning",
         });
       }
     }

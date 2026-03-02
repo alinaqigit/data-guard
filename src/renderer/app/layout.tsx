@@ -1,10 +1,18 @@
 import type { Metadata } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { SecurityProvider } from "@/context/SecurityContext";
 import AppContent from "@/components/AppContent";
 
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
-  title: "Admin Dashboard",
+  title: "DataGuard DLP",
   description: "Data Leak Prevention Admin Dashboard",
 };
 
@@ -14,9 +22,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
+    <html lang="en" className={`dark ${inter.variable}`} suppressHydrationWarning>
       <body
-        className="bg-black text-gray-200 antialiased min-h-screen flex"
+        className="antialiased min-h-screen flex"
+        style={{
+          background: "#0B0E14",
+          color: "#FFFFFF",
+          fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
+        }}
         suppressHydrationWarning
       >
         <SecurityProvider>

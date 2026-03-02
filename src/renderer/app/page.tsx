@@ -29,7 +29,7 @@ export default function Home() {
       change: scans.length > 0 ? `${scans.length} scan${scans.length !== 1 ? 's' : ''} recorded` : "No scans yet",
       trend: scans.length > 0 ? "up" : "neutral",
       icon: FileSearch,
-      color: "text-blue-500",
+      color: "text-blue-400",
       bg: "bg-blue-500/10",
     },
     {
@@ -38,7 +38,7 @@ export default function Home() {
       change: newAlertsCount > 0 ? `${newAlertsCount} new alert${newAlertsCount !== 1 ? 's' : ''}` : "No new alerts",
       trend: alerts.length > 0 ? "up" : "down",
       icon: ShieldAlert,
-      color: "text-rose-500",
+      color: "text-rose-400",
       bg: "bg-rose-500/10",
     },
     {
@@ -47,7 +47,7 @@ export default function Home() {
       change: totalFilesScanned > 0 ? "Across all scans" : "Run a scan to start",
       trend: totalFilesScanned > 0 ? "up" : "neutral",
       icon: Users,
-      color: "text-emerald-500",
+      color: "text-emerald-400",
       bg: "bg-emerald-500/10",
     },
     {
@@ -56,8 +56,8 @@ export default function Home() {
       change: `${policies.length} total polic${policies.length !== 1 ? 'ies' : 'y'}`,
       trend: activePoliciesCount > 0 ? "up" : "neutral",
       icon: ScrollText,
-      color: "text-indigo-500",
-      bg: "bg-indigo-500/10",
+      color: "text-blue-400",
+      bg: "bg-blue-500/10",
     },
   ];
 
@@ -80,14 +80,23 @@ export default function Home() {
     }
   };
 
-  return (
-    <div className="space-y-6">
-      <h2 className="text-3xl md:text-4xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-500 tracking-tight">
-        Security Overview
-      </h2>
+  const cardStyle = {
+    background: '#12161B',
+    border: '1px solid #30363D',
+    borderRadius: '16px',
+    padding: '20px 24px',
+  };
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+  return (
+    <div className="space-y-6 pb-10">
+
+      {/* Page title */}
+      <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.02em' }}>
+        Security Overview
+      </h1>
+
+      {/* Stat cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat, index) => {
           let handleClick: (() => void) | undefined;
           if (stat.title === "Total Threats") handleClick = () => router.push("/threats");
@@ -109,24 +118,33 @@ export default function Home() {
         })}
       </div>
 
-      {/* Main Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      {/* Main grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
 
           {/* Recent Scans */}
-          <div className="p-4 md:p-5 rounded-2xl bg-white dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 backdrop-blur-sm">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-black text-white tracking-tight">Recent Scans</h3>
-              <button onClick={() => router.push("/scanner")} className="text-sm font-bold text-indigo-400 hover:text-indigo-300 transition-colors">
+          <div style={cardStyle}>
+            <div className="flex items-center justify-between mb-5">
+              <h2 style={{ fontSize: '16px', fontWeight: 600, color: '#FFFFFF' }}>
+                Recent Scans
+              </h2>
+              <button
+                onClick={() => router.push("/scanner")}
+                style={{ fontSize: '13px', fontWeight: 500, color: '#5272C5' }}
+                onMouseEnter={e => (e.currentTarget.style.color = '#BABABA')}
+                onMouseLeave={e => (e.currentTarget.style.color = '#5272C5')}
+              >
                 View All
               </button>
             </div>
 
             {scans.length === 0 ? (
-              <div className="py-10 text-center text-neutral-500">
-                <FileSearch size={36} className="mx-auto mb-3 opacity-20" />
-                <p className="font-bold">No scans yet</p>
-                <p className="text-sm mt-1">Run a scan from the Content Scanner page.</p>
+              <div className="py-10 text-center">
+                <FileSearch size={32} className="mx-auto mb-3" style={{ color: '#535865' }} />
+                <p style={{ color: '#989898', fontWeight: 500, fontSize: '14px' }}>No scans yet</p>
+                <p style={{ color: '#535865', fontSize: '13px', marginTop: '4px' }}>
+                  Run a scan from the Content Scanner page.
+                </p>
               </div>
             ) : (
               <Table<any>
@@ -135,26 +153,46 @@ export default function Home() {
                     header: "Scan ID",
                     accessor: "scanid",
                     render: (value) => (
-                      <span className="font-mono text-xs px-2 py-1 bg-white/5 rounded text-neutral-400 border border-white/5">{value}</span>
+                      <span style={{
+                        fontFamily: 'monospace', fontSize: '12px',
+                        padding: '2px 8px', background: '#161B22',
+                        border: '1px solid #30363D', borderRadius: '6px',
+                        color: '#989898',
+                      }}>{value}</span>
                     ),
                   },
                   {
                     header: "Type",
                     accessor: "filename",
                     className: "w-[40%]",
-                    render: (value) => <span className="font-semibold text-neutral-100">{value}</span>,
+                    render: (value) => (
+                      <span style={{ color: '#FFFFFF', fontWeight: 500 }}>{value}</span>
+                    ),
                   },
                   {
                     header: "Threats",
                     accessor: "threats",
                     render: (value) => (
                       <div className="flex items-center gap-2">
-                        <span className={`w-2 h-2 rounded-full ${value > 0 ? "bg-rose-500 animate-pulse" : "bg-emerald-500"}`} />
-                        <span className={value > 0 ? "text-rose-500 font-bold" : "text-neutral-500"}>{value}</span>
+                        <span style={{
+                          width: '7px', height: '7px', borderRadius: '50%',
+                          background: value > 0 ? '#F85149' : '#22C35D',
+                          display: 'inline-block',
+                        }} />
+                        <span style={{
+                          color: value > 0 ? '#F85149' : '#535865',
+                          fontWeight: value > 0 ? 600 : 400,
+                        }}>{value}</span>
                       </div>
                     ),
                   },
-                  { header: "Time", accessor: "date", className: "text-neutral-500 text-xs text-right" },
+                  {
+                    header: "Time", accessor: "date",
+                    className: "text-right",
+                    render: (value) => (
+                      <span style={{ color: '#535865', fontSize: '12px' }}>{value}</span>
+                    ),
+                  },
                 ]}
                 data={scans.slice(0, 5).map((s) => ({
                   scanid: `SCN-${String(s.id).padStart(4, '0')}`,
@@ -167,19 +205,30 @@ export default function Home() {
           </div>
 
           {/* Recent Threats */}
-          <div className="p-4 md:p-5 rounded-2xl bg-white dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 backdrop-blur-sm">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-black text-white tracking-tight">Recent Threats</h3>
-              <button onClick={() => router.push("/threats")} className="text-sm font-bold text-rose-400 hover:text-rose-300 transition-colors">
+          <div style={cardStyle}>
+            <div className="flex items-center justify-between mb-5">
+              <h2 style={{ fontSize: '16px', fontWeight: 600, color: '#FFFFFF' }}>
+                Recent Threats
+              </h2>
+              <button
+                onClick={() => router.push("/threats")}
+                style={{ fontSize: '13px', fontWeight: 500, color: '#F85149' }}
+                onMouseEnter={e => (e.currentTarget.style.color = '#BABABA')}
+                onMouseLeave={e => (e.currentTarget.style.color = '#F85149')}
+              >
                 View All
               </button>
             </div>
 
             {alerts.length === 0 ? (
-              <div className="py-10 text-center text-neutral-500">
-                <ShieldAlert size={36} className="mx-auto mb-3 opacity-20" />
-                <p className="font-bold text-emerald-500">No threats detected</p>
-                <p className="text-sm mt-1">Your environment is currently secure.</p>
+              <div className="py-10 text-center">
+                <ShieldAlert size={32} className="mx-auto mb-3" style={{ color: '#535865' }} />
+                <p style={{ color: '#22C35D', fontWeight: 500, fontSize: '14px' }}>
+                  No threats detected
+                </p>
+                <p style={{ color: '#535865', fontSize: '13px', marginTop: '4px' }}>
+                  Your environment is currently secure.
+                </p>
               </div>
             ) : (
               <Table<any>
@@ -188,30 +237,48 @@ export default function Home() {
                     header: "Threat ID",
                     accessor: "scanid",
                     render: (value) => (
-                      <span className="font-mono text-xs px-2 py-1 bg-white/5 rounded text-neutral-400 border border-white/5">{value}</span>
+                      <span style={{
+                        fontFamily: 'monospace', fontSize: '12px',
+                        padding: '2px 8px', background: '#161B22',
+                        border: '1px solid #30363D', borderRadius: '6px',
+                        color: '#989898',
+                      }}>{value}</span>
                     ),
                   },
                   {
                     header: "Type",
                     accessor: "filename",
                     className: "w-[40%]",
-                    render: (value) => <span className="font-semibold text-neutral-100 truncate">{value}</span>,
+                    render: (value) => (
+                      <span style={{ color: '#FFFFFF', fontWeight: 500 }}
+                        className="truncate block max-w-xs">{value}</span>
+                    ),
                   },
                   {
                     header: "Severity",
                     accessor: "threats",
                     render: (value) => {
                       const colors: Record<string, string> = {
-                        High: "text-rose-500", Medium: "text-amber-500", Low: "text-sky-400",
+                        High: '#F85149', Medium: '#F8C149', Low: '#5272C5',
                       };
                       return (
-                        <span className={`text-xs font-black uppercase tracking-wider ${colors[value] || "text-neutral-500"}`}>
+                        <span style={{
+                          fontSize: '11px', fontWeight: 600,
+                          textTransform: 'uppercase', letterSpacing: '0.08em',
+                          color: colors[value] || '#989898',
+                        }}>
                           {value}
                         </span>
                       );
                     },
                   },
-                  { header: "Time", accessor: "date", className: "text-neutral-500 text-xs text-right" },
+                  {
+                    header: "Time", accessor: "date",
+                    className: "text-right",
+                    render: (value) => (
+                      <span style={{ color: '#535865', fontSize: '12px' }}>{value}</span>
+                    ),
+                  },
                 ]}
                 data={alerts.slice(0, 4).map((a) => ({
                   scanid: `THR-${String(a.id).slice(-4).padStart(4, '0')}`,
@@ -225,18 +292,26 @@ export default function Home() {
         </div>
 
         {/* Quick Report */}
-        <div
-          className="p-4 md:p-5 rounded-2xl border shadow-xl h-fit"
-          style={{ background: "linear-gradient(135deg, #020617 0%, #000000 100%)", borderColor: "rgba(51, 65, 85, 0.3)" }}
-        >
-          <h3 className="text-xl font-black text-white mb-6 tracking-tight">Quick Report</h3>
-          <form className="space-y-6" onSubmit={handleGenerateReport}>
-            <div className="space-y-3">
-              <label className="text-sm font-bold text-neutral-400 uppercase tracking-widest px-1">Format</label>
+        <div style={{ ...cardStyle, height: 'fit-content' }}>
+          <h2 style={{ fontSize: '16px', fontWeight: 600, color: '#FFFFFF', marginBottom: '20px' }}>
+            Quick Report
+          </h2>
+          <form className="space-y-4" onSubmit={handleGenerateReport}>
+            <div className="space-y-2">
+              <label style={{ fontSize: '12px', fontWeight: 500, color: '#989898', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                Format
+              </label>
               <select
                 value={reportFormat}
                 onChange={(e) => setReportFormat(e.target.value as any)}
-                className="w-full h-12 px-4 bg-neutral-800/80 border border-neutral-700/50 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none cursor-pointer font-bold"
+                className="w-full h-11 px-4 rounded-xl appearance-none cursor-pointer focus:outline-none transition-all"
+                style={{
+                  background: '#161B22',
+                  border: '1px solid #30363D',
+                  color: '#FFFFFF',
+                  fontWeight: 500,
+                  fontSize: '14px',
+                }}
               >
                 <option value="pdf">PDF Document (.pdf)</option>
                 <option value="xlsx">Excel Workbook (.xlsx)</option>
@@ -246,13 +321,24 @@ export default function Home() {
             <button
               type="submit"
               disabled={isGenerating}
-              className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black text-lg shadow-lg shadow-indigo-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3 rounded-xl flex items-center justify-center gap-2 transition-all"
+              style={{
+                background: isGenerating ? '#3B5189' : '#5272C5',
+                color: '#FFFFFF',
+                fontWeight: 600,
+                fontSize: '14px',
+                border: 'none',
+                cursor: isGenerating ? 'not-allowed' : 'pointer',
+                opacity: isGenerating ? 0.7 : 1,
+              }}
+              onMouseEnter={e => { if (!isGenerating) (e.currentTarget as HTMLButtonElement).style.background = '#445C9A'; }}
+              onMouseLeave={e => { if (!isGenerating) (e.currentTarget as HTMLButtonElement).style.background = '#5272C5'; }}
             >
               {isGenerating ? (
-                <><div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />Generating...</>
-              ) : (
-                "Download Report"
-              )}
+                <><div className="w-4 h-4 border-2 rounded-full animate-spin"
+                  style={{ borderColor: 'rgba(255,255,255,0.2)', borderTopColor: '#FFFFFF' }} />
+                  Generating...</>
+              ) : "Download Report"}
             </button>
           </form>
         </div>

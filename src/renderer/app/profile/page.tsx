@@ -11,28 +11,12 @@ export default function ProfilePage() {
     const [isEditing, setIsEditing] = useState(false);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
-    // Use empty defaults if user is not loaded yet
-    const initialUser = user || {
-        name: "Loading...",
-        email: "",
-        role: "Administrator",
-        bio: "",
-        avatar: "/placeholder-avatar.png"
-    };
-
+    const initialUser = user || { name: 'Loading...', email: '', role: 'Administrator', bio: '' };
     const [formData, setFormData] = useState(initialUser);
-
-    // Sync formData when global user changes
-    useEffect(() => {
-        if (user) setFormData(user);
-    }, [user]);
+    useEffect(() => { if (user) setFormData(user); }, [user]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: value
-        }));
+        setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
     };
 
     const handleSave = (e: React.FormEvent) => {
@@ -41,180 +25,146 @@ export default function ProfilePage() {
         setIsEditing(false);
     };
 
-    const handleCancel = () => {
-        if (user) setFormData(user);
-        setIsEditing(false);
-    };
-
     const displayUser = user || initialUser;
+    const cardStyle = { background: '#12161B', border: '1px solid #30363D', borderRadius: '16px', padding: '24px' };
+    const inputStyle = {
+        width: '100%', background: '#0D1117', border: '1px solid #30363D',
+        borderRadius: '10px', padding: '10px 14px', color: '#FFFFFF',
+        fontSize: '14px', fontWeight: 400, outline: 'none',
+    };
+    const labelStyle = { fontSize: '11px', fontWeight: 600, color: '#535865', textTransform: 'uppercase' as const, letterSpacing: '0.08em', display: 'block', marginBottom: '6px' };
 
     return (
-        <div className="space-y-8 max-w-4xl mx-auto py-8">
-            <h1 className="text-3xl md:text-4xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-500 text-center tracking-tighter mb-4">
-                User Profile
+        <div className="space-y-6 max-w-3xl mx-auto py-6 pb-12">
+            <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.02em', textAlign: 'center' }}>
+                My Profile
             </h1>
 
-            <div className="flex flex-col gap-8">
-                {/* Profile Card */}
-                <div className="w-full">
-                    <div className="border rounded-2xl p-4 md:p-5 flex flex-col items-center text-center space-y-4 shadow-xl active:scale-[0.99] transition-all duration-300"
-                        style={{
-                            background: 'linear-gradient(135deg, #020617 0%, #000000 100%)',
-                            borderColor: 'rgba(51, 65, 85, 0.3)'
-                        }}>
-                        <div className="w-40 h-40 rounded-full bg-black/40 flex items-center justify-center border-4 border-white/5 overflow-hidden shadow-2xl mb-4">
-                            {/* Fallback avatar if no image */}
-                            <span className="text-6xl font-black text-white/20">{displayUser.name.charAt(0)}</span>
-                        </div>
-                        <div>
-                            <h2 className="text-2xl font-black text-white tracking-tight">{displayUser.name}</h2>
-                            <p className="text-neutral-400 text-lg font-bold mt-1">{displayUser.email}</p>
-                        </div>
-                        <div className="flex items-center space-x-2 px-3 py-1 bg-blue-500/10 text-blue-400 rounded-full text-xs font-medium border border-blue-500/20">
-                            <Shield size={14} />
-                            <span>{displayUser.role}</span>
-                        </div>
-                        <button
-                            onClick={() => setIsEditing(!isEditing)}
-                            className="w-full mt-4 flex items-center justify-center space-x-2 bg-neutral-800 hover:bg-neutral-700 text-white py-2 px-4 rounded-lg transition-colors border border-neutral-700 text-sm"
-                        >
-                            {isEditing ? (
-                                <>
-                                    <X size={16} />
-                                    <span>Cancel Editing</span>
-                                </>
-                            ) : (
-                                <>
-                                    <Edit2 size={16} />
-                                    <span>Edit Profile</span>
-                                </>
-                            )}
-                        </button>
-                        <button
-                            onClick={() => setShowLogoutConfirm(true)}
-                            className="w-full flex items-center justify-center space-x-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 py-2.5 px-4 rounded-lg transition-all border border-red-500/20 text-sm font-bold active:scale-[0.98]"
-                        >
-                            <LogOut size={16} />
-                            <span>Logout</span>
-                        </button>
+            <div className="flex flex-col gap-6">
+                {/* Avatar card */}
+                <div style={{ ...cardStyle, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', textAlign: 'center' }}>
+                    <div style={{
+                        width: '96px', height: '96px', borderRadius: '50%',
+                        background: '#161B22', border: '2px solid #30363D',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                        <span style={{ fontSize: '36px', fontWeight: 700, color: '#535865' }}>
+                            {displayUser.name.charAt(0).toUpperCase()}
+                        </span>
                     </div>
+                    <div>
+                        <h2 style={{ fontSize: '18px', fontWeight: 600, color: '#FFFFFF' }}>{displayUser.name}</h2>
+                        <p style={{ fontSize: '14px', fontWeight: 400, color: '#989898', marginTop: '4px' }}>{displayUser.email}</p>
+                    </div>
+                    <div style={{
+                        display: 'flex', alignItems: 'center', gap: '6px',
+                        background: 'rgba(82,114,197,0.1)', border: '1px solid rgba(82,114,197,0.2)',
+                        borderRadius: '99px', padding: '4px 12px',
+                    }}>
+                        <Shield size={13} style={{ color: '#5272C5' }} />
+                        <span style={{ fontSize: '12px', fontWeight: 500, color: '#5272C5' }}>{displayUser.role}</span>
+                    </div>
+
+                    <button onClick={() => setIsEditing(!isEditing)}
+                        className="w-full flex items-center justify-center gap-2 py-2 rounded-xl transition-all"
+                        style={{ background: '#161B22', border: '1px solid #30363D', color: '#BABABA', fontSize: '13px', fontWeight: 500 }}
+                        onMouseEnter={e => (e.currentTarget.style.borderColor = '#445C9A')}
+                        onMouseLeave={e => (e.currentTarget.style.borderColor = '#30363D')}
+                    >
+                        {isEditing ? <><X size={15} /> Cancel Editing</> : <><Edit2 size={15} /> Edit Profile</>}
+                    </button>
+
+                    <button onClick={() => setShowLogoutConfirm(true)}
+                        className="w-full flex items-center justify-center gap-2 py-2 rounded-xl transition-all"
+                        style={{ background: 'rgba(248,81,73,0.08)', border: '1px solid rgba(248,81,73,0.2)', color: '#F85149', fontSize: '13px', fontWeight: 500 }}
+                        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(248,81,73,0.15)')}
+                        onMouseLeave={e => (e.currentTarget.style.background = 'rgba(248,81,73,0.08)')}
+                    >
+                        <LogOut size={15} /> Logout
+                    </button>
                 </div>
 
-                {/* Details & Edit Section */}
-                <div className="w-full space-y-6">
+                {/* Bio */}
+                <div style={cardStyle}>
+                    <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#FFFFFF', marginBottom: '12px' }}>About</h3>
+                    <p style={{ fontSize: '14px', fontWeight: 400, color: '#989898', lineHeight: 1.6 }}>{displayUser.bio || 'No bio set.'}</p>
+                </div>
 
-                    {/* Bio Section (Always Visible) */}
-                    <div className="border rounded-2xl p-4 md:p-5 shadow-xl transition-all duration-300"
-                        style={{
-                            background: 'linear-gradient(135deg, #020617 0%, #000000 100%)',
-                            borderColor: 'rgba(51, 65, 85, 0.3)'
-                        }}>
-                        <h3 className="text-xl font-black text-white mb-4 flex items-center tracking-tight">
-                            About
-                        </h3>
-                        <p className="text-neutral-400 leading-relaxed font-bold text-lg">
-                            {displayUser.bio}
-                        </p>
-                    </div>
-
-                    {/* Edit Form - Conditionally Rendered */}
-                    <div className={`transition-all duration-500 ease-in-out overflow-hidden ${isEditing ? 'max-h-[800px] opacity-100 mt-6' : 'max-h-0 opacity-0'}`}>
-                        <div className="border rounded-2xl p-4 md:p-5 shadow-xl"
-                            style={{
-                                background: 'linear-gradient(135deg, #020617 0%, #000000 100%)',
-                                borderColor: 'rgba(51, 65, 85, 0.3)'
-                            }}>
-                            <h3 className="text-lg font-bold text-white mb-4">Edit Information</h3>
-                            <form onSubmit={handleSave} className="space-y-4">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-medium text-neutral-400 uppercase">Full Name</label>
-                                        <div className="relative">
-                                            <User className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" size={16} />
-                                            <input
-                                                type="text"
-                                                name="name"
-                                                value={formData.name}
-                                                onChange={handleInputChange}
-                                                className="w-full bg-neutral-950 border border-neutral-800 rounded-lg pl-10 pr-4 py-2.5 text-white focus:outline-none focus:border-blue-500 transition-colors"
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-medium text-neutral-400 uppercase">Email Address</label>
-                                        <div className="relative">
-                                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" size={16} />
-                                            <input
-                                                type="email"
-                                                name="email"
-                                                value={formData.email}
-                                                onChange={handleInputChange}
-                                                className="w-full bg-neutral-950 border border-neutral-800 rounded-lg pl-10 pr-4 py-2.5 text-white focus:outline-none focus:border-blue-500 transition-colors"
-                                            />
-                                        </div>
-                                    </div>
+                {/* Edit form */}
+                <div style={{
+                    ...cardStyle,
+                    maxHeight: isEditing ? '600px' : '0',
+                    opacity: isEditing ? 1 : 0,
+                    overflow: 'hidden',
+                    padding: isEditing ? '24px' : '0 24px',
+                    transition: 'max-height 0.4s ease, opacity 0.3s ease, padding 0.3s ease',
+                }}>
+                    <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#FFFFFF', marginBottom: '16px' }}>Edit Information</h3>
+                    <form onSubmit={handleSave} className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label style={labelStyle}>Full Name</label>
+                                <div style={{ position: 'relative' }}>
+                                    <User size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#535865' }} />
+                                    <input type="text" name="name" value={formData.name} onChange={handleInputChange}
+                                        style={{ ...inputStyle, paddingLeft: '36px' }} />
                                 </div>
-
-                                <div className="space-y-1">
-                                    <label className="text-xs font-medium text-neutral-400 uppercase">Bio</label>
-                                    <textarea
-                                        name="bio"
-                                        value={formData.bio}
-                                        onChange={handleInputChange}
-                                        rows={4}
-                                        className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-3 text-white focus:outline-none focus:border-blue-500 transition-colors resize-none"
-                                    ></textarea>
+                            </div>
+                            <div>
+                                <label style={labelStyle}>Email Address</label>
+                                <div style={{ position: 'relative' }}>
+                                    <Mail size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#535865' }} />
+                                    <input type="email" name="email" value={formData.email} onChange={handleInputChange}
+                                        style={{ ...inputStyle, paddingLeft: '36px' }} />
                                 </div>
-
-                                <div className="flex justify-end pt-2">
-                                    <button
-                                        type="submit"
-                                        className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-lg font-medium transition-colors shadow-lg shadow-blue-900/20"
-                                    >
-                                        <Save size={18} />
-                                        <span>Save Changes</span>
-                                    </button>
-                                </div>
-                            </form>
+                            </div>
                         </div>
-                    </div>
+                        <div>
+                            <label style={labelStyle}>Bio</label>
+                            <textarea name="bio" value={formData.bio} onChange={handleInputChange} rows={4}
+                                style={{ ...inputStyle, resize: 'none', lineHeight: 1.6 }} />
+                        </div>
+                        <div className="flex justify-end">
+                            <button type="submit"
+                                className="flex items-center gap-2 px-5 py-2.5 rounded-xl transition-all"
+                                style={{ background: '#5272C5', color: '#FFFFFF', fontSize: '13px', fontWeight: 600 }}
+                                onMouseEnter={e => (e.currentTarget.style.background = '#445C9A')}
+                                onMouseLeave={e => (e.currentTarget.style.background = '#5272C5')}
+                            >
+                                <Save size={15} /> Save Changes
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
 
-            {/* Logout Confirmation Modal */}
+            {/* Logout modal */}
             {showLogoutConfirm && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm transition-opacity" onClick={() => setShowLogoutConfirm(false)} />
-                    <div className="relative border rounded-2xl p-8 max-w-sm w-full shadow-2xl animate-in fade-in zoom-in duration-300 transform-gpu"
-                        style={{
-                            background: 'linear-gradient(135deg, #020617 0%, #000000 100%)',
-                            borderColor: 'rgba(51, 65, 85, 0.3)'
-                        }}
-                    >
-                        <div className="flex flex-col items-center text-center space-y-4">
-                            <div className="p-4 bg-red-500/10 rounded-full text-red-500">
-                                <LogOut size={32} />
+                    <div className="fixed inset-0" style={{ background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)' }}
+                        onClick={() => setShowLogoutConfirm(false)} />
+                    <div style={{ ...cardStyle, position: 'relative', maxWidth: '360px', width: '100%', textAlign: 'center' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+                            <div style={{ padding: '12px', background: 'rgba(248,81,73,0.1)', borderRadius: '50%' }}>
+                                <LogOut size={24} style={{ color: '#F85149' }} />
                             </div>
-                            <h3 className="text-xl font-bold text-white">Confirm Logout</h3>
-                            <p className="text-neutral-400 text-sm font-medium">
+                            <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#FFFFFF' }}>Confirm Logout</h3>
+                            <p style={{ fontSize: '13px', fontWeight: 400, color: '#989898', lineHeight: 1.5 }}>
                                 Are you sure you want to log out? Your current session will be ended.
                             </p>
-                            <div className="flex gap-3 w-full pt-4">
-                                <button
-                                    onClick={() => setShowLogoutConfirm(false)}
-                                    className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white font-bold rounded-xl border border-white/5 transition-all active:scale-[0.98]"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        logout();
-                                        router.push('/login');
-                                    }}
-                                    className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl shadow-lg shadow-red-900/40 transition-all active:scale-[0.98]"
-                                >
-                                    Log Out
-                                </button>
+                            <div className="flex gap-3 w-full pt-2">
+                                <button onClick={() => setShowLogoutConfirm(false)}
+                                    className="flex-1 py-2.5 rounded-xl transition-all"
+                                    style={{ background: '#161B22', border: '1px solid #30363D', color: '#989898', fontSize: '13px', fontWeight: 500 }}
+                                    onMouseEnter={e => (e.currentTarget.style.color = '#FFFFFF')}
+                                    onMouseLeave={e => (e.currentTarget.style.color = '#989898')}
+                                >Cancel</button>
+                                <button onClick={() => { logout(); router.push('/login'); }}
+                                    className="flex-1 py-2.5 rounded-xl transition-all"
+                                    style={{ background: '#F85149', color: '#FFFFFF', fontSize: '13px', fontWeight: 600 }}
+                                    onMouseEnter={e => (e.currentTarget.style.background = '#FD5658')}
+                                    onMouseLeave={e => (e.currentTarget.style.background = '#F85149')}
+                                >Log Out</button>
                             </div>
                         </div>
                     </div>
