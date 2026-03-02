@@ -29,17 +29,17 @@ export default function SignupPage() {
   };
 
   const inputStyle = {
-    width: '100%', background: '#0D1117', border: '1px solid #30363D',
+    width: '100%', background: 'var(--background-input)', border: '1px solid var(--border)',
     borderRadius: '12px', paddingLeft: '44px', paddingRight: '16px',
     paddingTop: '12px', paddingBottom: '12px',
-    color: '#FFFFFF', fontSize: '14px', fontWeight: 400, outline: 'none',
+    color: 'var(--text-primary)', fontSize: '14px', fontWeight: 400, outline: 'none',
     transition: 'border-color 0.2s',
   };
-  const labelStyle = { fontSize: '11px', fontWeight: 600, color: '#535865', textTransform: 'uppercase' as const, letterSpacing: '0.08em', display: 'block', marginBottom: '8px' };
-  const iconStyle  = { position: 'absolute' as const, left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#535865' };
+  const labelStyle = { fontSize: '11px', fontWeight: 600, color: 'var(--text-disabled)', textTransform: 'uppercase' as const, letterSpacing: '0.08em', display: 'block', marginBottom: '8px' };
+  const iconStyle  = { position: 'absolute' as const, left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-disabled)' };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: '#000000' }}>
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'var(--background)' }}>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <div style={{ width: '100%', maxWidth: '400px' }}>
         {/* Logo */}
@@ -49,12 +49,12 @@ export default function SignupPage() {
               <Image src="/images/logo.png" alt="DataGuard" fill className="object-contain" />
             </div>
           </div>
-          <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.02em', marginBottom: '8px' }}>Create Account</h1>
-          <p style={{ fontSize: '13px', fontWeight: 400, color: '#535865' }}>Join the DataGuard security network</p>
+          <h1 style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', marginBottom: '8px' }}>Create Account</h1>
+          <p style={{ fontSize: '13px', fontWeight: 400, color: 'var(--text-disabled)' }}>Join the DataGuard security network</p>
         </div>
 
         {/* Card */}
-        <div style={{ background: '#12161B', border: '1px solid #30363D', borderRadius: '20px', padding: '32px' }}>
+        <div style={{ background: 'var(--background-card)', border: '1px solid var(--border)', borderRadius: '20px', padding: '32px' }}>
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label style={labelStyle}>Username</label>
@@ -62,8 +62,8 @@ export default function SignupPage() {
                 <User size={16} style={iconStyle} />
                 <input type="text" required placeholder="Choose a username" value={username} onChange={e => setUsername(e.target.value)}
                   style={inputStyle}
-                  onFocus={e => (e.currentTarget.style.borderColor = '#445C9A')}
-                  onBlur={e => (e.currentTarget.style.borderColor = '#30363D')}
+                  onFocus={e => (e.currentTarget.style.borderColor = 'var(--brand-main)')}
+                  onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
                 />
               </div>
             </div>
@@ -73,8 +73,8 @@ export default function SignupPage() {
                 <Mail size={16} style={iconStyle} />
                 <input type="email" required placeholder="Enter your email" value={email} onChange={e => setEmail(e.target.value)}
                   style={inputStyle}
-                  onFocus={e => (e.currentTarget.style.borderColor = '#445C9A')}
-                  onBlur={e => (e.currentTarget.style.borderColor = '#30363D')}
+                  onFocus={e => (e.currentTarget.style.borderColor = 'var(--brand-main)')}
+                  onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
                 />
               </div>
             </div>
@@ -84,29 +84,29 @@ export default function SignupPage() {
                 <Lock size={16} style={iconStyle} />
                 <input type="password" required placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)}
                   style={inputStyle}
-                  onFocus={e => (e.currentTarget.style.borderColor = '#445C9A')}
-                  onBlur={e => (e.currentTarget.style.borderColor = '#30363D')}
+                  onFocus={e => (e.currentTarget.style.borderColor = 'var(--brand-main)')}
+                  onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
                 />
               </div>
             </div>
 
             <button type="submit" disabled={isLoading}
               className="w-full flex items-center justify-center gap-2 py-3 rounded-xl transition-all"
-              style={{ background: isLoading ? '#28A745' : '#22C35D', color: '#FFFFFF', fontSize: '14px', fontWeight: 600, border: 'none', cursor: isLoading ? 'not-allowed' : 'pointer', opacity: isLoading ? 0.7 : 1 }}
-              onMouseEnter={e => { if (!isLoading) (e.currentTarget as HTMLButtonElement).style.background = '#28A745'; }}
-              onMouseLeave={e => { if (!isLoading) (e.currentTarget as HTMLButtonElement).style.background = '#22C35D'; }}
+              style={{ background: isLoading ? 'var(--success)' : 'var(--success-alt)', color: 'var(--text-on-brand)', fontSize: '14px', fontWeight: 600, border: 'none', cursor: isLoading ? 'not-allowed' : 'pointer', opacity: isLoading ? 0.7 : 1 }}
+              onMouseEnter={e => { if (!isLoading) (e.currentTarget as HTMLButtonElement).style.background = 'var(--success)'; }}
+              onMouseLeave={e => { if (!isLoading) (e.currentTarget as HTMLButtonElement).style.background = 'var(--success-alt)'; }}
             >
               {isLoading
-                ? <><div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(255,255,255,0.2)', borderTopColor: '#fff' }} /> Creating account...</>
+                ? <><div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--spinner-track)', borderTopColor: 'var(--text-on-brand)' }} /> Creating account...</>
                 : <>Sign Up <UserPlus size={16} /></>}
             </button>
           </form>
 
-          <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid #1A1F28', textAlign: 'center' }}>
+          <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid var(--surface-1)', textAlign: 'center' }}>
             <Link href="/login" className="inline-flex items-center gap-2 transition-all group"
-              style={{ fontSize: '13px', fontWeight: 500, color: '#535865', textDecoration: 'none' }}
-              onMouseEnter={e => (e.currentTarget.style.color = '#FFFFFF')}
-              onMouseLeave={e => (e.currentTarget.style.color = '#535865')}
+              style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-disabled)', textDecoration: 'none' }}
+              onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-disabled)')}
             >
               <ArrowLeft size={14} /> Back to Login
             </Link>

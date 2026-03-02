@@ -18,9 +18,9 @@ const DATE_RANGE_OPTIONS = [
   { value: 'all',    label: 'Up till Today',   description: 'All historical data up to now' },
 ];
 const FORMAT_OPTIONS = [
-  { id: 'pdf',  label: 'PDF',  color: { active: '#F85149', bg: 'rgba(248,81,73,0.1)',   border: 'rgba(248,81,73,0.3)'   }, icon: FileText },
-  { id: 'xlsx', label: 'XLSX', color: { active: '#22C35D', bg: 'rgba(34,195,93,0.1)',   border: 'rgba(34,195,93,0.3)'   }, icon: FileSpreadsheet },
-  { id: 'json', label: 'JSON', color: { active: '#F8C149', bg: 'rgba(248,193,73,0.1)',  border: 'rgba(248,193,73,0.3)'  }, icon: FileJson },
+  { id: 'pdf',  label: 'PDF',  color: { active: 'var(--danger)', bg: 'var(--danger-a10)',   border: 'var(--danger-a30)'   }, icon: FileText },
+  { id: 'xlsx', label: 'XLSX', color: { active: 'var(--success-alt)', bg: 'var(--success-a10)',   border: 'var(--success-a30)'   }, icon: FileSpreadsheet },
+  { id: 'json', label: 'JSON', color: { active: 'var(--warning)', bg: 'var(--warning-a10)',  border: 'var(--warning-a30)'  }, icon: FileJson },
 ];
 
 function formatBytes(bytes: number) {
@@ -80,14 +80,14 @@ export default function ReportsPage() {
   };
 
   const formatIconEl = (fmt: string) => {
-    if (fmt === 'json')  return <FileJson size={18} style={{ color: '#F8C149' }} />;
-    if (fmt === 'xlsx')  return <FileSpreadsheet size={18} style={{ color: '#22C35D' }} />;
-    return <FileText size={18} style={{ color: '#F85149' }} />;
+    if (fmt === 'json')  return <FileJson size={18} style={{ color: 'var(--warning)' }} />;
+    if (fmt === 'xlsx')  return <FileSpreadsheet size={18} style={{ color: 'var(--success-alt)' }} />;
+    return <FileText size={18} style={{ color: 'var(--danger)' }} />;
   };
 
-  const cardStyle = { background: '#12161B', border: '1px solid #30363D', borderRadius: '16px' };
-  const thStyle = { padding: '12px 20px', fontSize: '11px', fontWeight: 600 as const, color: '#535865', textTransform: 'uppercase' as const, letterSpacing: '0.08em' };
-  const inputStyle = { background: '#0D1117', border: '1px solid #30363D', borderRadius: '10px', padding: '10px 14px', color: '#FFFFFF', fontSize: '14px', outline: 'none', width: '100%' };
+  const cardStyle = { background: 'var(--background-card)', border: '1px solid var(--border)', borderRadius: '16px' };
+  const thStyle = { padding: '12px 20px', fontSize: '11px', fontWeight: 600 as const, color: 'var(--text-disabled)', textTransform: 'uppercase' as const, letterSpacing: '0.08em' };
+  const inputStyle = { background: 'var(--background-input)', border: '1px solid var(--border)', borderRadius: '10px', padding: '10px 14px', color: 'var(--text-primary)', fontSize: '14px', outline: 'none', width: '100%' };
 
   return (
     <div className="space-y-6 pb-10">
@@ -95,11 +95,11 @@ export default function ReportsPage() {
 
       {/* Generator */}
       <div style={cardStyle} className="overflow-hidden">
-        <div style={{ padding: '20px 24px', borderBottom: '1px solid #30363D' }}>
-          <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.02em' }}>Reports & Analytics</h1>
+        <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)' }}>
+          <h1 style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Reports & Analytics</h1>
         </div>
         <div style={{ padding: '24px' }} className="space-y-6">
-          <div className="flex items-center gap-2" style={{ color: '#5272C5', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+          <div className="flex items-center gap-2" style={{ color: 'var(--brand-light)', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
             <BarChart3 size={16} /> Report Generator
           </div>
 
@@ -126,9 +126,9 @@ export default function ReportsPage() {
                         className="flex items-center gap-2 px-4 py-2 rounded-xl transition-all"
                         style={{
                           fontSize: '13px', fontWeight: 600,
-                          color: active ? fmt.color.active : '#989898',
+                          color: active ? fmt.color.active : 'var(--text-tertiary)',
                           background: active ? fmt.color.bg : 'transparent',
-                          border: `1px solid ${active ? fmt.color.border : '#30363D'}`,
+                          border: `1px solid ${active ? fmt.color.border : 'var(--border)'}`,
                         }}
                       ><Icon size={14} />{fmt.label}</button>
                     );
@@ -138,23 +138,23 @@ export default function ReportsPage() {
             </div>
             <div>
               <label style={{ ...thStyle, display: 'block', marginBottom: '8px', padding: 0 }}>
-                Report Name <span style={{ textTransform: 'none', fontWeight: 400, color: '#30363D' }}>(optional)</span>
+                Report Name <span style={{ textTransform: 'none', fontWeight: 400, color: 'var(--border)' }}>(optional)</span>
               </label>
               <input type="text" value={reportName} onChange={(e) => setReportName(e.target.value)}
                 placeholder="e.g. Q1 Security Audit" style={inputStyle} />
-              <p style={{ fontSize: '12px', color: '#535865', marginTop: '6px' }}>Leave blank to auto-name</p>
+              <p style={{ fontSize: '12px', color: 'var(--text-disabled)', marginTop: '6px' }}>Leave blank to auto-name</p>
             </div>
           </div>
 
           <div className="flex justify-end">
             <button onClick={handleGenerate} disabled={isGenerating}
               className="flex items-center gap-2 px-6 py-3 rounded-xl transition-all"
-              style={{ background: isGenerating ? '#3B5189' : '#5272C5', color: '#FFFFFF', fontSize: '14px', fontWeight: 600, opacity: isGenerating ? 0.7 : 1 }}
-              onMouseEnter={e => { if (!isGenerating) (e.currentTarget as HTMLButtonElement).style.background = '#445C9A'; }}
-              onMouseLeave={e => { if (!isGenerating) (e.currentTarget as HTMLButtonElement).style.background = '#5272C5'; }}
+              style={{ background: isGenerating ? 'var(--brand-mid)' : 'var(--brand-light)', color: 'var(--text-on-brand)', fontSize: '14px', fontWeight: 600, opacity: isGenerating ? 0.7 : 1 }}
+              onMouseEnter={e => { if (!isGenerating) (e.currentTarget as HTMLButtonElement).style.background = 'var(--brand-main)'; }}
+              onMouseLeave={e => { if (!isGenerating) (e.currentTarget as HTMLButtonElement).style.background = 'var(--brand-light)'; }}
             >
               {isGenerating
-                ? <><div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(255,255,255,0.2)', borderTopColor: '#fff' }} /> Generating...</>
+                ? <><div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--spinner-track)', borderTopColor: 'var(--text-on-brand)' }} /> Generating...</>
                 : <><Download size={16} /> Generate & Download</>}
             </button>
           </div>
@@ -163,13 +163,13 @@ export default function ReportsPage() {
 
       {/* History */}
       <div style={cardStyle} className="overflow-hidden">
-        <div className="flex items-center justify-between" style={{ padding: '16px 24px', borderBottom: '1px solid #30363D' }}>
-          <span style={{ fontSize: '15px', fontWeight: 600, color: '#FFFFFF' }}>Generated Reports</span>
-          {reports.length > 0 && <span style={{ fontSize: '13px', color: '#535865' }}>{reports.length} total</span>}
+        <div className="flex items-center justify-between" style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)' }}>
+          <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>Generated Reports</span>
+          {reports.length > 0 && <span style={{ fontSize: '13px', color: 'var(--text-disabled)' }}>{reports.length} total</span>}
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left">
-            <thead style={{ background: '#161B22', borderBottom: '1px solid #30363D' }}>
+            <thead style={{ background: 'var(--background-subtle)', borderBottom: '1px solid var(--border)' }}>
               <tr>
                 {['Report Name','Type','Format','Generated','Size','Actions'].map(h => (
                   <th key={h} style={thStyle}>{h}</th>
@@ -178,42 +178,42 @@ export default function ReportsPage() {
             </thead>
             <tbody>
               {loadingReports ? (
-                <tr><td colSpan={6} style={{ padding: '48px', textAlign: 'center', color: '#535865', fontSize: '14px' }}>Loading...</td></tr>
+                <tr><td colSpan={6} style={{ padding: '48px', textAlign: 'center', color: 'var(--text-disabled)', fontSize: '14px' }}>Loading...</td></tr>
               ) : reports.length === 0 ? (
                 <tr><td colSpan={6} style={{ padding: '60px', textAlign: 'center' }}>
-                  <FileText size={32} style={{ color: '#30363D', margin: '0 auto 12px' }} />
-                  <p style={{ color: '#535865', fontWeight: 500 }}>No reports yet</p>
-                  <p style={{ color: '#30363D', fontSize: '13px', marginTop: '4px' }}>Generate a report above to see it here.</p>
+                  <FileText size={32} style={{ color: 'var(--border)', margin: '0 auto 12px' }} />
+                  <p style={{ color: 'var(--text-disabled)', fontWeight: 500 }}>No reports yet</p>
+                  <p style={{ color: 'var(--border)', fontSize: '13px', marginTop: '4px' }}>Generate a report above to see it here.</p>
                 </td></tr>
               ) : reports.map((report, i) => (
                 <tr key={report.id}
-                    style={{ borderTop: i > 0 ? '1px solid #1A1F28' : undefined }}
-                    onMouseEnter={e => (e.currentTarget.style.background = '#161B22')}
+                    style={{ borderTop: i > 0 ? '1px solid var(--surface-1)' : undefined }}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--background-subtle)')}
                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                 >
                   <td style={{ padding: '14px 20px' }}>
                     <div className="flex items-center gap-3">
-                      <div style={{ padding: '8px', background: '#161B22', borderRadius: '8px' }}>{formatIconEl(report.format)}</div>
+                      <div style={{ padding: '8px', background: 'var(--background-subtle)', borderRadius: '8px' }}>{formatIconEl(report.format)}</div>
                       <div>
-                        <p style={{ fontSize: '14px', fontWeight: 500, color: '#FFFFFF' }}>{report.name}</p>
-                        <p style={{ fontSize: '12px', color: '#535865', marginTop: '2px' }}>{report.dateRange}</p>
+                        <p style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-primary)' }}>{report.name}</p>
+                        <p style={{ fontSize: '12px', color: 'var(--text-disabled)', marginTop: '2px' }}>{report.dateRange}</p>
                       </div>
                     </div>
                   </td>
-                  <td style={{ padding: '14px 20px', fontSize: '13px', color: '#989898', textTransform: 'capitalize' }}>{report.reportType}</td>
+                  <td style={{ padding: '14px 20px', fontSize: '13px', color: 'var(--text-tertiary)', textTransform: 'capitalize' }}>{report.reportType}</td>
                   <td style={{ padding: '14px 20px', textAlign: 'center' }}>
                     <span style={{
                       fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em',
                       padding: '2px 10px', borderRadius: '6px',
-                      ...(report.format === 'json' ? { color: '#F8C149', background: 'rgba(248,193,73,0.1)', border: '1px solid rgba(248,193,73,0.2)' }
-                        : report.format === 'xlsx' ? { color: '#22C35D', background: 'rgba(34,195,93,0.1)', border: '1px solid rgba(34,195,93,0.2)' }
-                        : { color: '#F85149', background: 'rgba(248,81,73,0.1)', border: '1px solid rgba(248,81,73,0.2)' }),
+                      ...(report.format === 'json' ? { color: 'var(--warning)', background: 'var(--warning-a10)', border: '1px solid var(--warning-a20)' }
+                        : report.format === 'xlsx' ? { color: 'var(--success-alt)', background: 'var(--success-a10)', border: '1px solid var(--success-a20)' }
+                        : { color: 'var(--danger)', background: 'var(--danger-a10)', border: '1px solid var(--danger-a20)' }),
                     }}>{report.format}</span>
                   </td>
-                  <td style={{ padding: '14px 20px', textAlign: 'center', fontSize: '13px', color: '#535865' }}>
+                  <td style={{ padding: '14px 20px', textAlign: 'center', fontSize: '13px', color: 'var(--text-disabled)' }}>
                     {new Date(report.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </td>
-                  <td style={{ padding: '14px 20px', textAlign: 'center', fontSize: '13px', color: '#535865' }}>
+                  <td style={{ padding: '14px 20px', textAlign: 'center', fontSize: '13px', color: 'var(--text-disabled)' }}>
                     {report.status === 'completed' ? formatBytes(report.fileSizeBytes) : report.status}
                   </td>
                   <td style={{ padding: '14px 20px' }}>
@@ -221,19 +221,19 @@ export default function ReportsPage() {
                       {report.status === 'completed' && (
                         <button onClick={() => handleDownload(report)} disabled={downloadingId === report.id}
                           className="p-1.5 rounded-lg transition-all disabled:opacity-50"
-                          style={{ color: '#535865' }}
-                          onMouseEnter={e => { e.currentTarget.style.color = '#5272C5'; e.currentTarget.style.background = 'rgba(82,114,197,0.1)'; }}
-                          onMouseLeave={e => { e.currentTarget.style.color = '#535865'; e.currentTarget.style.background = 'transparent'; }}
+                          style={{ color: 'var(--text-disabled)' }}
+                          onMouseEnter={e => { e.currentTarget.style.color = 'var(--brand-light)'; e.currentTarget.style.background = 'var(--brand-a10)'; }}
+                          onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-disabled)'; e.currentTarget.style.background = 'transparent'; }}
                         >
                           {downloadingId === report.id
-                            ? <div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(255,255,255,0.2)', borderTopColor: '#fff' }} />
+                            ? <div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--spinner-track)', borderTopColor: 'var(--text-primary)' }} />
                             : <Download size={15} />}
                         </button>
                       )}
                       <button onClick={() => setDeleteTarget(report)}
-                        className="p-1.5 rounded-lg transition-all" style={{ color: '#535865' }}
-                        onMouseEnter={e => { e.currentTarget.style.color = '#F85149'; e.currentTarget.style.background = 'rgba(248,81,73,0.1)'; }}
-                        onMouseLeave={e => { e.currentTarget.style.color = '#535865'; e.currentTarget.style.background = 'transparent'; }}
+                        className="p-1.5 rounded-lg transition-all" style={{ color: 'var(--text-disabled)' }}
+                        onMouseEnter={e => { e.currentTarget.style.color = 'var(--danger)'; e.currentTarget.style.background = 'var(--danger-a10)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-disabled)'; e.currentTarget.style.background = 'transparent'; }}
                       ><Trash2 size={15} /></button>
                     </div>
                   </td>

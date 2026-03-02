@@ -40,15 +40,15 @@ const REGEX_PATTERNS = [
 const DEFAULT: Policy = { id: "", name: "", description: "", type: "KEYWORD", pattern: "", status: "Active" };
 
 const labelStyle: React.CSSProperties = {
-    fontSize: '11px', fontWeight: 600, color: '#535865',
+    fontSize: '11px', fontWeight: 600, color: 'var(--text-disabled)',
     textTransform: 'uppercase', letterSpacing: '0.08em',
     display: 'block', marginBottom: '8px',
 };
 
 const inputStyle: React.CSSProperties = {
-    width: '100%', background: '#0D1117',
-    border: '1px solid #30363D', borderRadius: '10px',
-    padding: '9px 12px', color: '#FFFFFF',
+    width: '100%', background: 'var(--background-input)',
+    border: '1px solid var(--border)', borderRadius: '10px',
+    padding: '9px 12px', color: 'var(--text-primary)',
     fontSize: '13px', outline: 'none',
     transition: 'border-color 0.15s ease',
     boxSizing: 'border-box',
@@ -81,7 +81,7 @@ const PolicyModal: React.FC<PolicyModalProps> = ({ isOpen, onClose, policy, onSa
             style={{
                 position: 'fixed', inset: 0, zIndex: 50,
                 display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px',
-                backgroundColor: `rgba(0,0,0,${animating ? 0.7 : 0})`,
+                backgroundColor: animating ? 'var(--overlay-medium)' : 'transparent',
                 backdropFilter: `blur(${animating ? 6 : 0}px)`,
                 transition: 'background-color 250ms ease, backdrop-filter 250ms ease',
             }}
@@ -89,11 +89,11 @@ const PolicyModal: React.FC<PolicyModalProps> = ({ isOpen, onClose, policy, onSa
             <div
                 onClick={e => e.stopPropagation()}
                 style={{
-                    background: '#12161B',
-                    border: '1px solid #30363D',
+                    background: 'var(--background-card)',
+                    border: '1px solid var(--border)',
                     borderRadius: '16px',
                     width: '100%', maxWidth: '480px',
-                    boxShadow: '0 24px 64px rgba(0,0,0,0.6)',
+                    boxShadow: '0 24px 64px var(--overlay-light)',
                     opacity: animating ? 1 : 0,
                     transform: animating ? 'scale(1) translateY(0)' : 'scale(0.94) translateY(8px)',
                     transition: 'opacity 250ms cubic-bezier(0.16,1,0.3,1), transform 250ms cubic-bezier(0.16,1,0.3,1)',
@@ -102,17 +102,17 @@ const PolicyModal: React.FC<PolicyModalProps> = ({ isOpen, onClose, policy, onSa
                 {/* Header */}
                 <div style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '18px 20px', borderBottom: '1px solid #1A1F28',
+                    padding: '18px 20px', borderBottom: '1px solid var(--surface-1)',
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <div style={{
                             width: '32px', height: '32px', borderRadius: '8px',
-                            background: 'rgba(82,114,197,0.12)', border: '1px solid rgba(82,114,197,0.25)',
+                            background: 'var(--brand-a12)', border: '1px solid var(--brand-a25)',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}>
-                            <Shield size={16} style={{ color: '#5272C5' }} />
+                            <Shield size={16} style={{ color: 'var(--brand-light)' }} />
                         </div>
-                        <span style={{ fontSize: '15px', fontWeight: 600, color: '#FFFFFF' }}>
+                        <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>
                             {isNew ? 'New Policy' : 'Edit Policy'}
                         </span>
                     </div>
@@ -121,12 +121,12 @@ const PolicyModal: React.FC<PolicyModalProps> = ({ isOpen, onClose, policy, onSa
                         style={{
                             width: '28px', height: '28px', borderRadius: '8px',
                             background: 'transparent', border: '1px solid transparent',
-                            color: '#535865', cursor: 'pointer', display: 'flex',
+                            color: 'var(--text-disabled)', cursor: 'pointer', display: 'flex',
                             alignItems: 'center', justifyContent: 'center',
                             transition: 'all 0.15s ease',
                         }}
-                        onMouseEnter={e => { e.currentTarget.style.background = '#161B22'; e.currentTarget.style.borderColor = '#30363D'; e.currentTarget.style.color = '#FFFFFF'; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent'; e.currentTarget.style.color = '#535865'; }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'var(--background-subtle)'; e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent'; e.currentTarget.style.color = 'var(--text-disabled)'; }}
                     >
                         <X size={15} />
                     </button>
@@ -145,8 +145,8 @@ const PolicyModal: React.FC<PolicyModalProps> = ({ isOpen, onClose, policy, onSa
                             placeholder="e.g. CNIC Detection Policy"
                             onChange={e => setFormData(p => ({ ...p, name: e.target.value }))}
                             style={inputStyle}
-                            onFocus={e => (e.currentTarget.style.borderColor = '#445C9A')}
-                            onBlur={e => (e.currentTarget.style.borderColor = '#30363D')}
+                            onFocus={e => (e.currentTarget.style.borderColor = 'var(--brand-main)')}
+                            onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
                         />
                     </div>
 
@@ -158,8 +158,8 @@ const PolicyModal: React.FC<PolicyModalProps> = ({ isOpen, onClose, policy, onSa
                             placeholder="Describe what this policy detects..."
                             onChange={e => setFormData(p => ({ ...p, description: e.target.value }))}
                             style={{ ...inputStyle, resize: 'none', lineHeight: 1.5 }}
-                            onFocus={e => (e.currentTarget.style.borderColor = '#445C9A')}
-                            onBlur={e => (e.currentTarget.style.borderColor = '#30363D')}
+                            onFocus={e => (e.currentTarget.style.borderColor = 'var(--brand-main)')}
+                            onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
                         />
                     </div>
 
@@ -197,13 +197,13 @@ const PolicyModal: React.FC<PolicyModalProps> = ({ isOpen, onClose, policy, onSa
                                 {formData.pattern && (
                                     <div style={{
                                         marginTop: '8px', padding: '10px 12px',
-                                        background: '#0D1117', border: '1px solid #30363D',
+                                        background: 'var(--background-input)', border: '1px solid var(--border)',
                                         borderRadius: '8px',
                                     }}>
-                                        <p style={{ fontSize: '11px', color: '#535865', fontWeight: 500, marginBottom: '4px' }}>
+                                        <p style={{ fontSize: '11px', color: 'var(--text-disabled)', fontWeight: 500, marginBottom: '4px' }}>
                                             Pattern preview
                                         </p>
-                                        <code style={{ fontSize: '11px', color: '#5272C5', wordBreak: 'break-all' }}>
+                                        <code style={{ fontSize: '11px', color: 'var(--brand-light)', wordBreak: 'break-all' }}>
                                             {formData.pattern}
                                         </code>
                                     </div>
@@ -215,8 +215,8 @@ const PolicyModal: React.FC<PolicyModalProps> = ({ isOpen, onClose, policy, onSa
                                 placeholder="e.g. confidential, salary, passport"
                                 onChange={e => setFormData(p => ({ ...p, pattern: e.target.value }))}
                                 style={inputStyle}
-                                onFocus={e => (e.currentTarget.style.borderColor = '#445C9A')}
-                                onBlur={e => (e.currentTarget.style.borderColor = '#30363D')}
+                                onFocus={e => (e.currentTarget.style.borderColor = 'var(--brand-main)')}
+                                onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
                             />
                         )}
                     </div>
@@ -227,12 +227,12 @@ const PolicyModal: React.FC<PolicyModalProps> = ({ isOpen, onClose, policy, onSa
                             type="button" onClick={onClose}
                             style={{
                                 padding: '9px 18px', borderRadius: '10px',
-                                background: '#161B22', border: '1px solid #30363D',
-                                color: '#989898', fontSize: '13px', fontWeight: 500,
+                                background: 'var(--background-subtle)', border: '1px solid var(--border)',
+                                color: 'var(--text-tertiary)', fontSize: '13px', fontWeight: 500,
                                 cursor: 'pointer', transition: 'all 0.15s ease',
                             }}
-                            onMouseEnter={e => { e.currentTarget.style.color = '#FFFFFF'; e.currentTarget.style.borderColor = '#535865'; }}
-                            onMouseLeave={e => { e.currentTarget.style.color = '#989898'; e.currentTarget.style.borderColor = '#30363D'; }}
+                            onMouseEnter={e => { e.currentTarget.style.color = 'var(--text-primary)'; e.currentTarget.style.borderColor = 'var(--text-disabled)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-tertiary)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
                         >
                             Cancel
                         </button>
@@ -241,16 +241,16 @@ const PolicyModal: React.FC<PolicyModalProps> = ({ isOpen, onClose, policy, onSa
                             disabled={isRegex && !formData.pattern}
                             style={{
                                 padding: '9px 18px', borderRadius: '10px',
-                                background: isRegex && !formData.pattern ? '#3B5189' : '#5272C5',
-                                border: 'none', color: '#FFFFFF',
+                                background: isRegex && !formData.pattern ? 'var(--brand-mid)' : 'var(--brand-light)',
+                                border: 'none', color: 'var(--text-on-brand)',
                                 fontSize: '13px', fontWeight: 600,
                                 cursor: isRegex && !formData.pattern ? 'not-allowed' : 'pointer',
                                 opacity: isRegex && !formData.pattern ? 0.6 : 1,
                                 display: 'flex', alignItems: 'center', gap: '8px',
                                 transition: 'background 0.15s ease',
                             }}
-                            onMouseEnter={e => { if (!(isRegex && !formData.pattern)) e.currentTarget.style.background = '#445C9A'; }}
-                            onMouseLeave={e => { if (!(isRegex && !formData.pattern)) e.currentTarget.style.background = '#5272C5'; }}
+                            onMouseEnter={e => { if (!(isRegex && !formData.pattern)) e.currentTarget.style.background = 'var(--brand-main)'; }}
+                            onMouseLeave={e => { if (!(isRegex && !formData.pattern)) e.currentTarget.style.background = 'var(--brand-light)'; }}
                         >
                             <Save size={14} />
                             {isNew ? 'Create Policy' : 'Save Changes'}

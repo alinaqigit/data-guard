@@ -11,16 +11,16 @@ export default function AlertsPage() {
     const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
 
     const severityColor: Record<string, { bg: string; text: string; border: string }> = {
-        High:   { bg: 'rgba(248,81,73,0.1)',   text: '#F85149', border: 'rgba(248,81,73,0.25)' },
-        Medium: { bg: 'rgba(248,193,73,0.1)',  text: '#F8C149', border: 'rgba(248,193,73,0.25)' },
-        Low:    { bg: 'rgba(82,114,197,0.1)',  text: '#5272C5', border: 'rgba(82,114,197,0.25)' },
+        High:   { bg: 'var(--danger-a10)',   text: 'var(--danger)', border: 'var(--danger-a25)' },
+        Medium: { bg: 'var(--warning-a10)',  text: 'var(--warning)', border: 'var(--warning-a25)' },
+        Low:    { bg: 'var(--brand-a10)',  text: 'var(--brand-light)', border: 'var(--brand-a25)' },
     };
 
     const statusColor: Record<string, { bg: string; text: string; border: string }> = {
-        Resolved:     { bg: 'rgba(34,195,93,0.1)',   text: '#22C35D', border: 'rgba(34,195,93,0.25)' },
-        Investigating:{ bg: 'rgba(82,114,197,0.1)',  text: '#5272C5', border: 'rgba(82,114,197,0.25)' },
-        Quarantined:  { bg: 'rgba(248,193,73,0.1)',  text: '#F8C149', border: 'rgba(248,193,73,0.25)' },
-        New:          { bg: 'rgba(48,54,61,0.5)',    text: '#989898', border: '#30363D' },
+        Resolved:     { bg: 'var(--success-a10)',   text: 'var(--success-alt)', border: 'var(--success-a25)' },
+        Investigating:{ bg: 'var(--brand-a10)',  text: 'var(--brand-light)', border: 'var(--brand-a25)' },
+        Quarantined:  { bg: 'var(--warning-a10)',  text: 'var(--warning)', border: 'var(--warning-a25)' },
+        New:          { bg: 'var(--neutral-a50)',    text: 'var(--text-tertiary)', border: 'var(--border)' },
     };
 
     const badge = (colors: { bg: string; text: string; border: string }, label: string) => (
@@ -33,14 +33,14 @@ export default function AlertsPage() {
         }}>{label}</span>
     );
 
-    const cardStyle = { background: '#12161B', border: '1px solid #30363D', borderRadius: '16px' };
-    const thStyle = { color: '#535865', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '0.08em', padding: '12px 20px' };
+    const cardStyle = { background: 'var(--background-card)', border: '1px solid var(--border)', borderRadius: '16px' };
+    const thStyle = { color: 'var(--text-disabled)', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '0.08em', padding: '12px 20px' };
 
     return (
         <div className="space-y-6 pb-10">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.02em' }}>
+                <h1 style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
                     Alerts Center
                 </h1>
                 {alerts.length > 0 && (
@@ -55,20 +55,20 @@ export default function AlertsPage() {
             {/* Table card */}
             <div style={cardStyle} className="overflow-hidden">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-5 py-4"
-                    style={{ borderBottom: '1px solid #30363D' }}>
+                    style={{ borderBottom: '1px solid var(--border)' }}>
                     <div className="flex items-center gap-3">
-                        <Bell size={20} style={{ color: '#5272C5' }} />
-                        <span style={{ fontSize: '15px', fontWeight: 600, color: '#FFFFFF' }}>Security Alerts</span>
+                        <Bell size={20} style={{ color: 'var(--brand-light)' }} />
+                        <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>Security Alerts</span>
                         {alerts.length > 0 && (
-                            <span style={{ fontSize: '13px', fontWeight: 400, color: '#535865' }}>({alerts.length})</span>
+                            <span style={{ fontSize: '13px', fontWeight: 400, color: 'var(--text-disabled)' }}>({alerts.length})</span>
                         )}
                     </div>
                     <button
                         onClick={() => setShowClearConfirm(true)}
                         disabled={alerts.length === 0}
                         className="flex items-center gap-2 px-4 py-1.5 rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-                        style={{ color: '#F85149', border: '1px solid rgba(248,81,73,0.3)', fontSize: '13px', fontWeight: 500 }}
-                        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(248,81,73,0.08)')}
+                        style={{ color: 'var(--danger)', border: '1px solid var(--danger-a30)', fontSize: '13px', fontWeight: 500 }}
+                        onMouseEnter={e => (e.currentTarget.style.background = 'var(--danger-a08)')}
                         onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                     >
                         <Trash2 size={14} /> Delete All
@@ -77,7 +77,7 @@ export default function AlertsPage() {
 
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
-                        <thead style={{ background: '#161B22', borderBottom: '1px solid #30363D' }}>
+                        <thead style={{ background: 'var(--background-subtle)', borderBottom: '1px solid var(--border)' }}>
                             <tr>
                                 {['Severity','Time','Alert Type','Description','Source','Status','Actions'].map(h => (
                                     <th key={h} style={thStyle}>{h}</th>
@@ -88,23 +88,23 @@ export default function AlertsPage() {
                             {alerts.length === 0 ? (
                                 <tr>
                                     <td colSpan={7} style={{ padding: '80px 20px', textAlign: 'center' }}>
-                                        <Bell size={40} style={{ color: '#30363D', margin: '0 auto 12px' }} />
-                                        <p style={{ color: '#535865', fontWeight: 500, fontSize: '15px' }}>No alerts found</p>
-                                        <p style={{ color: '#30363D', fontSize: '13px', marginTop: '4px' }}>Everything looks secure for now.</p>
+                                        <Bell size={40} style={{ color: 'var(--border)', margin: '0 auto 12px' }} />
+                                        <p style={{ color: 'var(--text-disabled)', fontWeight: 500, fontSize: '15px' }}>No alerts found</p>
+                                        <p style={{ color: 'var(--border)', fontSize: '13px', marginTop: '4px' }}>Everything looks secure for now.</p>
                                     </td>
                                 </tr>
                             ) : alerts.map((alert, i) => (
                                 <tr key={alert.id}
-                                    style={{ borderTop: i > 0 ? '1px solid #1A1F28' : undefined }}
-                                    onMouseEnter={e => (e.currentTarget.style.background = '#161B22')}
+                                    style={{ borderTop: i > 0 ? '1px solid var(--surface-1)' : undefined }}
+                                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--background-subtle)')}
                                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                                 >
                                     <td style={{ padding: '14px 20px' }}>{badge(severityColor[alert.severity] || severityColor.Low, alert.severity)}</td>
-                                    <td style={{ padding: '14px 20px', color: '#BABABA', fontSize: '13px', fontWeight: 400, whiteSpace: 'nowrap' }}>{alert.time}</td>
-                                    <td style={{ padding: '14px 20px', color: '#FFFFFF', fontSize: '13px', fontWeight: 500 }}>{alert.type}</td>
-                                    <td style={{ padding: '14px 20px', color: '#989898', fontSize: '13px', fontWeight: 400, minWidth: '240px', lineHeight: 1.5 }}>{alert.description}</td>
+                                    <td style={{ padding: '14px 20px', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 400, whiteSpace: 'nowrap' }}>{alert.time}</td>
+                                    <td style={{ padding: '14px 20px', color: 'var(--text-primary)', fontSize: '13px', fontWeight: 500 }}>{alert.type}</td>
+                                    <td style={{ padding: '14px 20px', color: 'var(--text-tertiary)', fontSize: '13px', fontWeight: 400, minWidth: '240px', lineHeight: 1.5 }}>{alert.description}</td>
                                     <td style={{ padding: '14px 20px' }}>
-                                        <div className="flex items-center gap-1.5" style={{ color: '#535865' }}>
+                                        <div className="flex items-center gap-1.5" style={{ color: 'var(--text-disabled)' }}>
                                             <Info size={13} />
                                             <span style={{ fontSize: '13px', fontWeight: 400 }}>{alert.source}</span>
                                         </div>
@@ -115,8 +115,8 @@ export default function AlertsPage() {
                                             {alert.status !== 'Resolved' && (
                                                 <button onClick={() => resolveAlert(alert.id)}
                                                     className="p-1.5 rounded-lg transition-colors"
-                                                    style={{ color: '#22C35D' }}
-                                                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(34,195,93,0.1)')}
+                                                    style={{ color: 'var(--success-alt)' }}
+                                                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--success-a10)')}
                                                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                                                     title="Resolve">
                                                     <CheckCircle2 size={16} />
@@ -124,9 +124,9 @@ export default function AlertsPage() {
                                             )}
                                             <button onClick={() => setDeleteTargetId(alert.id)}
                                                 className="p-1.5 rounded-lg transition-colors"
-                                                style={{ color: '#535865' }}
-                                                onMouseEnter={e => { e.currentTarget.style.color = '#F85149'; e.currentTarget.style.background = 'rgba(248,81,73,0.1)'; }}
-                                                onMouseLeave={e => { e.currentTarget.style.color = '#535865'; e.currentTarget.style.background = 'transparent'; }}
+                                                style={{ color: 'var(--text-disabled)' }}
+                                                onMouseEnter={e => { e.currentTarget.style.color = 'var(--danger)'; e.currentTarget.style.background = 'var(--danger-a10)'; }}
+                                                onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-disabled)'; e.currentTarget.style.background = 'transparent'; }}
                                                 title="Delete">
                                                 <Trash2 size={16} />
                                             </button>

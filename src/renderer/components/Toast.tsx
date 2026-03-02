@@ -21,9 +21,9 @@ const Toast: React.FC<ToastProps> = ({ message, type, onClose, duration = 4000 }
     }, []);
 
     const config = {
-        success: { color: '#22C35D', border: 'rgba(34,195,93,0.25)',  Icon: CheckCircle2,  label: 'Success' },
-        error:   { color: '#F85149', border: 'rgba(248,81,73,0.25)',  Icon: XCircle,       label: 'Error'   },
-        warning: { color: '#F8C149', border: 'rgba(248,193,73,0.25)', Icon: AlertTriangle, label: 'Alert'   },
+        success: { color: 'var(--success-alt)', border: 'var(--success-a25)',  Icon: CheckCircle2,  label: 'Success' },
+        error:   { color: 'var(--danger)', border: 'var(--danger-a25)',  Icon: XCircle,       label: 'Error'   },
+        warning: { color: 'var(--warning)', border: 'var(--warning-a25)', Icon: AlertTriangle, label: 'Alert'   },
     }[type];
 
     return (
@@ -35,20 +35,20 @@ const Toast: React.FC<ToastProps> = ({ message, type, onClose, duration = 4000 }
         }}>
             <div style={{
                 display: 'flex', alignItems: 'flex-start', gap: '12px',
-                background: '#12161B',
+                background: 'var(--background-card)',
                 border: `1px solid ${config.border}`,
                 borderLeft: `3px solid ${config.color}`,
                 borderRadius: '12px',
                 padding: '14px 16px',
                 minWidth: '280px', maxWidth: '360px',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                boxShadow: '0 8px 32px var(--shadow-color)',
             }}>
                 <config.Icon size={18} style={{ color: config.color, flexShrink: 0, marginTop: '1px' }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: '13px', fontWeight: 600, color: '#FFFFFF', marginBottom: '2px' }}>
+                    <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '2px' }}>
                         {config.label}
                     </p>
-                    <p style={{ fontSize: '12px', fontWeight: 400, color: '#989898', lineHeight: 1.5 }}>
+                    <p style={{ fontSize: '12px', fontWeight: 400, color: 'var(--text-tertiary)', lineHeight: 1.5 }}>
                         {message}
                     </p>
                 </div>
@@ -56,12 +56,12 @@ const Toast: React.FC<ToastProps> = ({ message, type, onClose, duration = 4000 }
                     onClick={onClose}
                     style={{
                         flexShrink: 0, background: 'transparent', border: 'none',
-                        color: '#535865', cursor: 'pointer', padding: '2px',
+                        color: 'var(--text-disabled)', cursor: 'pointer', padding: '2px',
                         borderRadius: '4px', transition: 'color 0.15s',
                         display: 'flex', alignItems: 'center',
                     }}
-                    onMouseEnter={e => (e.currentTarget.style.color = '#FFFFFF')}
-                    onMouseLeave={e => (e.currentTarget.style.color = '#535865')}
+                    onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
+                    onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-disabled)')}
                 >
                     <X size={14} />
                 </button>

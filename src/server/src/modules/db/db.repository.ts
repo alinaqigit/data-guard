@@ -112,6 +112,58 @@ export class dbRepository {
     stmt.run(username);
   }
 
+  public getUserByEmail(email: string): UserEntity | null {
+    const stmt = this.db.prepare(
+      "SELECT id, username, password_hash as passwordHash, email, bio, created_at as createdAt FROM users WHERE email = ? AND email != ''",
+    );
+    const user = stmt.get(email) as any;
+    if (!user) return null;
+    return {
+      id: user.id,
+      username: user.username,
+      passwordHash: user.passwordHash,
+      email: user.email || '',
+      bio: user.bio || '',
+    };
+  }
+
+  public updateUserPassword(id: number, passwordHash: string): void {
+    const stmt = this.db.prepare(
+      "UPDATE users SET password_hash = ? WHERE id = ?",
+    );
+    stmt.run(passwordHash, id);
+  }
+
+  // Remember Token operations
+
+  public createRememberToken(token: string, userId: number, expiresAt: string): void {
+    // Remove any existing tokens for this user first
+    this.deleteRememberTokensByUserId(userId);
+    const stmt = this.db.prepare(
+      "INSERT INTO remember_tokens (token, user_id, expires_at) VALUES (?, ?, ?)",
+    );
+    stmt.run(token, userId, expiresAt);
+  }
+
+  public getRememberToken(token: string): { token: string; userId: number; expiresAt: string } | null {
+    const stmt = this.db.prepare(
+      "SELECT token, user_id as userId, expires_at as expiresAt FROM remember_tokens WHERE token = ?",
+    );
+    const row = stmt.get(token) as any;
+    if (!row) return null;
+    return { token: row.token, userId: row.userId, expiresAt: row.expiresAt };
+  }
+
+  public deleteRememberToken(token: string): void {
+    const stmt = this.db.prepare("DELETE FROM remember_tokens WHERE token = ?");
+    stmt.run(token);
+  }
+
+  public deleteRememberTokensByUserId(userId: number): void {
+    const stmt = this.db.prepare("DELETE FROM remember_tokens WHERE user_id = ?");
+    stmt.run(userId);
+  }
+
   public updateUserName(
     oldUsername: string,
     newUsername: string,

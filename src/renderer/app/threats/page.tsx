@@ -18,18 +18,18 @@ const NEXT_STATUS: Record<string, string> = { New: 'Investigating', Investigatin
 const STATUS_ICON: Record<string, any> = { New: AlertTriangle, Investigating: Search, Quarantined: Box, Resolved: ShieldCheck };
 
 const severityStyle = (s: string) => s === 'High'
-  ? { color: '#F85149', bg: 'rgba(248,81,73,0.1)',   border: 'rgba(248,81,73,0.25)' }
+  ? { color: 'var(--danger)', bg: 'var(--danger-a10)',   border: 'var(--danger-a25)' }
   : s === 'Medium'
-  ? { color: '#F8C149', bg: 'rgba(248,193,73,0.1)',  border: 'rgba(248,193,73,0.25)' }
-  : { color: '#5272C5', bg: 'rgba(82,114,197,0.1)',  border: 'rgba(82,114,197,0.25)' };
+  ? { color: 'var(--warning)', bg: 'var(--warning-a10)',  border: 'var(--warning-a25)' }
+  : { color: 'var(--brand-light)', bg: 'var(--brand-a10)',  border: 'var(--brand-a25)' };
 
 const statusStyle = (s: string) => s === 'Resolved'
-  ? { color: '#22C35D', bg: 'rgba(34,195,93,0.1)',   border: 'rgba(34,195,93,0.25)' }
+  ? { color: 'var(--success-alt)', bg: 'var(--success-a10)',   border: 'var(--success-a25)' }
   : s === 'Quarantined'
-  ? { color: '#5272C5', bg: 'rgba(82,114,197,0.1)',  border: 'rgba(82,114,197,0.25)' }
+  ? { color: 'var(--brand-light)', bg: 'var(--brand-a10)',  border: 'var(--brand-a25)' }
   : s === 'Investigating'
-  ? { color: '#F8C149', bg: 'rgba(248,193,73,0.1)',  border: 'rgba(248,193,73,0.25)' }
-  : { color: '#F85149', bg: 'rgba(248,81,73,0.1)',   border: 'rgba(248,81,73,0.25)' };
+  ? { color: 'var(--warning)', bg: 'var(--warning-a10)',  border: 'var(--warning-a25)' }
+  : { color: 'var(--danger)', bg: 'var(--danger-a10)',   border: 'var(--danger-a25)' };
 
 const Badge = ({ label, style }: { label: string; style: { color: string; bg: string; border: string } }) => (
   <span style={{
@@ -56,7 +56,7 @@ export default function ThreatsPage() {
 
   const stats = [
     { label: 'Total Threats',  count: alerts.length,                                         icon: ShieldAlert, sty: severityStyle('High') },
-    { label: 'Resolved',       count: alerts.filter(a => a.status === 'Resolved').length,    icon: ShieldCheck, sty: { color: '#22C35D', bg: 'rgba(34,195,93,0.1)',  border: 'rgba(34,195,93,0.25)' } },
+    { label: 'Resolved',       count: alerts.filter(a => a.status === 'Resolved').length,    icon: ShieldCheck, sty: { color: 'var(--success-alt)', bg: 'var(--success-a10)',  border: 'var(--success-a25)' } },
     { label: 'Quarantined',    count: alerts.filter(a => a.status === 'Quarantined').length, icon: Box,         sty: severityStyle('Low') },
     { label: 'Investigating',  count: alerts.filter(a => a.status === 'Investigating').length,icon: Search,     sty: severityStyle('Medium') },
   ];
@@ -107,16 +107,16 @@ export default function ThreatsPage() {
     setConfirmState({ isOpen: false, threatId: null, mode: 'single' });
   };
 
-  const Spinner = () => <div className="w-3.5 h-3.5 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(255,255,255,0.2)', borderTopColor: '#fff' }} />;
-  const cardStyle = { background: '#12161B', border: '1px solid #30363D', borderRadius: '16px' };
-  const thStyle = { padding: '12px 20px', fontSize: '11px', fontWeight: 600 as const, color: '#535865', textTransform: 'uppercase' as const, letterSpacing: '0.08em' };
+  const Spinner = () => <div className="w-3.5 h-3.5 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--spinner-track)', borderTopColor: 'var(--text-primary)' }} />;
+  const cardStyle = { background: 'var(--background-card)', border: '1px solid var(--border)', borderRadius: '16px' };
+  const thStyle = { padding: '12px 20px', fontSize: '11px', fontWeight: 600 as const, color: 'var(--text-disabled)', textTransform: 'uppercase' as const, letterSpacing: '0.08em' };
 
   const ActionBtn = ({ onClick, title, disabled, color, hoverBg, children }: any) => (
     <button onClick={onClick} disabled={disabled} title={title}
       className="p-1.5 rounded-lg transition-all disabled:opacity-40"
-      style={{ color: '#535865' }}
+      style={{ color: 'var(--text-disabled)' }}
       onMouseEnter={e => { e.currentTarget.style.color = color; e.currentTarget.style.background = hoverBg; }}
-      onMouseLeave={e => { e.currentTarget.style.color = '#535865'; e.currentTarget.style.background = 'transparent'; }}
+      onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-disabled)'; e.currentTarget.style.background = 'transparent'; }}
     >{children}</button>
   );
 
@@ -130,7 +130,7 @@ export default function ThreatsPage() {
         isDestructive onConfirm={handleConfirmDelete}
         onCancel={() => setConfirmState({ isOpen: false, threatId: null, mode: 'single' })} />
 
-      <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.02em' }}>Threat Intelligence</h1>
+      <h1 style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Threat Intelligence</h1>
 
       {/* Stat cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -140,8 +140,8 @@ export default function ThreatsPage() {
               <stat.icon size={20} style={{ color: stat.sty.color }} />
             </div>
             <div>
-              <p style={{ fontSize: '11px', fontWeight: 600, color: '#535865', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{stat.label}</p>
-              <p style={{ fontSize: '22px', fontWeight: 700, color: '#FFFFFF', marginTop: '2px' }}>{stat.count}</p>
+              <p style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-disabled)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{stat.label}</p>
+              <p style={{ fontSize: '22px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>{stat.count}</p>
             </div>
           </div>
         ))}
@@ -150,12 +150,12 @@ export default function ThreatsPage() {
       <div className={`flex gap-6 ${selectedThreat ? 'items-start' : ''}`}>
         {/* Table */}
         <div style={{ ...cardStyle, overflow: 'hidden', flex: 1, minWidth: 0 }}>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4" style={{ padding: '16px 20px', borderBottom: '1px solid #30363D' }}>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4" style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
             <div className="flex items-center gap-3">
-              <AlertTriangle size={18} style={{ color: '#F85149' }} />
-              <span style={{ fontSize: '15px', fontWeight: 600, color: '#FFFFFF' }}>Active Threat Registry</span>
+              <AlertTriangle size={18} style={{ color: 'var(--danger)' }} />
+              <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>Active Threat Registry</span>
               {filtered.length !== alerts.length && (
-                <span style={{ fontSize: '13px', color: '#535865' }}>({filtered.length} of {alerts.length})</span>
+                <span style={{ fontSize: '13px', color: 'var(--text-disabled)' }}>({filtered.length} of {alerts.length})</span>
               )}
             </div>
             <div className="flex items-center gap-2 flex-wrap">
@@ -164,8 +164,8 @@ export default function ThreatsPage() {
               {alerts.length > 0 && (
                 <button onClick={() => setConfirmState({ isOpen: true, threatId: null, mode: 'all' })}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all"
-                  style={{ fontSize: '12px', fontWeight: 500, color: '#F85149', border: '1px solid rgba(248,81,73,0.3)' }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(248,81,73,0.08)')}
+                  style={{ fontSize: '12px', fontWeight: 500, color: 'var(--danger)', border: '1px solid var(--danger-a30)' }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--danger-a08)')}
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                 ><Trash2 size={13} /> Delete All</button>
               )}
@@ -174,15 +174,15 @@ export default function ThreatsPage() {
 
           <div className="overflow-x-auto">
             <table className="w-full text-left">
-              <thead style={{ background: '#161B22', borderBottom: '1px solid #30363D' }}>
+              <thead style={{ background: 'var(--background-subtle)', borderBottom: '1px solid var(--border)' }}>
                 <tr>{['Threat ID','Sev.','Type / Source','Status','Actions'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr>
               </thead>
               <tbody>
                 {filtered.length === 0 ? (
                   <tr><td colSpan={5} style={{ padding: '60px', textAlign: 'center' }}>
-                    <ShieldCheck size={36} style={{ color: '#30363D', margin: '0 auto 12px' }} />
-                    <p style={{ color: '#535865', fontWeight: 500 }}>{alerts.length === 0 ? 'Environment Secure' : 'No matches'}</p>
-                    <p style={{ color: '#30363D', fontSize: '13px', marginTop: '4px' }}>{alerts.length === 0 ? 'No active threats detected.' : 'Adjust your filters.'}</p>
+                    <ShieldCheck size={36} style={{ color: 'var(--border)', margin: '0 auto 12px' }} />
+                    <p style={{ color: 'var(--text-disabled)', fontWeight: 500 }}>{alerts.length === 0 ? 'Environment Secure' : 'No matches'}</p>
+                    <p style={{ color: 'var(--border)', fontSize: '13px', marginTop: '4px' }}>{alerts.length === 0 ? 'No active threats detected.' : 'Adjust your filters.'}</p>
                   </td></tr>
                 ) : filtered.map((threat, i) => {
                   const NextIcon = STATUS_ICON[NEXT_STATUS[threat.status]] || ChevronRight;
@@ -193,32 +193,32 @@ export default function ThreatsPage() {
                   return (
                     <tr key={threat.id} onClick={() => setSelectedThreat(isSelected ? null : threat as Alert)}
                       style={{
-                        borderTop: i > 0 ? '1px solid #1A1F28' : undefined,
-                        background: isSelected ? 'rgba(82,114,197,0.06)' : 'transparent',
+                        borderTop: i > 0 ? '1px solid var(--surface-1)' : undefined,
+                        background: isSelected ? 'var(--brand-a06)' : 'transparent',
                         cursor: 'pointer',
-                        borderLeft: isSelected ? '2px solid #5272C5' : '2px solid transparent',
+                        borderLeft: isSelected ? '2px solid var(--brand-light)' : '2px solid transparent',
                       }}
-                      onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = '#161B22'; }}
+                      onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'var(--background-subtle)'; }}
                       onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
                     >
                       <td style={{ padding: '14px 20px' }}>
-                        <span style={{ fontFamily: 'monospace', fontSize: '12px', color: '#535865' }}>
+                        <span style={{ fontFamily: 'monospace', fontSize: '12px', color: 'var(--text-disabled)' }}>
                           THR-{String(threat.id).slice(-6).padStart(6, '0')}
                         </span>
                       </td>
                       <td style={{ padding: '14px 20px' }}><Badge label={threat.severity} style={ssty} /></td>
                       <td style={{ padding: '14px 20px' }}>
-                        <p style={{ fontSize: '13px', fontWeight: 500, color: '#FFFFFF' }}>{threat.type}</p>
-                        <p style={{ fontSize: '11px', fontWeight: 500, color: '#535865', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: '2px' }}>{threat.source}</p>
+                        <p style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)' }}>{threat.type}</p>
+                        <p style={{ fontSize: '11px', fontWeight: 500, color: 'var(--text-disabled)', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: '2px' }}>{threat.source}</p>
                       </td>
                       <td style={{ padding: '14px 20px' }}><Badge label={threat.status} style={sttsty} /></td>
                       <td style={{ padding: '14px 20px' }} onClick={e => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-0.5">
-                          <ActionBtn onClick={() => setSelectedThreat(isSelected ? null : threat as Alert)} title="View Details" color="#5272C5" hoverBg="rgba(82,114,197,0.1)"><Eye size={15} /></ActionBtn>
-                          <ActionBtn onClick={() => handleAdvanceStatus(threat as Alert)} title={`→ ${NEXT_STATUS[threat.status]}`} color="#F8C149" hoverBg="rgba(248,193,73,0.1)"><NextIcon size={15} /></ActionBtn>
-                          <ActionBtn onClick={() => handleQuarantine(threat as Alert)} disabled={!!loading} title="Quarantine" color="#5272C5" hoverBg="rgba(82,114,197,0.1)">{loading === 'quarantine' ? <Spinner /> : <FolderX size={15} />}</ActionBtn>
-                          <ActionBtn onClick={() => handleEncrypt(threat as Alert)} disabled={!!loading} title="Encrypt" color="#22C35D" hoverBg="rgba(34,195,93,0.1)">{loading === 'encrypt' ? <Spinner /> : <Lock size={15} />}</ActionBtn>
-                          <ActionBtn onClick={() => handleDeleteFile(threat as Alert)} disabled={!!loading} title="Delete File" color="#F85149" hoverBg="rgba(248,81,73,0.1)">{loading === 'deletefile' ? <Spinner /> : <Trash2 size={15} />}</ActionBtn>
+                          <ActionBtn onClick={() => setSelectedThreat(isSelected ? null : threat as Alert)} title="View Details" color="var(--brand-light)" hoverBg="var(--brand-a10)"><Eye size={15} /></ActionBtn>
+                          <ActionBtn onClick={() => handleAdvanceStatus(threat as Alert)} title={`→ ${NEXT_STATUS[threat.status]}`} color="var(--warning)" hoverBg="var(--warning-a10)"><NextIcon size={15} /></ActionBtn>
+                          <ActionBtn onClick={() => handleQuarantine(threat as Alert)} disabled={!!loading} title="Quarantine" color="var(--brand-light)" hoverBg="var(--brand-a10)">{loading === 'quarantine' ? <Spinner /> : <FolderX size={15} />}</ActionBtn>
+                          <ActionBtn onClick={() => handleEncrypt(threat as Alert)} disabled={!!loading} title="Encrypt" color="var(--success-alt)" hoverBg="var(--success-a10)">{loading === 'encrypt' ? <Spinner /> : <Lock size={15} />}</ActionBtn>
+                          <ActionBtn onClick={() => handleDeleteFile(threat as Alert)} disabled={!!loading} title="Delete File" color="var(--danger)" hoverBg="var(--danger-a10)">{loading === 'deletefile' ? <Spinner /> : <Trash2 size={15} />}</ActionBtn>
                         </div>
                       </td>
                     </tr>
@@ -232,29 +232,29 @@ export default function ThreatsPage() {
         {/* Detail panel */}
         {selectedThreat && (
           <div style={{ ...cardStyle, width: '300px', flexShrink: 0, overflow: 'hidden' }}>
-            <div className="flex items-center justify-between" style={{ padding: '14px 16px', borderBottom: '1px solid #30363D' }}>
-              <span style={{ fontSize: '14px', fontWeight: 600, color: '#FFFFFF' }}>Threat Detail</span>
-              <button onClick={() => setSelectedThreat(null)} style={{ color: '#535865' }}
-                onMouseEnter={e => (e.currentTarget.style.color = '#FFFFFF')}
-                onMouseLeave={e => (e.currentTarget.style.color = '#535865')}
+            <div className="flex items-center justify-between" style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
+              <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>Threat Detail</span>
+              <button onClick={() => setSelectedThreat(null)} style={{ color: 'var(--text-disabled)' }}
+                onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
+                onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-disabled)')}
               ><X size={16} /></button>
             </div>
             <div style={{ padding: '16px' }} className="space-y-4">
               <div className="flex items-center justify-between">
-                <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#535865' }}>
+                <span style={{ fontFamily: 'monospace', fontSize: '11px', color: 'var(--text-disabled)' }}>
                   THR-{String(selectedThreat.id).slice(-6).padStart(6, '0')}
                 </span>
                 <Badge label={selectedThreat.severity} style={severityStyle(selectedThreat.severity)} />
               </div>
 
               {[
-                { icon: Activity, label: 'Type',    value: selectedThreat.type,        valueStyle: { color: '#FFFFFF', fontWeight: 500 } },
-                { icon: FileText, label: 'Source',  value: selectedThreat.source,      valueStyle: { color: '#BABABA' } },
-                { icon: AlertTriangle, label: 'Description', value: selectedThreat.description, valueStyle: { color: '#989898' } },
-                { icon: Clock,    label: 'Detected', value: selectedThreat.time,        valueStyle: { color: '#989898' } },
+                { icon: Activity, label: 'Type',    value: selectedThreat.type,        valueStyle: { color: 'var(--text-primary)', fontWeight: 500 } },
+                { icon: FileText, label: 'Source',  value: selectedThreat.source,      valueStyle: { color: 'var(--text-secondary)' } },
+                { icon: AlertTriangle, label: 'Description', value: selectedThreat.description, valueStyle: { color: 'var(--text-tertiary)' } },
+                { icon: Clock,    label: 'Detected', value: selectedThreat.time,        valueStyle: { color: 'var(--text-tertiary)' } },
               ].map(({ icon: Icon, label, value, valueStyle }) => (
                 <div key={label}>
-                  <div className="flex items-center gap-1.5 mb-1" style={{ fontSize: '11px', fontWeight: 600, color: '#535865', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  <div className="flex items-center gap-1.5 mb-1" style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-disabled)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                     <Icon size={11} />{label}
                   </div>
                   <p style={{ fontSize: '13px', lineHeight: 1.5, ...valueStyle }}>{value}</p>
@@ -263,28 +263,28 @@ export default function ThreatsPage() {
 
               {selectedThreat.filePath && (
                 <div>
-                  <div className="flex items-center gap-1.5 mb-1" style={{ fontSize: '11px', fontWeight: 600, color: '#535865', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  <div className="flex items-center gap-1.5 mb-1" style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-disabled)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                     <MapPin size={11} /> File Path
                   </div>
-                  <p style={{ fontSize: '11px', fontFamily: 'monospace', color: '#5272C5', wordBreak: 'break-all', lineHeight: 1.5 }}>{selectedThreat.filePath}</p>
+                  <p style={{ fontSize: '11px', fontFamily: 'monospace', color: 'var(--brand-light)', wordBreak: 'break-all', lineHeight: 1.5 }}>{selectedThreat.filePath}</p>
                 </div>
               )}
 
               <div>
-                <span style={{ fontSize: '11px', fontWeight: 600, color: '#535865', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Status</span>
+                <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-disabled)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Status</span>
                 <div style={{ marginTop: '6px' }}><Badge label={selectedThreat.status} style={statusStyle(selectedThreat.status)} /></div>
               </div>
 
-              <hr style={{ border: 'none', borderTop: '1px solid #1A1F28' }} />
+              <hr style={{ border: 'none', borderTop: '1px solid var(--surface-1)' }} />
 
               <div className="space-y-2">
-                <p style={{ fontSize: '11px', fontWeight: 600, color: '#535865', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Actions</p>
+                <p style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-disabled)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Actions</p>
                 {[
-                  { label: `Mark as ${NEXT_STATUS[selectedThreat.status]}`, action: () => handleAdvanceStatus(selectedThreat), icon: STATUS_ICON[NEXT_STATUS[selectedThreat.status]], color: '#F8C149', bg: 'rgba(248,193,73,0.1)', border: 'rgba(248,193,73,0.25)', loadKey: null },
+                  { label: `Mark as ${NEXT_STATUS[selectedThreat.status]}`, action: () => handleAdvanceStatus(selectedThreat), icon: STATUS_ICON[NEXT_STATUS[selectedThreat.status]], color: 'var(--warning)', bg: 'var(--warning-a10)', border: 'var(--warning-a25)', loadKey: null },
                   ...(selectedThreat.filePath ? [
-                    { label: 'Quarantine File', action: () => handleQuarantine(selectedThreat), icon: FolderX, color: '#5272C5', bg: 'rgba(82,114,197,0.1)', border: 'rgba(82,114,197,0.25)', loadKey: 'quarantine' },
-                    { label: 'Encrypt File',    action: () => handleEncrypt(selectedThreat),    icon: Lock,    color: '#22C35D', bg: 'rgba(34,195,93,0.1)',  border: 'rgba(34,195,93,0.25)',  loadKey: 'encrypt' },
-                    { label: 'Delete File',     action: () => handleDeleteFile(selectedThreat), icon: Trash2,  color: '#F85149', bg: 'rgba(248,81,73,0.1)',  border: 'rgba(248,81,73,0.25)',  loadKey: 'deletefile' },
+                    { label: 'Quarantine File', action: () => handleQuarantine(selectedThreat), icon: FolderX, color: 'var(--brand-light)', bg: 'var(--brand-a10)', border: 'var(--brand-a25)', loadKey: 'quarantine' },
+                    { label: 'Encrypt File',    action: () => handleEncrypt(selectedThreat),    icon: Lock,    color: 'var(--success-alt)', bg: 'var(--success-a10)',  border: 'var(--success-a25)',  loadKey: 'encrypt' },
+                    { label: 'Delete File',     action: () => handleDeleteFile(selectedThreat), icon: Trash2,  color: 'var(--danger)', bg: 'var(--danger-a10)',  border: 'var(--danger-a25)',  loadKey: 'deletefile' },
                   ] : []),
                 ].map(({ label, action, icon: Icon, color, bg, border, loadKey }) => (
                   <button key={label} onClick={action}
@@ -300,9 +300,9 @@ export default function ThreatsPage() {
                 ))}
                 <button onClick={() => setConfirmState({ isOpen: true, threatId: selectedThreat.id, mode: 'single' })}
                   className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl transition-all"
-                  style={{ color: '#989898', background: '#161B22', border: '1px solid #30363D', fontSize: '13px', fontWeight: 500 }}
-                  onMouseEnter={e => { e.currentTarget.style.color = '#F85149'; e.currentTarget.style.borderColor = 'rgba(248,81,73,0.3)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.color = '#989898'; e.currentTarget.style.borderColor = '#30363D'; }}
+                  style={{ color: 'var(--text-tertiary)', background: 'var(--background-subtle)', border: '1px solid var(--border)', fontSize: '13px', fontWeight: 500 }}
+                  onMouseEnter={e => { e.currentTarget.style.color = 'var(--danger)'; e.currentTarget.style.borderColor = 'var(--danger-a30)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-tertiary)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
                 ><X size={14} /> Delete Record Only</button>
               </div>
             </div>

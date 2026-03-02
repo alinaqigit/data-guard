@@ -8,6 +8,7 @@ import {
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
+import { useSecurity } from '@/context/SecurityContext';
 
 interface SidebarProps {
     isOpen?: boolean;
@@ -36,6 +37,7 @@ const CARD_PAD = 8;
 
 export default function Sidebar({ isOpen = false, onClose, collapsed = false, onCollapsedChange }: SidebarProps) {
     const pathname = usePathname();
+    const { resolvedTheme } = useSecurity();
     const [tooltip, setTooltip] = useState<{ name: string; y: number } | null>(null);
 
     const NavItem = ({ item }: { item: typeof NAV_ITEMS[0] }) => {
@@ -52,15 +54,15 @@ export default function Sidebar({ isOpen = false, onClose, collapsed = false, on
                             setTooltip({ name: item.name, y: r.top + r.height / 2 });
                         }
                         if (!isActive) {
-                            (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.06)';
-                            (e.currentTarget as HTMLElement).style.color = '#FFFFFF';
+                            (e.currentTarget as HTMLElement).style.background = 'var(--hover-nav)';
+                            (e.currentTarget as HTMLElement).style.color = 'var(--text-primary)';
                         }
                     }}
                     onMouseLeave={e => {
                         setTooltip(null);
                         if (!isActive) {
                             (e.currentTarget as HTMLElement).style.background = 'transparent';
-                            (e.currentTarget as HTMLElement).style.color = '#989898';
+                            (e.currentTarget as HTMLElement).style.color = 'var(--text-tertiary)';
                         }
                     }}
                     style={{
@@ -72,11 +74,11 @@ export default function Sidebar({ isOpen = false, onClose, collapsed = false, on
                         height: '36px',
                         padding: collapsed ? '0' : '0 12px',
                         gap: '10px',
-                        background: isActive ? 'rgba(82,114,197,0.15)' : 'transparent',
-                        color: isActive ? '#5272C5' : '#989898',
+                        background: isActive ? 'var(--brand-a15)' : 'transparent',
+                        color: isActive ? 'var(--brand-light)' : 'var(--text-tertiary)',
                         fontWeight: isActive ? 600 : 400,
                         // outline keeps the highlight without affecting layout box size
-                        outline: isActive ? '1px solid rgba(82,114,197,0.25)' : '1px solid transparent',
+                        outline: isActive ? '1px solid var(--brand-a25)' : '1px solid transparent',
                         outlineOffset: '-1px',
                         fontSize: '13px',
                         textDecoration: 'none',
@@ -88,7 +90,7 @@ export default function Sidebar({ isOpen = false, onClose, collapsed = false, on
                 >
                     <item.icon
                         size={17}
-                        style={{ flexShrink: 0, color: isActive ? '#5272C5' : 'inherit' }}
+                        style={{ flexShrink: 0, color: isActive ? 'var(--brand-light)' : 'inherit' }}
                     />
                     {!collapsed && <>
                         <span style={{ flex: 1, overflow: 'hidden', whiteSpace: 'nowrap' }}>
@@ -97,8 +99,8 @@ export default function Sidebar({ isOpen = false, onClose, collapsed = false, on
                         {isActive && (
                             <span style={{
                                 width: '6px', height: '6px', borderRadius: '50%',
-                                background: '#5272C5',
-                                boxShadow: '0 0 6px rgba(82,114,197,0.8)',
+                                background: 'var(--brand-light)',
+                                boxShadow: '0 0 6px var(--brand-a80)',
                                 flexShrink: 0,
                             }} />
                         )}
@@ -127,7 +129,7 @@ export default function Sidebar({ isOpen = false, onClose, collapsed = false, on
             {isOpen && (
                 <div onClick={onClose} style={{
                     position: 'fixed', inset: 0, zIndex: 30,
-                    background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+                    background: 'var(--overlay-light)', backdropFilter: 'blur(4px)',
                 }} />
             )}
 
@@ -140,24 +142,24 @@ export default function Sidebar({ isOpen = false, onClose, collapsed = false, on
                     transform: 'translateY(-50%)',
                     zIndex: 9999,
                     pointerEvents: 'none',
-                    background: '#1A1F28',
-                    border: '1px solid #30363D',
+                    background: 'var(--surface-1)',
+                    border: '1px solid var(--border)',
                     borderRadius: '8px',
                     padding: '5px 11px',
                     fontSize: '12px',
                     fontWeight: 500,
-                    color: '#FFFFFF',
+                    color: 'var(--text-primary)',
                     whiteSpace: 'nowrap',
-                    boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
+                    boxShadow: '0 4px 16px var(--shadow-color)',
                 }}>
                     <span style={{
                         position: 'absolute',
                         left: -4, top: '50%',
                         transform: 'translateY(-50%) rotate(45deg)',
                         width: 7, height: 7,
-                        background: '#1A1F28',
-                        borderLeft: '1px solid #30363D',
-                        borderBottom: '1px solid #30363D',
+                        background: 'var(--surface-1)',
+                        borderLeft: '1px solid var(--border)',
+                        borderBottom: '1px solid var(--border)',
                         display: 'block',
                     }} />
                     {tooltip.name}
@@ -184,10 +186,10 @@ export default function Sidebar({ isOpen = false, onClose, collapsed = false, on
                     display: 'flex',
                     flexDirection: 'column',
                     height: '100%',
-                    background: '#12161B',
-                    border: '1px solid #30363D',
+                    background: 'var(--background-card)',
+                    border: '1px solid var(--border)',
                     borderRadius: '14px',
-                    boxShadow: '0 8px 32px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3)',
+                    boxShadow: '0 8px 32px var(--shadow-color), 0 2px 8px var(--shadow-soft)',
                     overflow: 'hidden',
                 }}>
 
@@ -198,7 +200,7 @@ export default function Sidebar({ isOpen = false, onClose, collapsed = false, on
                         justifyContent: collapsed ? 'center' : 'space-between',
                         height: '56px',
                         padding: collapsed ? '0' : '0 10px 0 14px',
-                        borderBottom: '1px solid #1A1F28',
+                        borderBottom: '1px solid var(--surface-1)',
                         flexShrink: 0,
                         gap: '8px',
                         transition: 'padding 0.3s ease',
@@ -208,10 +210,10 @@ export default function Sidebar({ isOpen = false, onClose, collapsed = false, on
                         {!collapsed && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, overflow: 'hidden' }}>
                                 <div style={{ position: 'relative', width: '22px', height: '22px', flexShrink: 0 }}>
-                                    <Image src="/images/logo.png" alt="DataGuard" fill style={{ objectFit: 'contain' }} />
+                                    <Image src={resolvedTheme === 'light' ? '/images/logo-dark.png' : '/images/logo.png'} alt="DataGuard" fill style={{ objectFit: 'contain' }} />
                                 </div>
                                 <span style={{
-                                    fontSize: '15px', fontWeight: 700, color: '#FFFFFF',
+                                    fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)',
                                     whiteSpace: 'nowrap', overflow: 'hidden',
                                 }}>
                                     DataGuard
@@ -229,19 +231,19 @@ export default function Sidebar({ isOpen = false, onClose, collapsed = false, on
                                 borderRadius: '8px',
                                 background: 'transparent',
                                 border: '1px solid transparent',
-                                color: '#535865',
+                                color: 'var(--text-disabled)',
                                 cursor: 'pointer',
                                 transition: 'background 0.15s, color 0.15s, border-color 0.15s',
                             }}
                             onMouseEnter={e => {
-                                e.currentTarget.style.background = 'rgba(255,255,255,0.07)';
-                                e.currentTarget.style.borderColor = '#30363D';
-                                e.currentTarget.style.color = '#FFFFFF';
+                                e.currentTarget.style.background = 'var(--hover-nav-strong)';
+                                e.currentTarget.style.borderColor = 'var(--border)';
+                                e.currentTarget.style.color = 'var(--text-primary)';
                             }}
                             onMouseLeave={e => {
                                 e.currentTarget.style.background = 'transparent';
                                 e.currentTarget.style.borderColor = 'transparent';
-                                e.currentTarget.style.color = '#535865';
+                                e.currentTarget.style.color = 'var(--text-disabled)';
                             }}
                         >
                             {collapsed ? <PanelLeftOpen size={15} /> : <PanelLeftClose size={15} />}
@@ -265,7 +267,7 @@ export default function Sidebar({ isOpen = false, onClose, collapsed = false, on
 
                     {/* Bottom: Profile + version */}
                     <div style={{
-                        borderTop: '1px solid #1A1F28',
+                        borderTop: '1px solid var(--surface-1)',
                         padding: `8px ${CARD_PAD}px`,
                         flexShrink: 0,
                     }}>
@@ -281,7 +283,7 @@ export default function Sidebar({ isOpen = false, onClose, collapsed = false, on
                             transition: 'max-height 0.3s ease, opacity 0.2s ease',
                         }}>
                             <p style={{
-                                fontSize: '11px', color: '#30363D',
+                                fontSize: '11px', color: 'var(--border)',
                                 textAlign: 'center', padding: '6px 0 2px',
                                 whiteSpace: 'nowrap',
                             }}>

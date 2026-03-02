@@ -1,37 +1,216 @@
 @import "tailwindcss";
 
-:root {
+/* ── Dark theme (default) ──────────────────────────────────────────────────── */
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+
   --background:        #000000;
+  --background-body:   #0B0E14;
   --background-alt:    #10141A;
   --background-deep:   #0F1216;
   --background-card:   #12161B;
   --background-subtle: #161B22;
+  --background-input:  #0D1117;
+
   --surface-1:  #1A1F28;
   --surface-2:  #212833;
   --surface-3:  #232F3E;
   --surface-4:  #252D39;
   --surface-5:  #28303C;
   --surface-6:  #30363D;
+
   --brand-dark:   #2B3B65;
   --brand-mid:    #3B5189;
   --brand-main:   #445C9A;
   --brand-light:  #5272C5;
+
   --success:      #28A745;
   --success-alt:  #22C35D;
   --danger:       #F85149;
   --danger-alt:   #FD5658;
   --warning:      #F8C149;
+
   --text-primary:   #FFFFFF;
+  --text-on-brand:  #FFFFFF;
   --text-secondary: #BABABA;
   --text-tertiary:  #989898;
   --text-muted:     #959595;
   --text-faint:     #9D9D9D;
   --text-disabled:  #535865;
+
   --border:        #30363D;
   --border-subtle: rgba(48, 54, 61, 0.4);
+
   --foreground:  #FFFFFF;
   --card-bg:     #12161B;
   --card-border: #30363D;
+
+  /* Overlay / alpha tokens */
+  --overlay-heavy:  rgba(0, 0, 0, 0.8);
+  --overlay-medium: rgba(0, 0, 0, 0.7);
+  --overlay-light:  rgba(0, 0, 0, 0.6);
+  --shadow-color:   rgba(0, 0, 0, 0.5);
+  --shadow-light:   rgba(0, 0, 0, 0.4);
+  --shadow-soft:    rgba(0, 0, 0, 0.3);
+
+  --topbar-bg:      rgba(2, 6, 23, 0.8);
+  --topbar-border:  rgba(51, 65, 85, 0.3);
+
+  --hover-row:          #161B22;
+  --hover-nav:          rgba(255, 255, 255, 0.06);
+  --hover-nav-strong:   rgba(255, 255, 255, 0.07);
+  --shimmer:            rgba(255, 255, 255, 0.15);
+
+  --spinner-track:     rgba(255, 255, 255, 0.2);
+  --spinner-active:    #FFFFFF;
+
+  /* Brand alpha tokens */
+  --brand-a06:  rgba(82, 114, 197, 0.06);
+  --brand-a08:  rgba(82, 114, 197, 0.08);
+  --brand-a10:  rgba(82, 114, 197, 0.1);
+  --brand-a12:  rgba(82, 114, 197, 0.12);
+  --brand-a15:  rgba(82, 114, 197, 0.15);
+  --brand-a20:  rgba(82, 114, 197, 0.2);
+  --brand-a25:  rgba(82, 114, 197, 0.25);
+  --brand-a30:  rgba(82, 114, 197, 0.3);
+  --brand-a50:  rgba(82, 114, 197, 0.5);
+  --brand-a80:  rgba(82, 114, 197, 0.8);
+
+  /* Success alpha tokens */
+  --success-a05: rgba(34, 195, 93, 0.05);
+  --success-a08: rgba(34, 195, 93, 0.08);
+  --success-a10: rgba(34, 195, 93, 0.1);
+  --success-a20: rgba(34, 195, 93, 0.2);
+  --success-a25: rgba(34, 195, 93, 0.25);
+  --success-a30: rgba(34, 195, 93, 0.3);
+
+  /* Danger alpha tokens */
+  --danger-a05: rgba(248, 81, 73, 0.05);
+  --danger-a08: rgba(248, 81, 73, 0.08);
+  --danger-a10: rgba(248, 81, 73, 0.1);
+  --danger-a15: rgba(248, 81, 73, 0.15);
+  --danger-a20: rgba(248, 81, 73, 0.2);
+  --danger-a25: rgba(248, 81, 73, 0.25);
+  --danger-a30: rgba(248, 81, 73, 0.3);
+  --danger-a50: rgba(248, 81, 73, 0.5);
+
+  /* Warning alpha tokens */
+  --warning-a05: rgba(248, 193, 73, 0.05);
+  --warning-a08: rgba(248, 193, 73, 0.08);
+  --warning-a10: rgba(248, 193, 73, 0.1);
+  --warning-a20: rgba(248, 193, 73, 0.2);
+  --warning-a25: rgba(248, 193, 73, 0.25);
+  --warning-a30: rgba(248, 193, 73, 0.3);
+  --warning-a50: rgba(248, 193, 73, 0.5);
+
+  /* Neutral alpha tokens */
+  --neutral-a10:  rgba(152, 152, 152, 0.1);
+  --neutral-a50:  rgba(48, 54, 61, 0.5);
+  --disabled-icon-alpha: #53586530;
+}
+
+/* ── Light theme ───────────────────────────────────────────────────────────── */
+[data-theme="light"] {
+  color-scheme: light;
+
+  --background:        #FFFFFF;
+  --background-body:   #F4F6F9;
+  --background-alt:    #EEF1F5;
+  --background-deep:   #E8ECF1;
+  --background-card:   #FFFFFF;
+  --background-subtle: #F0F2F5;
+  --background-input:  #F5F7FA;
+
+  --surface-1:  #E8ECF1;
+  --surface-2:  #DFE3E9;
+  --surface-3:  #D5DAE2;
+  --surface-4:  #CDD3DC;
+  --surface-5:  #C5CBD5;
+  --surface-6:  #BCC3CF;
+
+  --brand-dark:   #3B5189;
+  --brand-mid:    #445C9A;
+  --brand-main:   #4A66A8;
+  --brand-light:  #4468B0;
+
+  --success:      #1E8E3E;
+  --success-alt:  #1A9E38;
+  --danger:       #DC3B34;
+  --danger-alt:   #C4332D;
+  --warning:      #E5A100;
+
+  --text-primary:   #1A1D23;
+  --text-on-brand:  #FFFFFF;
+  --text-secondary: #4A5060;
+  --text-tertiary:  #6B7280;
+  --text-muted:     #7C8494;
+  --text-faint:     #8B92A0;
+  --text-disabled:  #9CA3AF;
+
+  --border:        #D1D5DB;
+  --border-subtle: rgba(209, 213, 219, 0.6);
+
+  --foreground:  #1A1D23;
+  --card-bg:     #FFFFFF;
+  --card-border: #D1D5DB;
+
+  --overlay-heavy:  rgba(0, 0, 0, 0.5);
+  --overlay-medium: rgba(0, 0, 0, 0.4);
+  --overlay-light:  rgba(0, 0, 0, 0.3);
+  --shadow-color:   rgba(0, 0, 0, 0.08);
+  --shadow-light:   rgba(0, 0, 0, 0.06);
+  --shadow-soft:    rgba(0, 0, 0, 0.04);
+
+  --topbar-bg:      rgba(244, 246, 249, 0.9);
+  --topbar-border:  rgba(209, 213, 219, 0.5);
+
+  --hover-row:          #F0F2F5;
+  --hover-nav:          rgba(0, 0, 0, 0.04);
+  --hover-nav-strong:   rgba(0, 0, 0, 0.06);
+  --shimmer:            rgba(0, 0, 0, 0.08);
+
+  --spinner-track:     rgba(0, 0, 0, 0.12);
+  --spinner-active:    #1A1D23;
+
+  --brand-a06:  rgba(68, 104, 176, 0.06);
+  --brand-a08:  rgba(68, 104, 176, 0.08);
+  --brand-a10:  rgba(68, 104, 176, 0.1);
+  --brand-a12:  rgba(68, 104, 176, 0.12);
+  --brand-a15:  rgba(68, 104, 176, 0.15);
+  --brand-a20:  rgba(68, 104, 176, 0.2);
+  --brand-a25:  rgba(68, 104, 176, 0.25);
+  --brand-a30:  rgba(68, 104, 176, 0.3);
+  --brand-a50:  rgba(68, 104, 176, 0.5);
+  --brand-a80:  rgba(68, 104, 176, 0.8);
+
+  --success-a05: rgba(30, 142, 62, 0.05);
+  --success-a08: rgba(30, 142, 62, 0.08);
+  --success-a10: rgba(30, 142, 62, 0.1);
+  --success-a20: rgba(30, 142, 62, 0.2);
+  --success-a25: rgba(30, 142, 62, 0.25);
+  --success-a30: rgba(30, 142, 62, 0.3);
+
+  --danger-a05: rgba(220, 59, 52, 0.05);
+  --danger-a08: rgba(220, 59, 52, 0.08);
+  --danger-a10: rgba(220, 59, 52, 0.1);
+  --danger-a15: rgba(220, 59, 52, 0.15);
+  --danger-a20: rgba(220, 59, 52, 0.2);
+  --danger-a25: rgba(220, 59, 52, 0.25);
+  --danger-a30: rgba(220, 59, 52, 0.3);
+  --danger-a50: rgba(220, 59, 52, 0.5);
+
+  --warning-a05: rgba(229, 161, 0, 0.05);
+  --warning-a08: rgba(229, 161, 0, 0.08);
+  --warning-a10: rgba(229, 161, 0, 0.1);
+  --warning-a20: rgba(229, 161, 0, 0.2);
+  --warning-a25: rgba(229, 161, 0, 0.25);
+  --warning-a30: rgba(229, 161, 0, 0.3);
+  --warning-a50: rgba(229, 161, 0, 0.5);
+
+  --neutral-a10:  rgba(107, 114, 128, 0.1);
+  --neutral-a50:  rgba(209, 213, 219, 0.5);
+  --disabled-icon-alpha: #9CA3AF30;
 }
 
 @theme inline {
@@ -44,10 +223,9 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; }
-html { color-scheme: dark; }
 
 body {
-  background: var(--background);
+  background: var(--background-body);
   color: var(--text-primary);
   font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
   font-size: 16px;

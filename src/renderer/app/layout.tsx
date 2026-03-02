@@ -22,12 +22,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`dark ${inter.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`dark ${inter.variable}`} data-theme="dark" suppressHydrationWarning>
       <body
         className="antialiased min-h-screen flex"
         style={{
-          background: "#0B0E14",
-          color: "#FFFFFF",
+          background: "var(--background-body)",
+          color: "var(--text-primary)",
           fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
         }}
         suppressHydrationWarning

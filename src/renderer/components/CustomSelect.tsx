@@ -73,10 +73,10 @@ export default function CustomSelect({
             ref={dropdownRef}
             style={{
                 ...dropdownStyle,
-                background: '#12161B',
-                border: '1px solid #30363D',
+                background: 'var(--background-card)',
+                border: '1px solid var(--border)',
                 borderRadius: '12px',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                boxShadow: '0 8px 32px var(--shadow-color)',
                 overflow: 'hidden',
             }}
         >
@@ -93,24 +93,24 @@ export default function CustomSelect({
                                 justifyContent: 'space-between', gap: '12px',
                                 padding: '10px 12px', textAlign: 'left',
                                 borderRadius: '8px', border: 'none', cursor: 'pointer',
-                                background: isSelected ? 'rgba(82,114,197,0.12)' : 'transparent',
-                                color: isSelected ? '#FFFFFF' : '#BABABA',
+                                background: isSelected ? 'var(--brand-a12)' : 'transparent',
+                                color: isSelected ? 'var(--text-primary)' : 'var(--text-secondary)',
                                 transition: 'background 0.12s ease, color 0.12s ease',
                             }}
-                            onMouseEnter={e => { if (!isSelected) { e.currentTarget.style.background = '#161B22'; e.currentTarget.style.color = '#FFFFFF'; } }}
-                            onMouseLeave={e => { if (!isSelected) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#BABABA'; } }}
+                            onMouseEnter={e => { if (!isSelected) { e.currentTarget.style.background = 'var(--background-subtle)'; e.currentTarget.style.color = 'var(--text-primary)'; } }}
+                            onMouseLeave={e => { if (!isSelected) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)'; } }}
                         >
                             <div>
                                 <p style={{ fontSize: '13px', fontWeight: isSelected ? 600 : 400, margin: 0 }}>
                                     {option.label}
                                 </p>
                                 {option.description && (
-                                    <p style={{ fontSize: '11px', color: '#535865', marginTop: '2px' }}>
+                                    <p style={{ fontSize: '11px', color: 'var(--text-disabled)', marginTop: '2px' }}>
                                         {option.description}
                                     </p>
                                 )}
                             </div>
-                            {isSelected && <Check size={14} style={{ color: '#5272C5', flexShrink: 0 }} />}
+                            {isSelected && <Check size={14} style={{ color: 'var(--brand-light)', flexShrink: 0 }} />}
                         </button>
                     );
                 })}
@@ -128,23 +128,23 @@ export default function CustomSelect({
                     width: '100%', display: 'flex', alignItems: 'center',
                     justifyContent: 'space-between', gap: '8px',
                     padding: '9px 12px', borderRadius: '10px',
-                    background: '#0D1117',
-                    border: `1px solid ${open ? '#445C9A' : '#30363D'}`,
-                    color: selected ? '#FFFFFF' : '#535865',
+                    background: 'var(--background-input)',
+                    border: `1px solid ${open ? 'var(--brand-main)' : 'var(--border)'}`,
+                    color: selected ? 'var(--text-primary)' : 'var(--text-disabled)',
                     fontSize: '13px', fontWeight: 400,
                     cursor: 'pointer', textAlign: 'left',
                     transition: 'border-color 0.15s ease',
-                    outline: open ? '3px solid rgba(82,114,197,0.15)' : 'none',
+                    outline: open ? '3px solid var(--brand-a12)' : 'none',
                     outlineOffset: '0px',
                 }}
-                onMouseEnter={e => { if (!open) e.currentTarget.style.borderColor = '#535865'; }}
-                onMouseLeave={e => { if (!open) e.currentTarget.style.borderColor = '#30363D'; }}
+                onMouseEnter={e => { if (!open) e.currentTarget.style.borderColor = 'var(--text-disabled)'; }}
+                onMouseLeave={e => { if (!open) e.currentTarget.style.borderColor = 'var(--border)'; }}
             >
                 <span>{selected ? selected.label : placeholder}</span>
                 <ChevronDown
                     size={15}
                     style={{
-                        color: open ? '#5272C5' : '#535865',
+                        color: open ? 'var(--brand-light)' : 'var(--text-disabled)',
                         flexShrink: 0,
                         transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
                         transition: 'transform 0.2s ease, color 0.15s ease',

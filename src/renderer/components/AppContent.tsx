@@ -16,23 +16,23 @@ export default function AppContent({ children }: { children: React.ReactNode }) 
     useEffect(() => { setMounted(true); }, []);
 
     if (!mounted) {
-        return <div className="min-h-screen" style={{ background: '#000000' }} suppressHydrationWarning />;
+        return <div className="min-h-screen" style={{ background: 'var(--background)' }} suppressHydrationWarning />;
     }
 
     const isPublicPath = pathname === '/login' || pathname === '/signup';
 
     if (!isAuthenticated && !isPublicPath) {
-        return <main className="flex-1 w-full min-h-screen" style={{ background: '#000000' }}><LoginPage /></main>;
+        return <main className="flex-1 w-full min-h-screen" style={{ background: 'var(--background)' }}><LoginPage /></main>;
     }
     if (!isAuthenticated && isPublicPath) {
-        return <main className="flex-1 w-full min-h-screen" style={{ background: '#000000' }}>{children}</main>;
+        return <main className="flex-1 w-full min-h-screen" style={{ background: 'var(--background)' }}>{children}</main>;
     }
 
     // Sidebar total width: 264px expanded, 64px collapsed (both include 10px padding each side)
     const mainMargin = sidebarCollapsed ? '68px' : '260px';
 
     return (
-        <div className="flex w-full min-h-screen" style={{ background: '#000000', color: '#FFFFFF' }}>
+        <div className="flex w-full min-h-screen" style={{ background: 'var(--background)', color: 'var(--text-primary)' }}>
             <Sidebar
                 isOpen={isSidebarOpen}
                 onClose={() => setIsSidebarOpen(false)}

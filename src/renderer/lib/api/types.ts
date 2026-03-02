@@ -9,6 +9,7 @@ export interface AuthRegisterRequest {
 export interface AuthLoginRequest {
   username: string;
   password: string;
+  rememberMe?: boolean;
 }
 
 export interface AuthResponse {
@@ -19,6 +20,7 @@ export interface AuthResponse {
     bio?: string;
   };
   sessionId: string;
+  rememberToken?: string;
 }
 
 export interface User {

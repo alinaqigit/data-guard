@@ -56,11 +56,12 @@ interface SecurityContextType {
   clearAllScans: () => Promise<void>;
   deleteAlert: (id: number) => void;
   deleteAllAlerts: () => void;
-  login: (username: string, pass: string) => Promise<void>;
+  login: (username: string, pass: string, rememberMe?: boolean) => Promise<void>;
   logout: () => Promise<void>;
   updateUserProfile: (profile: UserProfile) => Promise<void>;
-  theme: "light" | "dark";
-  toggleTheme: () => void;
+  theme: "light" | "dark" | "system";
+  resolvedTheme: "light" | "dark";
+  setThemePreference: (pref: "light" | "dark" | "system") => void;
   addPolicy: (policy: Omit<Policy, "id">) => Promise<void>;
   updatePolicy: (policy: Policy) => Promise<void>;
   togglePolicyStatus: (id: string) => Promise<void>;
@@ -105,7 +106,8 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
   const [totalFilesScanned, setTotalFilesScanned] = useState(0);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<UserProfile | null>(null);
-  const [theme, setTheme] = useState<"light" | "dark">("dark");
+  const [theme, setTheme] = useState<"light" | "dark" | "system">("dark");
+  const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">("dark");
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [systemMetrics, setSystemMetrics] = useState<SystemMetrics>(DEFAULT_METRICS);
 
@@ -210,43 +212,93 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const checkAuth = async () => {
       const sessionId = getSessionId();
-      if (!sessionId) return;
-      try {
-        const userData = await authService.verifySession();
-        setIsAuthenticated(true);
-        setUser({
-          name: userData.username,
-          email: userData.email || '',
-          role: "Security Administrator",
-          bio: userData.bio || '',
-        });
-        await refreshPolicies();
-        await refreshScans();
+      let authenticated = false;
 
-        // Auto-start live monitor based on saved settings
-        // Delay slightly to ensure socket connection is established
-        const saved = loadSavedSettings();
-        if (saved.realTime !== false) {
-          setTimeout(() => {
-            monitoringApiService
-              .startMonitoring(saved.autoResponse ?? false)
-              .catch((err) => console.warn("[Monitor] Auto-start failed:", err));
-          }, 1500);
+      // 1. Try verifying existing session
+      if (sessionId) {
+        try {
+          const userData = await authService.verifySession();
+          setIsAuthenticated(true);
+          setUser({
+            name: userData.username,
+            email: userData.email || '',
+            role: "Security Administrator",
+            bio: userData.bio || '',
+          });
+          authenticated = true;
+        } catch {
+          // Session invalid (likely app restarted), try remember token
         }
-      } catch {
+      }
+
+      // 2. Fallback: try remember token if session failed
+      if (!authenticated) {
+        try {
+          const response = await authService.verifyRememberToken();
+          if (response) {
+            setIsAuthenticated(true);
+            setUser({
+              name: response.user.username,
+              email: response.user.email || '',
+              role: "Security Administrator",
+              bio: response.user.bio || '',
+            });
+            authenticated = true;
+          }
+        } catch {
+          // No valid remember token either
+        }
+      }
+
+      if (!authenticated) {
         setIsAuthenticated(false);
         setUser(null);
+        return;
+      }
+
+      await refreshPolicies();
+      await refreshScans();
+
+      // Auto-start live monitor based on saved settings
+      const saved = loadSavedSettings();
+      if (saved.realTime !== false) {
+        setTimeout(() => {
+          monitoringApiService
+            .startMonitoring(saved.autoResponse ?? false)
+            .catch((err) => console.warn("[Monitor] Auto-start failed:", err));
+        }, 1500);
       }
     };
     checkAuth();
   }, []);
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem("dlp_theme") as "light" | "dark";
+    const savedTheme = localStorage.getItem("dlp_theme") as "light" | "dark" | "system" | null;
     if (savedTheme) setTheme(savedTheme);
   }, []);
 
-  useEffect(() => { localStorage.setItem("dlp_theme", theme); }, [theme]);
+  // Apply theme to <html> element and handle system preference
+  useEffect(() => {
+    localStorage.setItem("dlp_theme", theme);
+
+    const applyResolvedTheme = (resolved: "light" | "dark") => {
+      const html = document.documentElement;
+      html.setAttribute("data-theme", resolved);
+      html.classList.remove("light", "dark");
+      html.classList.add(resolved);
+      setResolvedTheme(resolved);
+    };
+
+    if (theme === "system") {
+      const mql = window.matchMedia("(prefers-color-scheme: dark)");
+      applyResolvedTheme(mql.matches ? "dark" : "light");
+      const handler = (e: MediaQueryListEvent) => applyResolvedTheme(e.matches ? "dark" : "light");
+      mql.addEventListener("change", handler);
+      return () => mql.removeEventListener("change", handler);
+    } else {
+      applyResolvedTheme(theme);
+    }
+  }, [theme]);
 
   // ── Update monitoring settings and persist ──────────────────────────────────
   const updateMonitoringSettings = async (settings: Partial<MonitoringSettings>) => {
@@ -374,8 +426,8 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
   };
 
   // ── Auth ────────────────────────────────────────────────────────────────────
-  const login = async (username: string, password: string) => {
-    const response = await authService.login({ username, password });
+  const login = async (username: string, password: string, rememberMe?: boolean) => {
+    const response = await authService.login({ username, password, rememberMe });
     setIsAuthenticated(true);
     setUser({
       name: response.user.username,
@@ -459,17 +511,17 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
     setPolicies((prev) => prev.filter((p) => p.id !== id));
   };
 
-  const toggleTheme = () => setTheme((prev) => (prev === "light" ? "dark" : "light"));
+  const setThemePreference = (pref: "light" | "dark" | "system") => setTheme(pref);
 
   return (
     <SecurityContext.Provider value={{
       scans, alerts, policies, totalFilesScanned, isAuthenticated, user,
-      systemMetrics, theme, monitoringSettings,
+      systemMetrics, theme, resolvedTheme, monitoringSettings,
       runScan, resolveAlert, updateAlertStatus, clearAllAlerts, clearAllScans,
       deleteAlert, deleteAllAlerts,
       login, logout, updateUserProfile,
       addPolicy, updatePolicy, togglePolicyStatus, deletePolicy,
-      toggleTheme, refreshPolicies, refreshScans, updateMonitoringSettings,
+      setThemePreference, refreshPolicies, refreshScans, updateMonitoringSettings,
       quarantineFile, encryptFile, deleteFile,
     }}>
       {children}

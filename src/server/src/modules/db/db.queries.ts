@@ -64,7 +64,18 @@ CREATE TABLE IF NOT EXISTS live_scanners (
 );
 `;
 
-export const initializeDatabaseQuery = `${createUserTableQuery} ${createPolicyTableQuery} ${createScanTableQuery} ${createLiveScannerTableQuery}`;
+const createRememberTokensTableQuery = `
+CREATE TABLE IF NOT EXISTS remember_tokens (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  token TEXT NOT NULL UNIQUE,
+  user_id INTEGER NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  expires_at DATETIME NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+`;
+
+export const initializeDatabaseQuery = `${createUserTableQuery} ${createPolicyTableQuery} ${createScanTableQuery} ${createLiveScannerTableQuery} ${createRememberTokensTableQuery}`;
 
 // Migration: add email and bio columns to existing users table
 export const migrateUsersProfileColumns = (db: any): void => {

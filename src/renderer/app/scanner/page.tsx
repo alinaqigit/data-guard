@@ -159,24 +159,24 @@ export default function ScannerPage() {
   const showProgress = scanState.isActive || isCompleted || isFailed || isCancelled;
   const confidence = SENSITIVITY_CONFIDENCE[sensitivity];
 
-  const cardStyle = { background: '#12161B', border: '1px solid #30363D', borderRadius: '16px', padding: '20px 24px' };
-  const inputStyle = { background: '#0D1117', border: '1px solid #30363D', borderRadius: '10px', padding: '10px 14px', color: '#FFFFFF', fontSize: '13px', outline: 'none', width: '100%' };
-  const labelStyle = { fontSize: '11px', fontWeight: 600 as const, color: '#535865', textTransform: 'uppercase' as const, letterSpacing: '0.08em', display: 'block', marginBottom: '8px' };
+  const cardStyle = { background: 'var(--background-card)', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px 24px' };
+  const inputStyle = { background: 'var(--background-input)', border: '1px solid var(--border)', borderRadius: '10px', padding: '10px 14px', color: 'var(--text-primary)', fontSize: '13px', outline: 'none', width: '100%' };
+  const labelStyle = { fontSize: '11px', fontWeight: 600 as const, color: 'var(--text-disabled)', textTransform: 'uppercase' as const, letterSpacing: '0.08em', display: 'block', marginBottom: '8px' };
 
-  const progressBorderColor = isCompleted ? 'rgba(34,195,93,0.3)' : isFailed ? 'rgba(248,81,73,0.3)' : isCancelled ? 'rgba(248,193,73,0.3)' : 'rgba(82,114,197,0.3)';
-  const progressBg          = isCompleted ? 'rgba(34,195,93,0.05)' : isFailed ? 'rgba(248,81,73,0.05)' : isCancelled ? 'rgba(248,193,73,0.05)' : '#12161B';
-  const progressBarColor    = isCompleted ? '#22C35D' : isFailed ? '#F85149' : isCancelled ? '#F8C149' : '#5272C5';
+  const progressBorderColor = isCompleted ? 'var(--success-a30)' : isFailed ? 'var(--danger-a30)' : isCancelled ? 'var(--warning-a30)' : 'var(--brand-a30)';
+  const progressBg          = isCompleted ? 'var(--success-a05)' : isFailed ? 'var(--danger-a05)' : isCancelled ? 'var(--warning-a05)' : 'var(--background-card)';
+  const progressBarColor    = isCompleted ? 'var(--success-alt)' : isFailed ? 'var(--danger)' : isCancelled ? 'var(--warning)' : 'var(--brand-light)';
 
   return (
     <div className="space-y-6 pb-12">
-      <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.02em' }}>Content Scanner</h1>
+      <h1 style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Content Scanner</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Scan Config */}
         <div style={cardStyle} className="lg:col-span-2">
           <div className="flex items-center gap-3 mb-6">
-            <Shield size={18} style={{ color: '#5272C5' }} />
-            <span style={{ fontSize: '15px', fontWeight: 600, color: '#FFFFFF' }}>Scan Configuration</span>
+            <Shield size={18} style={{ color: 'var(--brand-light)' }} />
+            <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>Scan Configuration</span>
           </div>
           <div className="space-y-5">
             <div>
@@ -188,24 +188,24 @@ export default function ScannerPage() {
                 <label style={labelStyle}>Custom Path</label>
                 <input type="text" placeholder="e.g. C:\Users\Documents" value={scanPath}
                   onChange={e => setScanPath(e.target.value)} style={inputStyle}
-                  onFocus={e => (e.currentTarget.style.borderColor = '#445C9A')}
-                  onBlur={e => (e.currentTarget.style.borderColor = '#30363D')}
+                  onFocus={e => (e.currentTarget.style.borderColor = 'var(--brand-main)')}
+                  onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
                 />
               </div>
             )}
-            <p style={{ fontSize: '12px', color: '#535865' }}>
+            <p style={{ fontSize: '12px', color: 'var(--text-disabled)' }}>
               {scanType === "quick"  && "Scans top-level files across all drives and user folders. Fast."}
               {scanType === "full"   && "Recursively scans every accessible file across all drives. May take several minutes."}
               {scanType === "custom" && "Scans only the path you specify, recursively."}
             </p>
             <button onClick={handleStartScan} disabled={isScanning}
               className="w-full flex items-center justify-center gap-2 py-3 rounded-xl transition-all"
-              style={{ background: isScanning ? '#3B5189' : '#5272C5', color: '#FFFFFF', fontSize: '14px', fontWeight: 600, opacity: isScanning ? 0.7 : 1, cursor: isScanning ? 'not-allowed' : 'pointer' }}
-              onMouseEnter={e => { if (!isScanning) (e.currentTarget as HTMLButtonElement).style.background = '#445C9A'; }}
-              onMouseLeave={e => { if (!isScanning) (e.currentTarget as HTMLButtonElement).style.background = '#5272C5'; }}
+              style={{ background: isScanning ? 'var(--brand-mid)' : 'var(--brand-light)', color: 'var(--text-on-brand)', fontSize: '14px', fontWeight: 600, opacity: isScanning ? 0.7 : 1, cursor: isScanning ? 'not-allowed' : 'pointer' }}
+              onMouseEnter={e => { if (!isScanning) (e.currentTarget as HTMLButtonElement).style.background = 'var(--brand-main)'; }}
+              onMouseLeave={e => { if (!isScanning) (e.currentTarget as HTMLButtonElement).style.background = 'var(--brand-light)'; }}
             >
               {isScanning
-                ? <><div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(255,255,255,0.2)', borderTopColor: '#fff' }} /> Scanning...</>
+                ? <><div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--spinner-track)', borderTopColor: 'var(--text-on-brand)' }} /> Scanning...</>
                 : <><Search size={16} /> Start Scan</>}
             </button>
           </div>
@@ -213,7 +213,7 @@ export default function ScannerPage() {
 
         {/* Model Config */}
         <div style={cardStyle}>
-          <span style={{ fontSize: '15px', fontWeight: 600, color: '#FFFFFF', display: 'block', marginBottom: '20px' }}>Model Configuration</span>
+          <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)', display: 'block', marginBottom: '20px' }}>Model Configuration</span>
           <div className="space-y-5">
             <div>
               <label style={labelStyle}>Model Sensitivity</label>
@@ -222,12 +222,12 @@ export default function ScannerPage() {
             <div>
               <div className="flex justify-between items-center mb-2">
                 <label style={{ ...labelStyle, marginBottom: 0 }}>Detection Confidence</label>
-                <span style={{ fontSize: '13px', fontWeight: 600, color: '#5272C5', fontFamily: 'monospace' }}>{confidence}%</span>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--brand-light)', fontFamily: 'monospace' }}>{confidence}%</span>
               </div>
-              <div style={{ height: '6px', background: '#1A1F28', borderRadius: '99px', overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${confidence}%`, background: '#5272C5', borderRadius: '99px', transition: 'width 0.5s ease' }} />
+              <div style={{ height: '6px', background: 'var(--surface-1)', borderRadius: '99px', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${confidence}%`, background: 'var(--brand-light)', borderRadius: '99px', transition: 'width 0.5s ease' }} />
               </div>
-              <p style={{ fontSize: '12px', color: '#535865', marginTop: '8px' }}>{SENSITIVITY_DESCRIPTION[sensitivity]}</p>
+              <p style={{ fontSize: '12px', color: 'var(--text-disabled)', marginTop: '8px' }}>{SENSITIVITY_DESCRIPTION[sensitivity]}</p>
             </div>
           </div>
         </div>
@@ -238,11 +238,11 @@ export default function ScannerPage() {
         <div style={{ background: progressBg, border: `1px solid ${progressBorderColor}`, borderRadius: '16px', padding: '20px 24px' }}>
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-3">
-              {isCompleted ? <CheckCircle2 size={18} style={{ color: '#22C35D' }} /> :
-               isFailed    ? <AlertTriangle size={18} style={{ color: '#F85149' }} /> :
-               isCancelled ? <X size={18} style={{ color: '#F8C149' }} /> :
-               <div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(82,114,197,0.3)', borderTopColor: '#5272C5' }} />}
-              <span style={{ fontSize: '15px', fontWeight: 600, color: '#FFFFFF' }}>
+              {isCompleted ? <CheckCircle2 size={18} style={{ color: 'var(--success-alt)' }} /> :
+               isFailed    ? <AlertTriangle size={18} style={{ color: 'var(--danger)' }} /> :
+               isCancelled ? <X size={18} style={{ color: 'var(--warning)' }} /> :
+               <div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--brand-a30)', borderTopColor: 'var(--brand-light)' }} />}
+              <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>
                 {isCompleted ? 'Scan Complete' : isFailed ? 'Scan Failed' : isCancelled ? 'Scan Cancelled' : 'Scanning in Progress'}
               </span>
             </div>
@@ -250,30 +250,30 @@ export default function ScannerPage() {
               {isCancelled && (
                 <button onClick={() => update(INITIAL)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all"
-                  style={{ background: '#161B22', border: '1px solid #30363D', color: '#989898', fontSize: '12px', fontWeight: 500 }}
-                  onMouseEnter={e => (e.currentTarget.style.color = '#FFFFFF')}
-                  onMouseLeave={e => (e.currentTarget.style.color = '#989898')}
+                  style={{ background: 'var(--background-subtle)', border: '1px solid var(--border)', color: 'var(--text-tertiary)', fontSize: '12px', fontWeight: 500 }}
+                  onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
+                  onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-tertiary)')}
                 ><X size={13} /> Dismiss</button>
               )}
               {isScanning && scanState.scanId && scanState.scanId !== -1 && (
                 <button onClick={handleCancelScan}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all"
-                  style={{ background: 'rgba(248,81,73,0.1)', border: '1px solid rgba(248,81,73,0.3)', color: '#F85149', fontSize: '12px', fontWeight: 500 }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(248,81,73,0.2)')}
-                  onMouseLeave={e => (e.currentTarget.style.background = 'rgba(248,81,73,0.1)')}
+                  style={{ background: 'var(--danger-a10)', border: '1px solid var(--danger-a30)', color: 'var(--danger)', fontSize: '12px', fontWeight: 500 }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--danger-a20)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'var(--danger-a10)')}
                 ><X size={13} /> Cancel</button>
               )}
-              <span style={{ fontSize: '22px', fontWeight: 700, color: '#FFFFFF', fontVariantNumeric: 'tabular-nums' }}>{percentage}%</span>
+              <span style={{ fontSize: '22px', fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{percentage}%</span>
             </div>
           </div>
 
           {/* Bar */}
-          <div style={{ height: '6px', background: '#1A1F28', borderRadius: '99px', overflow: 'hidden', marginBottom: '20px', position: 'relative' }}>
+          <div style={{ height: '6px', background: 'var(--surface-1)', borderRadius: '99px', overflow: 'hidden', marginBottom: '20px', position: 'relative' }}>
             <div style={{ height: '100%', width: `${percentage}%`, background: progressBarColor, borderRadius: '99px', transition: 'width 0.5s ease' }} />
             {!isCompleted && !isFailed && !isCancelled && (
               <div style={{
                 position: 'absolute', top: 0, left: 0, height: '100%', width: '100%',
-                background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%)',
+                background: 'linear-gradient(90deg, transparent 0%, var(--shimmer) 50%, transparent 100%)',
                 backgroundSize: '200% 100%',
                 animation: 'shimmer 1.5s infinite',
                 borderRadius: '99px',
@@ -285,20 +285,20 @@ export default function ScannerPage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
             {[
               { label: 'Files Scanned', value: scanState.filesScanned.toLocaleString(), sub: scanState.totalFiles > 0 ? `of ${scanState.totalFiles.toLocaleString()}` : undefined },
-              { label: 'Threats Found', value: String(scanState.totalThreats), valueColor: scanState.totalThreats > 0 ? '#F85149' : '#22C35D', sub: scanState.filesWithThreats > 0 ? `in ${scanState.filesWithThreats} file(s)` : undefined },
+              { label: 'Threats Found', value: String(scanState.totalThreats), valueColor: scanState.totalThreats > 0 ? 'var(--danger)' : 'var(--success-alt)', sub: scanState.filesWithThreats > 0 ? `in ${scanState.filesWithThreats} file(s)` : undefined },
               { label: isCompleted ? 'Duration' : 'ETA', value: isCompleted && scanState.startTime && completionTimeRef.current ? formatDuration(completionTimeRef.current - scanState.startTime) : scanState.startTime && !isCancelled ? formatETA(scanState.filesScanned, scanState.totalFiles, scanState.startTime) : '—' },
-              { label: 'Status', value: scanState.status.charAt(0).toUpperCase() + scanState.status.slice(1), valueColor: isCompleted ? '#22C35D' : isFailed ? '#F85149' : isCancelled ? '#F8C149' : '#5272C5' },
+              { label: 'Status', value: scanState.status.charAt(0).toUpperCase() + scanState.status.slice(1), valueColor: isCompleted ? 'var(--success-alt)' : isFailed ? 'var(--danger)' : isCancelled ? 'var(--warning)' : 'var(--brand-light)' },
             ].map(({ label, value, sub, valueColor }) => (
-              <div key={label} style={{ background: '#161B22', borderRadius: '10px', padding: '12px', textAlign: 'center' }}>
-                <p style={{ fontSize: '11px', fontWeight: 600, color: '#535865', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '6px' }}>{label}</p>
-                <p style={{ fontSize: '18px', fontWeight: 700, color: valueColor || '#FFFFFF', fontVariantNumeric: 'tabular-nums' }}>{value}</p>
-                {sub && <p style={{ fontSize: '11px', color: '#30363D', marginTop: '2px' }}>{sub}</p>}
+              <div key={label} style={{ background: 'var(--background-subtle)', borderRadius: '10px', padding: '12px', textAlign: 'center' }}>
+                <p style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-disabled)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '6px' }}>{label}</p>
+                <p style={{ fontSize: '18px', fontWeight: 700, color: valueColor || 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{value}</p>
+                {sub && <p style={{ fontSize: '11px', color: 'var(--border)', marginTop: '2px' }}>{sub}</p>}
               </div>
             ))}
           </div>
 
           {scanState.currentFile && !isCompleted && !isCancelled && (
-            <div className="flex items-center gap-2 truncate" style={{ fontSize: '11px', color: '#535865', fontFamily: 'monospace' }}>
+            <div className="flex items-center gap-2 truncate" style={{ fontSize: '11px', color: 'var(--text-disabled)', fontFamily: 'monospace' }}>
               <FileSearch size={11} style={{ flexShrink: 0 }} />
               <span className="truncate">{scanState.currentFile}</span>
             </div>
@@ -308,7 +308,7 @@ export default function ScannerPage() {
 
       {/* Preferences */}
       <div style={cardStyle}>
-        <span style={{ fontSize: '15px', fontWeight: 600, color: '#FFFFFF', display: 'block', marginBottom: '20px' }}>Scanner Preferences</span>
+        <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)', display: 'block', marginBottom: '20px' }}>Scanner Preferences</span>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-5">
           {/* Excluded Keywords */}
           <div>
@@ -318,26 +318,26 @@ export default function ScannerPage() {
                 onChange={e => setKeywordInput(e.target.value)}
                 onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addKeywords(); } }}
                 style={{ ...inputStyle, flex: 1 }}
-                onFocus={e => (e.currentTarget.style.borderColor = '#445C9A')}
-                onBlur={e => (e.currentTarget.style.borderColor = '#30363D')}
+                onFocus={e => (e.currentTarget.style.borderColor = 'var(--brand-main)')}
+                onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
               />
               <button onClick={addKeywords}
                 className="px-4 rounded-xl transition-all"
-                style={{ background: '#5272C5', color: '#FFFFFF', fontSize: '13px', fontWeight: 600, flexShrink: 0 }}
-                onMouseEnter={e => (e.currentTarget.style.background = '#445C9A')}
-                onMouseLeave={e => (e.currentTarget.style.background = '#5272C5')}
+                style={{ background: 'var(--brand-light)', color: 'var(--text-on-brand)', fontSize: '13px', fontWeight: 600, flexShrink: 0 }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'var(--brand-main)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'var(--brand-light)')}
               >Add</button>
             </div>
-            <p style={{ fontSize: '11px', color: '#535865', marginBottom: '8px' }}>Separate multiple keywords with commas</p>
+            <p style={{ fontSize: '11px', color: 'var(--text-disabled)', marginBottom: '8px' }}>Separate multiple keywords with commas</p>
             <div className="flex flex-wrap gap-2">
               {excludedKeywords.map(kw => (
                 <span key={kw} className="flex items-center gap-1.5"
-                  style={{ background: 'rgba(82,114,197,0.1)', border: '1px solid rgba(82,114,197,0.25)', borderRadius: '99px', padding: '3px 10px', fontSize: '12px', fontWeight: 500, color: '#5272C5' }}>
+                  style={{ background: 'var(--brand-a10)', border: '1px solid var(--brand-a25)', borderRadius: '99px', padding: '3px 10px', fontSize: '12px', fontWeight: 500, color: 'var(--brand-light)' }}>
                   {kw}
                   <button onClick={() => setExcludedKeywords(prev => prev.filter(k => k !== kw))}
-                    style={{ color: '#5272C5' }}
-                    onMouseEnter={e => (e.currentTarget.style.color = '#FFFFFF')}
-                    onMouseLeave={e => (e.currentTarget.style.color = '#5272C5')}
+                    style={{ color: 'var(--brand-light)' }}
+                    onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
+                    onMouseLeave={e => (e.currentTarget.style.color = 'var(--brand-light)')}
                   ><X size={11} /></button>
                 </span>
               ))}
@@ -352,26 +352,26 @@ export default function ScannerPage() {
                 onChange={e => setPathInput(e.target.value)}
                 onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') { e.preventDefault(); addPaths(); } }}
                 style={{ ...inputStyle, flex: 1 }}
-                onFocus={e => (e.currentTarget.style.borderColor = '#445C9A')}
-                onBlur={e => (e.currentTarget.style.borderColor = '#30363D')}
+                onFocus={e => (e.currentTarget.style.borderColor = 'var(--brand-main)')}
+                onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
               />
               <button onClick={addPaths}
                 className="px-4 rounded-xl transition-all"
-                style={{ background: '#5272C5', color: '#FFFFFF', fontSize: '13px', fontWeight: 600, flexShrink: 0 }}
-                onMouseEnter={e => (e.currentTarget.style.background = '#445C9A')}
-                onMouseLeave={e => (e.currentTarget.style.background = '#5272C5')}
+                style={{ background: 'var(--brand-light)', color: 'var(--text-on-brand)', fontSize: '13px', fontWeight: 600, flexShrink: 0 }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'var(--brand-main)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'var(--brand-light)')}
               >Add</button>
             </div>
-            <p style={{ fontSize: '11px', color: '#535865', marginBottom: '8px' }}>Press Enter or click Add</p>
+            <p style={{ fontSize: '11px', color: 'var(--text-disabled)', marginBottom: '8px' }}>Press Enter or click Add</p>
             <div className="flex flex-wrap gap-2">
               {whitelistedPaths.map(p => (
                 <span key={p} className="flex items-center gap-1.5"
-                  style={{ background: 'rgba(34,195,93,0.1)', border: '1px solid rgba(34,195,93,0.25)', borderRadius: '99px', padding: '3px 10px', fontSize: '12px', fontWeight: 500, color: '#22C35D' }}>
+                  style={{ background: 'var(--success-a10)', border: '1px solid var(--success-a25)', borderRadius: '99px', padding: '3px 10px', fontSize: '12px', fontWeight: 500, color: 'var(--success-alt)' }}>
                   {p}
                   <button onClick={() => setWhitelistedPaths(prev => prev.filter(x => x !== p))}
-                    style={{ color: '#22C35D' }}
-                    onMouseEnter={e => (e.currentTarget.style.color = '#FFFFFF')}
-                    onMouseLeave={e => (e.currentTarget.style.color = '#22C35D')}
+                    style={{ color: 'var(--success-alt)' }}
+                    onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
+                    onMouseLeave={e => (e.currentTarget.style.color = 'var(--success-alt)')}
                   ><X size={11} /></button>
                 </span>
               ))}
@@ -388,48 +388,48 @@ export default function ScannerPage() {
         }}
           disabled={isSaving}
           className="flex items-center gap-2 px-6 py-2.5 rounded-xl transition-all"
-          style={{ background: isSaving ? '#3B5189' : '#5272C5', color: '#FFFFFF', fontSize: '13px', fontWeight: 600, opacity: isSaving ? 0.7 : 1 }}
-          onMouseEnter={e => { if (!isSaving) (e.currentTarget as HTMLButtonElement).style.background = '#445C9A'; }}
-          onMouseLeave={e => { if (!isSaving) (e.currentTarget as HTMLButtonElement).style.background = '#5272C5'; }}
+          style={{ background: isSaving ? 'var(--brand-mid)' : 'var(--brand-light)', color: 'var(--text-on-brand)', fontSize: '13px', fontWeight: 600, opacity: isSaving ? 0.7 : 1 }}
+          onMouseEnter={e => { if (!isSaving) (e.currentTarget as HTMLButtonElement).style.background = 'var(--brand-main)'; }}
+          onMouseLeave={e => { if (!isSaving) (e.currentTarget as HTMLButtonElement).style.background = 'var(--brand-light)'; }}
         >
-          {isSaving ? <><div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(255,255,255,0.2)', borderTopColor: '#fff' }} /> Saving...</> : 'Save Preferences'}
+          {isSaving ? <><div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--spinner-track)', borderTopColor: 'var(--text-on-brand)' }} /> Saving...</> : 'Save Preferences'}
         </button>
       </div>
 
       {/* Recent Results */}
       <div style={cardStyle}>
         <div className="flex justify-between items-center mb-5">
-          <span style={{ fontSize: '15px', fontWeight: 600, color: '#FFFFFF' }}>Recent Scan Results</span>
+          <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>Recent Scan Results</span>
           {scans.length > 0 && (
             <button onClick={() => setShowDeleteConfirm(true)}
               className="flex items-center gap-1.5 transition-all"
-              style={{ fontSize: '13px', fontWeight: 500, color: '#535865' }}
-              onMouseEnter={e => (e.currentTarget.style.color = '#F85149')}
-              onMouseLeave={e => (e.currentTarget.style.color = '#535865')}
+              style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-disabled)' }}
+              onMouseEnter={e => (e.currentTarget.style.color = 'var(--danger)')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-disabled)')}
             ><Trash2 size={14} /> Delete All</button>
           )}
         </div>
 
         {scans.length === 0 ? (
           <div style={{ padding: '48px', textAlign: 'center' }}>
-            <FileSearch size={32} style={{ color: '#30363D', margin: '0 auto 12px' }} />
-            <p style={{ color: '#535865', fontWeight: 500 }}>No scans yet</p>
-            <p style={{ color: '#30363D', fontSize: '13px', marginTop: '4px' }}>Run a scan above to see results here.</p>
+            <FileSearch size={32} style={{ color: 'var(--border)', margin: '0 auto 12px' }} />
+            <p style={{ color: 'var(--text-disabled)', fontWeight: 500 }}>No scans yet</p>
+            <p style={{ color: 'var(--border)', fontSize: '13px', marginTop: '4px' }}>Run a scan above to see results here.</p>
           </div>
         ) : (
           <Table<any>
             columns={[
               { header: "Scan ID", accessor: "scanid", render: v => (
-                <span style={{ fontFamily: 'monospace', fontSize: '12px', padding: '2px 8px', background: '#161B22', border: '1px solid #30363D', borderRadius: '6px', color: '#989898' }}>{v}</span>
+                <span style={{ fontFamily: 'monospace', fontSize: '12px', padding: '2px 8px', background: 'var(--background-subtle)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text-tertiary)' }}>{v}</span>
               )},
-              { header: "Type", accessor: "filename", className: "w-[40%]", render: v => <span style={{ color: '#FFFFFF', fontWeight: 500 }}>{v}</span> },
+              { header: "Type", accessor: "filename", className: "w-[40%]", render: v => <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{v}</span> },
               { header: "Threats", accessor: "threats", render: v => (
                 <div className="flex items-center gap-2">
-                  <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: v > 0 ? '#F85149' : '#22C35D', display: 'inline-block' }} />
-                  <span style={{ color: v > 0 ? '#F85149' : '#535865', fontWeight: v > 0 ? 600 : 400 }}>{v}</span>
+                  <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: v > 0 ? 'var(--danger)' : 'var(--success-alt)', display: 'inline-block' }} />
+                  <span style={{ color: v > 0 ? 'var(--danger)' : 'var(--text-disabled)', fontWeight: v > 0 ? 600 : 400 }}>{v}</span>
                 </div>
               )},
-              { header: "Time", accessor: "date", className: "text-right", render: v => <span style={{ color: '#535865', fontSize: '12px' }}>{v}</span> },
+              { header: "Time", accessor: "date", className: "text-right", render: v => <span style={{ color: 'var(--text-disabled)', fontSize: '12px' }}>{v}</span> },
             ]}
             data={scans.map(s => ({ scanid: `SCN-${String(s.id).padStart(4, '0')}`, filename: s.type, threats: s.threats, date: s.time }))}
           />

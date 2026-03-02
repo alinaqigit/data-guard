@@ -29,6 +29,22 @@ export function clearSession() {
   setSessionId(null);
 }
 
+// Remember token management
+export function setRememberToken(token: string | null) {
+  if (token) {
+    localStorage.setItem("dlp_remember_token", token);
+  } else {
+    localStorage.removeItem("dlp_remember_token");
+  }
+}
+
+export function getRememberToken(): string | null {
+  if (typeof window !== "undefined") {
+    return localStorage.getItem("dlp_remember_token");
+  }
+  return null;
+}
+
 // Generic API request handler
 interface RequestOptions extends RequestInit {
   requiresAuth?: boolean;

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Users, ShieldAlert, FileSearch, ScrollText } from "lucide-react";
 import StatCard from "@/components/StatCard";
 import Table from "@/components/Table";
+import CustomSelect from "@/components/CustomSelect";
 import { useSecurity } from "@/context/SecurityContext";
 import { reportsService } from "@/lib/api/reports.service";
 
@@ -81,8 +82,8 @@ export default function Home() {
   };
 
   const cardStyle = {
-    background: '#12161B',
-    border: '1px solid #30363D',
+    background: 'var(--background-card)',
+    border: '1px solid var(--border)',
     borderRadius: '16px',
     padding: '20px 24px',
   };
@@ -91,7 +92,7 @@ export default function Home() {
     <div className="space-y-6 pb-10">
 
       {/* Page title */}
-      <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.02em' }}>
+      <h1 style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
         Security Overview
       </h1>
 
@@ -125,14 +126,14 @@ export default function Home() {
           {/* Recent Scans */}
           <div style={cardStyle}>
             <div className="flex items-center justify-between mb-5">
-              <h2 style={{ fontSize: '16px', fontWeight: 600, color: '#FFFFFF' }}>
+              <h2 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)' }}>
                 Recent Scans
               </h2>
               <button
                 onClick={() => router.push("/scanner")}
-                style={{ fontSize: '13px', fontWeight: 500, color: '#5272C5' }}
-                onMouseEnter={e => (e.currentTarget.style.color = '#BABABA')}
-                onMouseLeave={e => (e.currentTarget.style.color = '#5272C5')}
+                style={{ fontSize: '13px', fontWeight: 500, color: 'var(--brand-light)' }}
+                onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-secondary)')}
+                onMouseLeave={e => (e.currentTarget.style.color = 'var(--brand-light)')}
               >
                 View All
               </button>
@@ -140,9 +141,9 @@ export default function Home() {
 
             {scans.length === 0 ? (
               <div className="py-10 text-center">
-                <FileSearch size={32} className="mx-auto mb-3" style={{ color: '#535865' }} />
-                <p style={{ color: '#989898', fontWeight: 500, fontSize: '14px' }}>No scans yet</p>
-                <p style={{ color: '#535865', fontSize: '13px', marginTop: '4px' }}>
+                <FileSearch size={32} className="mx-auto mb-3" style={{ color: 'var(--text-disabled)' }} />
+                <p style={{ color: 'var(--text-tertiary)', fontWeight: 500, fontSize: '14px' }}>No scans yet</p>
+                <p style={{ color: 'var(--text-disabled)', fontSize: '13px', marginTop: '4px' }}>
                   Run a scan from the Content Scanner page.
                 </p>
               </div>
@@ -155,9 +156,9 @@ export default function Home() {
                     render: (value) => (
                       <span style={{
                         fontFamily: 'monospace', fontSize: '12px',
-                        padding: '2px 8px', background: '#161B22',
-                        border: '1px solid #30363D', borderRadius: '6px',
-                        color: '#989898',
+                        padding: '2px 8px', background: 'var(--background-subtle)',
+                        border: '1px solid var(--border)', borderRadius: '6px',
+                        color: 'var(--text-tertiary)',
                       }}>{value}</span>
                     ),
                   },
@@ -166,7 +167,7 @@ export default function Home() {
                     accessor: "filename",
                     className: "w-[40%]",
                     render: (value) => (
-                      <span style={{ color: '#FFFFFF', fontWeight: 500 }}>{value}</span>
+                      <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{value}</span>
                     ),
                   },
                   {
@@ -176,11 +177,11 @@ export default function Home() {
                       <div className="flex items-center gap-2">
                         <span style={{
                           width: '7px', height: '7px', borderRadius: '50%',
-                          background: value > 0 ? '#F85149' : '#22C35D',
+                          background: value > 0 ? 'var(--danger)' : 'var(--success-alt)',
                           display: 'inline-block',
                         }} />
                         <span style={{
-                          color: value > 0 ? '#F85149' : '#535865',
+                          color: value > 0 ? 'var(--danger)' : 'var(--text-disabled)',
                           fontWeight: value > 0 ? 600 : 400,
                         }}>{value}</span>
                       </div>
@@ -190,7 +191,7 @@ export default function Home() {
                     header: "Time", accessor: "date",
                     className: "text-right",
                     render: (value) => (
-                      <span style={{ color: '#535865', fontSize: '12px' }}>{value}</span>
+                      <span style={{ color: 'var(--text-disabled)', fontSize: '12px' }}>{value}</span>
                     ),
                   },
                 ]}
@@ -207,14 +208,14 @@ export default function Home() {
           {/* Recent Threats */}
           <div style={cardStyle}>
             <div className="flex items-center justify-between mb-5">
-              <h2 style={{ fontSize: '16px', fontWeight: 600, color: '#FFFFFF' }}>
+              <h2 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)' }}>
                 Recent Threats
               </h2>
               <button
                 onClick={() => router.push("/threats")}
-                style={{ fontSize: '13px', fontWeight: 500, color: '#F85149' }}
-                onMouseEnter={e => (e.currentTarget.style.color = '#BABABA')}
-                onMouseLeave={e => (e.currentTarget.style.color = '#F85149')}
+                style={{ fontSize: '13px', fontWeight: 500, color: 'var(--danger)' }}
+                onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-secondary)')}
+                onMouseLeave={e => (e.currentTarget.style.color = 'var(--danger)')}
               >
                 View All
               </button>
@@ -222,11 +223,11 @@ export default function Home() {
 
             {alerts.length === 0 ? (
               <div className="py-10 text-center">
-                <ShieldAlert size={32} className="mx-auto mb-3" style={{ color: '#535865' }} />
-                <p style={{ color: '#22C35D', fontWeight: 500, fontSize: '14px' }}>
+                <ShieldAlert size={32} className="mx-auto mb-3" style={{ color: 'var(--text-disabled)' }} />
+                <p style={{ color: 'var(--success-alt)', fontWeight: 500, fontSize: '14px' }}>
                   No threats detected
                 </p>
-                <p style={{ color: '#535865', fontSize: '13px', marginTop: '4px' }}>
+                <p style={{ color: 'var(--text-disabled)', fontSize: '13px', marginTop: '4px' }}>
                   Your environment is currently secure.
                 </p>
               </div>
@@ -239,9 +240,9 @@ export default function Home() {
                     render: (value) => (
                       <span style={{
                         fontFamily: 'monospace', fontSize: '12px',
-                        padding: '2px 8px', background: '#161B22',
-                        border: '1px solid #30363D', borderRadius: '6px',
-                        color: '#989898',
+                        padding: '2px 8px', background: 'var(--background-subtle)',
+                        border: '1px solid var(--border)', borderRadius: '6px',
+                        color: 'var(--text-tertiary)',
                       }}>{value}</span>
                     ),
                   },
@@ -250,7 +251,7 @@ export default function Home() {
                     accessor: "filename",
                     className: "w-[40%]",
                     render: (value) => (
-                      <span style={{ color: '#FFFFFF', fontWeight: 500 }}
+                      <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}
                         className="truncate block max-w-xs">{value}</span>
                     ),
                   },
@@ -259,13 +260,13 @@ export default function Home() {
                     accessor: "threats",
                     render: (value) => {
                       const colors: Record<string, string> = {
-                        High: '#F85149', Medium: '#F8C149', Low: '#5272C5',
+                        High: 'var(--danger)', Medium: 'var(--warning)', Low: 'var(--brand-light)',
                       };
                       return (
                         <span style={{
                           fontSize: '11px', fontWeight: 600,
                           textTransform: 'uppercase', letterSpacing: '0.08em',
-                          color: colors[value] || '#989898',
+                          color: colors[value] || 'var(--text-tertiary)',
                         }}>
                           {value}
                         </span>
@@ -276,7 +277,7 @@ export default function Home() {
                     header: "Time", accessor: "date",
                     className: "text-right",
                     render: (value) => (
-                      <span style={{ color: '#535865', fontSize: '12px' }}>{value}</span>
+                      <span style={{ color: 'var(--text-disabled)', fontSize: '12px' }}>{value}</span>
                     ),
                   },
                 ]}
@@ -293,50 +294,44 @@ export default function Home() {
 
         {/* Quick Report */}
         <div style={{ ...cardStyle, height: 'fit-content' }}>
-          <h2 style={{ fontSize: '16px', fontWeight: 600, color: '#FFFFFF', marginBottom: '20px' }}>
+          <h2 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '20px' }}>
             Quick Report
           </h2>
           <form className="space-y-4" onSubmit={handleGenerateReport}>
             <div className="space-y-2">
-              <label style={{ fontSize: '12px', fontWeight: 500, color: '#989898', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              <label style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                 Format
               </label>
-              <select
+              <CustomSelect
                 value={reportFormat}
-                onChange={(e) => setReportFormat(e.target.value as any)}
-                className="w-full h-11 px-4 rounded-xl appearance-none cursor-pointer focus:outline-none transition-all"
-                style={{
-                  background: '#161B22',
-                  border: '1px solid #30363D',
-                  color: '#FFFFFF',
-                  fontWeight: 500,
-                  fontSize: '14px',
-                }}
-              >
-                <option value="pdf">PDF Document (.pdf)</option>
-                <option value="xlsx">Excel Workbook (.xlsx)</option>
-                <option value="json">JSON Data (.json)</option>
-              </select>
+                onChange={(val) => setReportFormat(val as "pdf" | "xlsx" | "json")}
+                options={[
+                  { value: "pdf", label: "PDF Document", description: ".pdf" },
+                  { value: "xlsx", label: "Excel Workbook", description: ".xlsx" },
+                  { value: "json", label: "JSON Data", description: ".json" },
+                ]}
+                placeholder="Select format"
+              />
             </div>
             <button
               type="submit"
               disabled={isGenerating}
               className="w-full py-3 rounded-xl flex items-center justify-center gap-2 transition-all"
               style={{
-                background: isGenerating ? '#3B5189' : '#5272C5',
-                color: '#FFFFFF',
+                background: isGenerating ? 'var(--brand-mid)' : 'var(--brand-light)',
+                color: 'var(--text-on-brand)',
                 fontWeight: 600,
                 fontSize: '14px',
                 border: 'none',
                 cursor: isGenerating ? 'not-allowed' : 'pointer',
                 opacity: isGenerating ? 0.7 : 1,
               }}
-              onMouseEnter={e => { if (!isGenerating) (e.currentTarget as HTMLButtonElement).style.background = '#445C9A'; }}
-              onMouseLeave={e => { if (!isGenerating) (e.currentTarget as HTMLButtonElement).style.background = '#5272C5'; }}
+              onMouseEnter={e => { if (!isGenerating) (e.currentTarget as HTMLButtonElement).style.background = 'var(--brand-main)'; }}
+              onMouseLeave={e => { if (!isGenerating) (e.currentTarget as HTMLButtonElement).style.background = 'var(--brand-light)'; }}
             >
               {isGenerating ? (
                 <><div className="w-4 h-4 border-2 rounded-full animate-spin"
-                  style={{ borderColor: 'rgba(255,255,255,0.2)', borderTopColor: '#FFFFFF' }} />
+                  style={{ borderColor: 'var(--spinner-track)', borderTopColor: 'var(--text-on-brand)' }} />
                   Generating...</>
               ) : "Download Report"}
             </button>

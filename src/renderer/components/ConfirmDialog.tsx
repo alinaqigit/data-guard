@@ -35,10 +35,10 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
 
     if (!visible) return null;
 
-    const iconColor  = isDestructive ? '#F85149' : '#5272C5';
-    const iconBg     = isDestructive ? 'rgba(248,81,73,0.1)' : 'rgba(82,114,197,0.1)';
-    const confirmBg  = isDestructive ? '#F85149' : '#5272C5';
-    const confirmHov = isDestructive ? '#FD5658' : '#445C9A';
+    const iconColor  = isDestructive ? 'var(--danger)' : 'var(--brand-light)';
+    const iconBg     = isDestructive ? 'var(--danger-a10)' : 'var(--brand-a10)';
+    const confirmBg  = isDestructive ? 'var(--danger)' : 'var(--brand-light)';
+    const confirmHov = isDestructive ? 'var(--danger-alt)' : 'var(--brand-main)';
 
     return (
         <div
@@ -46,7 +46,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             style={{
                 position: 'fixed', inset: 0, zIndex: 60,
                 display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px',
-                backgroundColor: `rgba(0,0,0,${animating ? 0.7 : 0})`,
+                backgroundColor: animating ? 'var(--overlay-medium)' : 'transparent',
                 backdropFilter: `blur(${animating ? 6 : 0}px)`,
                 transition: 'background-color 250ms ease, backdrop-filter 250ms ease',
             }}
@@ -54,12 +54,12 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             <div
                 onClick={e => e.stopPropagation()}
                 style={{
-                    background: '#12161B',
-                    border: '1px solid #30363D',
+                    background: 'var(--background-card)',
+                    border: '1px solid var(--border)',
                     borderRadius: '16px',
                     width: '100%',
                     maxWidth: '380px',
-                    boxShadow: '0 24px 64px rgba(0,0,0,0.6)',
+                    boxShadow: '0 24px 64px var(--overlay-light)',
                     opacity: animating ? 1 : 0,
                     transform: animating ? 'scale(1) translateY(0)' : 'scale(0.94) translateY(8px)',
                     transition: 'opacity 250ms cubic-bezier(0.16,1,0.3,1), transform 250ms cubic-bezier(0.16,1,0.3,1)',
@@ -76,10 +76,10 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
                         <AlertTriangle size={22} style={{ color: iconColor }} />
                     </div>
 
-                    <p style={{ fontSize: '16px', fontWeight: 600, color: '#FFFFFF', marginBottom: '8px' }}>
+                    <p style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
                         {title}
                     </p>
-                    <p style={{ fontSize: '13px', fontWeight: 400, color: '#989898', lineHeight: 1.6, marginBottom: '24px' }}>
+                    <p style={{ fontSize: '13px', fontWeight: 400, color: 'var(--text-tertiary)', lineHeight: 1.6, marginBottom: '24px' }}>
                         {message}
                     </p>
 
@@ -88,12 +88,12 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
                             onClick={onCancel}
                             style={{
                                 padding: '9px 20px', borderRadius: '10px',
-                                background: '#161B22', border: '1px solid #30363D',
-                                color: '#989898', fontSize: '13px', fontWeight: 500,
+                                background: 'var(--background-subtle)', border: '1px solid var(--border)',
+                                color: 'var(--text-tertiary)', fontSize: '13px', fontWeight: 500,
                                 cursor: 'pointer', transition: 'all 0.15s ease',
                             }}
-                            onMouseEnter={e => { e.currentTarget.style.color = '#FFFFFF'; e.currentTarget.style.borderColor = '#535865'; }}
-                            onMouseLeave={e => { e.currentTarget.style.color = '#989898'; e.currentTarget.style.borderColor = '#30363D'; }}
+                            onMouseEnter={e => { e.currentTarget.style.color = 'var(--text-primary)'; e.currentTarget.style.borderColor = 'var(--text-disabled)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-tertiary)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
                         >
                             {cancelText}
                         </button>
@@ -102,7 +102,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
                             style={{
                                 padding: '9px 20px', borderRadius: '10px',
                                 background: confirmBg, border: 'none',
-                                color: '#FFFFFF', fontSize: '13px', fontWeight: 600,
+                                color: 'var(--text-on-brand)', fontSize: '13px', fontWeight: 600,
                                 cursor: 'pointer', transition: 'background 0.15s ease',
                             }}
                             onMouseEnter={e => (e.currentTarget.style.background = confirmHov)}
