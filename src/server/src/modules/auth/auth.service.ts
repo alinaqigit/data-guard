@@ -169,4 +169,39 @@ export class authService {
       body: userWithoutPassword,
     };
   }
+
+  public async updateProfile(
+    userId: number,
+    data: { email?: string; bio?: string; name?: string },
+  ): Promise<authResponse> {
+    // Map 'name' from frontend to 'username' in DB
+    const updateData: { email?: string; bio?: string; username?: string } = {};
+    if (data.email !== undefined) updateData.email = data.email;
+    if (data.bio !== undefined) updateData.bio = data.bio;
+    if (data.name !== undefined) updateData.username = data.name;
+
+    const updatedUser = this.authRepository.updateUserProfile(
+      userId,
+      updateData,
+    );
+
+    if (!updatedUser) {
+      return {
+        status: 404,
+        error: "User not found",
+      };
+    }
+
+    // If username changed, update the session
+    if (data.name) {
+      SessionManager.updateSessionUsername(userId, data.name);
+    }
+
+    const { passwordHash, ...userWithoutPassword } = updatedUser;
+
+    return {
+      status: 200,
+      body: userWithoutPassword,
+    };
+  }
 }

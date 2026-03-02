@@ -40,6 +40,22 @@ export class User {
     return this.dbRepository.updateUserName(oldUsername, newUsername);
   }
 
+  public getUserById(id: number): UserEntity | null {
+    return this.dbRepository.getUserById(id);
+  }
+
+  public updateUserProfile(
+    id: number,
+    data: { email?: string; bio?: string; username?: string },
+  ): UserEntity | null {
+    const user = this.dbRepository.getUserById(id);
+    if (!user) {
+      throw new Error("User not found");
+    }
+    this.dbRepository.updateUserProfile(id, data);
+    return this.dbRepository.getUserById(id);
+  }
+
   public deleteUserByUsername(username: string): void {
     const user = this.dbRepository.getUserByUsername(username);
 

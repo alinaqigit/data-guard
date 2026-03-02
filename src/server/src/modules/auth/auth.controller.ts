@@ -94,6 +94,21 @@ export class authController {
         },
       ),
     );
+
+    // Update user profile (protected route)
+    this.authRouter.put(
+      "/profile",
+      authMiddleware.verifySession,
+      asyncHandler(
+        async (req: AuthenticatedRequest, res: Response) => {
+          const userId = req.user!.userId;
+          const { name, email, bio } = req.body;
+          const { status, body, error } =
+            await this.authService.updateProfile(userId, { name, email, bio });
+          res.status(status).json(error ? { error } : body);
+        },
+      ),
+    );
   }
 
   // Custom Middleares:
@@ -115,11 +130,12 @@ export class authController {
         req.dto = new registerDTO();
       }
 
-      // No DTOs needed for logout, verify, or me endpoints
+      // No DTOs needed for logout, verify, me, or profile endpoints
       if (
         req.path === "/logout" ||
         req.path === "/verify" ||
-        req.path === "/me"
+        req.path === "/me" ||
+        req.path === "/profile"
       ) {
         req.dto = true; // Skip validation
       }

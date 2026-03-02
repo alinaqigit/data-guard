@@ -15,6 +15,8 @@ export interface AuthResponse {
   user: {
     id: number;
     username: string;
+    email?: string;
+    bio?: string;
   };
   sessionId: string;
 }
@@ -22,6 +24,8 @@ export interface AuthResponse {
 export interface User {
   id: number;
   username: string;
+  email?: string;
+  bio?: string;
 }
 
 // Policy Module Types

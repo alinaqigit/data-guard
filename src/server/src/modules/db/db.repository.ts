@@ -1,5 +1,5 @@
 import Database from "better-sqlite3-multiple-ciphers";
-import { initializeDatabaseQuery } from "./db.queries";
+import { initializeDatabaseQuery, migrateUsersProfileColumns } from "./db.queries";
 import fs from "fs";
 import {
   UserEntity,
@@ -20,6 +20,7 @@ export class dbRepository {
       fileMustExist: false,
     });
     this.db.exec(initializeDatabaseQuery);
+    migrateUsersProfileColumns(this.db);
   }
 
   public createUser(userData: {
@@ -39,7 +40,7 @@ export class dbRepository {
 
   public getUserByUsername(username: string): UserEntity | null {
     const stmt = this.db.prepare(
-      "SELECT id, username, password_hash as passwordHash, created_at as createdAt FROM users WHERE username = ?",
+      "SELECT id, username, password_hash as passwordHash, email, bio, created_at as createdAt FROM users WHERE username = ?",
     );
     const user = stmt.get(username) as any;
 
@@ -51,7 +52,57 @@ export class dbRepository {
       id: user.id,
       username: user.username,
       passwordHash: user.passwordHash,
+      email: user.email || '',
+      bio: user.bio || '',
     };
+  }
+
+  public getUserById(id: number): UserEntity | null {
+    const stmt = this.db.prepare(
+      "SELECT id, username, password_hash as passwordHash, email, bio, created_at as createdAt FROM users WHERE id = ?",
+    );
+    const user = stmt.get(id) as any;
+
+    if (!user) {
+      return null;
+    }
+
+    return {
+      id: user.id,
+      username: user.username,
+      passwordHash: user.passwordHash,
+      email: user.email || '',
+      bio: user.bio || '',
+    };
+  }
+
+  public updateUserProfile(
+    id: number,
+    data: { email?: string; bio?: string; username?: string },
+  ): void {
+    const fields: string[] = [];
+    const values: any[] = [];
+
+    if (data.email !== undefined) {
+      fields.push("email = ?");
+      values.push(data.email);
+    }
+    if (data.bio !== undefined) {
+      fields.push("bio = ?");
+      values.push(data.bio);
+    }
+    if (data.username !== undefined) {
+      fields.push("username = ?");
+      values.push(data.username);
+    }
+
+    if (fields.length === 0) return;
+
+    values.push(id);
+    const stmt = this.db.prepare(
+      `UPDATE users SET ${fields.join(", ")} WHERE id = ?`,
+    );
+    stmt.run(...values);
   }
 
   public deleteUserByUsername(username: string): void {

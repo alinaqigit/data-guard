@@ -10,6 +10,7 @@ export default function ProfilePage() {
     const router = useRouter();
     const [isEditing, setIsEditing] = useState(false);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
 
     const initialUser = user || { name: 'Loading...', email: '', role: 'Administrator', bio: '' };
     const [formData, setFormData] = useState(initialUser);
@@ -19,10 +20,17 @@ export default function ProfilePage() {
         setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
     };
 
-    const handleSave = (e: React.FormEvent) => {
+    const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
-        updateUserProfile(formData);
-        setIsEditing(false);
+        setIsSaving(true);
+        try {
+            await updateUserProfile(formData);
+            setIsEditing(false);
+        } catch (err) {
+            console.error('Failed to save profile:', err);
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const displayUser = user || initialUser;
@@ -126,12 +134,13 @@ export default function ProfilePage() {
                         </div>
                         <div className="flex justify-end">
                             <button type="submit"
+                                disabled={isSaving}
                                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl transition-all"
-                                style={{ background: '#5272C5', color: '#FFFFFF', fontSize: '13px', fontWeight: 600 }}
-                                onMouseEnter={e => (e.currentTarget.style.background = '#445C9A')}
-                                onMouseLeave={e => (e.currentTarget.style.background = '#5272C5')}
+                                style={{ background: isSaving ? '#3d5499' : '#5272C5', color: '#FFFFFF', fontSize: '13px', fontWeight: 600, opacity: isSaving ? 0.7 : 1 }}
+                                onMouseEnter={e => { if (!isSaving) e.currentTarget.style.background = '#445C9A'; }}
+                                onMouseLeave={e => { if (!isSaving) e.currentTarget.style.background = '#5272C5'; }}
                             >
-                                <Save size={15} /> Save Changes
+                                <Save size={15} /> {isSaving ? 'Saving...' : 'Save Changes'}
                             </button>
                         </div>
                     </form>

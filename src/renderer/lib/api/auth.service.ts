@@ -64,4 +64,11 @@ export const authService = {
   async getCurrentUser(): Promise<User> {
     return api.get<User>("/api/auth/me", true);
   },
+
+  /**
+   * Update user profile (name, email, bio)
+   */
+  async updateProfile(data: { name?: string; email?: string; bio?: string }): Promise<User> {
+    return api.put<User>("/api/auth/profile", data, true);
+  },
 };

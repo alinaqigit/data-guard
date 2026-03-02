@@ -58,7 +58,7 @@ interface SecurityContextType {
   deleteAllAlerts: () => void;
   login: (username: string, pass: string) => Promise<void>;
   logout: () => Promise<void>;
-  updateUserProfile: (profile: UserProfile) => void;
+  updateUserProfile: (profile: UserProfile) => Promise<void>;
   theme: "light" | "dark";
   toggleTheme: () => void;
   addPolicy: (policy: Omit<Policy, "id">) => Promise<void>;
@@ -216,9 +216,9 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
         setIsAuthenticated(true);
         setUser({
           name: userData.username,
-          email: `${userData.username.toLowerCase()}@example.com`,
+          email: userData.email || '',
           role: "Security Administrator",
-          bio: "Dashboard administrator managing Data Leak Prevention policies.",
+          bio: userData.bio || '',
         });
         await refreshPolicies();
         await refreshScans();
@@ -379,9 +379,9 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
     setIsAuthenticated(true);
     setUser({
       name: response.user.username,
-      email: `${response.user.username.toLowerCase()}@example.com`,
+      email: response.user.email || '',
       role: "Security Administrator",
-      bio: "Dashboard administrator managing Data Leak Prevention policies.",
+      bio: response.user.bio || '',
     });
     await refreshPolicies();
     await refreshScans();
@@ -411,9 +411,23 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const updateUserProfile = (profile: UserProfile) => {
-    setUser(profile);
-    localStorage.setItem("dlp_user", JSON.stringify(profile));
+  const updateUserProfile = async (profile: UserProfile) => {
+    try {
+      const updated = await authService.updateProfile({
+        name: profile.name,
+        email: profile.email,
+        bio: profile.bio,
+      });
+      setUser({
+        name: updated.username,
+        email: updated.email || '',
+        role: profile.role,
+        bio: updated.bio || '',
+      });
+    } catch (err) {
+      console.error('Failed to update profile:', err);
+      throw err;
+    }
   };
 
   // ── Policy management ───────────────────────────────────────────────────────

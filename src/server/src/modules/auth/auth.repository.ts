@@ -12,10 +12,21 @@ export class authRepository {
     return this.db.dbService.user.getUserByUsername(username);
   }
 
+  public getUserById(id: number): UserEntity | null {
+    return this.db.dbService.user.getUserById(id);
+  }
+
   public registerUser(user: {
     username: string;
     passwordHash: string;
   }): UserEntity {
     return this.db.dbService.user.createUser(user);
+  }
+
+  public updateUserProfile(
+    id: number,
+    data: { email?: string; bio?: string; username?: string },
+  ): UserEntity | null {
+    return this.db.dbService.user.updateUserProfile(id, data);
   }
 }
