@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { SecurityProvider } from "@/context/SecurityContext";
 import AppContent from "@/components/AppContent";
+import TitleBar from "@/components/TitleBar";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -32,9 +33,12 @@ export default function RootLayout({
         }}
         suppressHydrationWarning
       >
-        <SecurityProvider>
-          <AppContent>{children}</AppContent>
-        </SecurityProvider>
+        <TitleBar />
+        <div className="flex flex-1 overflow-hidden">
+          <SecurityProvider>
+            <AppContent>{children}</AppContent>
+          </SecurityProvider>
+        </div>
       </body>
     </html>
   );

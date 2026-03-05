@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, KeyboardEvent } from "react";
+import { useState, useEffect, KeyboardEvent } from "react";
 import { Search, Trash2, Shield, X, FileSearch, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { useSecurity } from "@/context/SecurityContext";
 import { getSocket } from "@/lib/api/socket";
@@ -13,9 +13,9 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 
 const SENSITIVITY_CONFIDENCE: Record<string, number> = { Low: 95, Medium: 75, High: 50 };
 const SENSITIVITY_DESCRIPTION: Record<string, string> = {
-  Low: "Base model · Highest accuracy, slower detection",
+  Low:    "Base model · Highest accuracy, slower detection",
   Medium: "Small model · Balanced speed and accuracy",
-  High: "Tiny model · Fastest detection, lower accuracy",
+  High:   "Tiny model · Fastest detection, lower accuracy",
 };
 const SCAN_TYPE_OPTIONS = [
   { value: "quick",  label: "Quick Scan",   description: "Shallow scan across all drives and user folders" },
@@ -25,7 +25,7 @@ const SCAN_TYPE_OPTIONS = [
 const SENSITIVITY_OPTIONS = [
   { value: "Low",    label: "Low",    description: "Base model · Highest confidence" },
   { value: "Medium", label: "Medium", description: "Small model · Balanced" },
-  { value: "High",   label: "High",   description: "Tiny model · Fastest, lower confidence" },
+  { value: "High",   label: "High",   description: "Tiny model · Fastest" },
 ];
 
 interface ScanState {
@@ -98,6 +98,7 @@ export default function ScannerPage() {
     return () => { socket.off("scan:start"); socket.off("scan:progress"); socket.off("scan:complete"); };
   }, []);
 
+  // Load saved preferences on mount
   useEffect(() => {
     const saved = localStorage.getItem("dlp_scanner_prefs");
     if (saved) try {
@@ -171,6 +172,7 @@ export default function ScannerPage() {
     <div className="space-y-6 pb-12">
       <h1 style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Content Scanner</h1>
 
+      {/* ── Config + Model ──────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Scan Config */}
         <div style={cardStyle} className="lg:col-span-2">
@@ -409,7 +411,6 @@ export default function ScannerPage() {
             ><Trash2 size={14} /> Delete All</button>
           )}
         </div>
-
         {scans.length === 0 ? (
           <div style={{ padding: '48px', textAlign: 'center' }}>
             <FileSearch size={32} style={{ color: 'var(--border)', margin: '0 auto 12px' }} />

@@ -59,9 +59,7 @@ export const scannerService = {
   async deleteScan(id: number): Promise<{ message: string }> {
     return api.delete<{ message: string }>(`/api/scans/${id}`, true);
   },
-  // ADD this method to your scannerService object in src/renderer/lib/api/scanner.service.ts
-// (or wherever scannerService.getAllScans etc. live)
-
+  
   async deleteAllScans(): Promise<void> {
     await api.delete("/api/scans", true);
   }

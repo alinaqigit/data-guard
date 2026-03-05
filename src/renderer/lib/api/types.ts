@@ -74,6 +74,10 @@ export interface ScanOptions {
   maxDepth?: number;
   followSymlinks?: boolean;
   maxMatchesPerFile?: number;
+  // ── New fields ──────────────────────────────────────────────
+  mlTier?: "base" | "small" | "tiny";          // which ML model to use
+  excludedKeywords?: string[];                  // regex matches containing these are skipped
+  whitelistedPaths?: string[];                  // paths to completely skip during traversal
 }
 
 export interface StartScanRequest {
