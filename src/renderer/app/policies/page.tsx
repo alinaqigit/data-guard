@@ -9,12 +9,8 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 import CopyableText from "@/components/CopyableText";
 
 interface Policy {
-  id: string;
-  name: string;
-  description: string;
-  type: string;
-  pattern: string;
-  status: "Active" | "Disabled";
+  id: string; name: string; description: string;
+  type: string; pattern: string; status: "Active" | "Disabled";
 }
 
 export default function PolicyManagementPage() {
@@ -43,7 +39,6 @@ export default function PolicyManagementPage() {
     policyId: null,
   });
 
-  // --- Policy Statistics (real calculated values) ---
   const totalPolicies = policies.length;
   const activePolicies = policies.filter(
     (p) => p.status === "Active",
@@ -57,10 +52,7 @@ export default function PolicyManagementPage() {
 
   // Violations today: alerts generated today that aren't resolved
   const todayStr = new Date().toISOString().split("T")[0];
-  const violationsToday = alerts.filter((a) => {
-    const alertDate = a.time.split(" ")[0];
-    return alertDate === todayStr && a.status !== "Resolved";
-  }).length;
+  const violationsToday = alerts.filter((a) => a.time.split(" ")[0] === todayStr && a.status !== "Resolved").length;
 
   // Policy coverage: % of active policies that have actually triggered at least one alert
   // (proxy for "coverage" — policies that are doing work)
@@ -93,13 +85,7 @@ export default function PolicyManagementPage() {
   // --- Handlers ---
   const handleCreatePolicy = async (policy: Policy) => {
     try {
-      await addPolicy({
-        name: policy.name,
-        description: policy.description,
-        pattern: policy.pattern,
-        type: policy.type,
-        status: policy.status,
-      });
+      await addPolicy({ name: policy.name, description: policy.description, pattern: policy.pattern, type: policy.type, status: policy.status });
       setIsNewPolicyOpen(false);
       setToast({
         message: "Policy created successfully.",
@@ -153,15 +139,12 @@ export default function PolicyManagementPage() {
     }
   };
 
-  const cardStyle = {
-    background: "linear-gradient(135deg, #020617 0%, #000000 100%)",
-    borderColor: "rgba(51, 65, 85, 0.3)",
-  };
+  const cardStyle = { background: 'var(--background-card)', border: '1px solid var(--border)', borderRadius: '16px' };
 
   return (
-    <div className="space-y-6 pb-12" suppressHydrationWarning>
+    <div className="space-y-6 pb-12">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <h1 className="text-3xl md:text-4xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-500 tracking-tight">
+        <h1 style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
           Policy Management
         </h1>
       </div>
@@ -182,17 +165,19 @@ export default function PolicyManagementPage() {
                     ({totalPolicies})
                   </span>
                 )}
-              </h2>
+              </div>
               <button
                 onClick={() => setIsNewPolicyOpen(true)}
-                className="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-3 rounded-xl text-base font-black transition-all shadow-lg shadow-indigo-500/20 flex items-center gap-2 active:scale-95"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl transition-all"
+                style={{ background: 'var(--brand-light)', color: 'var(--text-on-brand)', fontSize: '13px', fontWeight: 600 }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'var(--brand-main)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'var(--brand-light)')}
               >
-                <Plus size={20} />
-                New Policy
+                <Plus size={16} /> New Policy
               </button>
             </div>
 
-            <div className="divide-y divide-white/5">
+            <div>
               {policies.length === 0 ? (
                 <div className="py-20 text-center">
                   <div className="flex flex-col items-center gap-4">
@@ -245,6 +230,7 @@ export default function PolicyManagementPage() {
                         {policy.status}
                       </span>
                     </div>
+                  </div>
 
                     <div className="flex items-center gap-3 mt-6">
                       <button
@@ -280,8 +266,8 @@ export default function PolicyManagementPage() {
                       </button>
                     </div>
                   </div>
-                ))
-              )}
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -354,31 +340,23 @@ export default function PolicyManagementPage() {
                 </p>
               </div>
             </div>
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-tertiary)' }}>Coverage</span>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--success-alt)' }}>{implementationPct}%</span>
+              </div>
+              <div style={{ height: '6px', background: 'var(--surface-1)', borderRadius: '99px', overflow: 'hidden' }}>
+                <div style={{ height: '100%', background: 'var(--success-alt)', borderRadius: '99px', width: `${implementationPct}%`, transition: 'width 0.7s ease' }} />
+              </div>
+              <p style={{ fontSize: '11px', color: 'var(--border)', marginTop: '4px' }}>Percentage of active policies in enforcement</p>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* New Policy Modal */}
-      <PolicyModal
-        isOpen={isNewPolicyOpen}
-        policy={null}
-        isNew={true}
-        onClose={() => setIsNewPolicyOpen(false)}
-        onSave={handleCreatePolicy}
-      />
-
-      {/* Edit Policy Modal */}
-      <PolicyModal
-        isOpen={!!editingPolicy}
-        policy={editingPolicy}
-        isNew={false}
-        onClose={() => setEditingPolicy(null)}
-        onSave={handleSavePolicy}
-      />
-
-      <ConfirmDialog
-        isOpen={confirmState.isOpen}
-        title="Delete Policy?"
+      <PolicyModal isOpen={isNewPolicyOpen} policy={null} isNew onClose={() => setIsNewPolicyOpen(false)} onSave={handleCreatePolicy} />
+      <PolicyModal isOpen={!!editingPolicy} policy={editingPolicy} isNew={false} onClose={() => setEditingPolicy(null)} onSave={handleSavePolicy} />
+      <ConfirmDialog isOpen={confirmState.isOpen} title="Delete Policy?"
         message="This policy will be permanently deleted and can't be recovered."
         confirmText="Delete Policy"
         isDestructive={true}

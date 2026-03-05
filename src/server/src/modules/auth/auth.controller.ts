@@ -35,9 +35,10 @@ export class authController {
       "/login",
       asyncHandler(async (req: CustomRequest, res: Response) => {
         // Body validation is handled by DTOValidator middleware
-        const { status, body, error } = await this.authService.login(
-          req.body as loginDTO,
-        );
+        // rememberMe is optional and saved separately in attachDTO
+        const dto = req.body as loginDTO;
+        dto.rememberMe = (req as any)._rememberMe;
+        const { status, body, error } = await this.authService.login(dto);
         res.status(status).json(error ? { error } : body);
       }),
     );
@@ -94,6 +95,70 @@ export class authController {
         },
       ),
     );
+
+    // Update user profile (protected route)
+    this.authRouter.put(
+      "/profile",
+      authMiddleware.verifySession,
+      asyncHandler(
+        async (req: AuthenticatedRequest, res: Response) => {
+          const userId = req.user!.userId;
+          const { name, email, bio } = req.body;
+          const { status, body, error } =
+            await this.authService.updateProfile(userId, { name, email, bio });
+          res.status(status).json(error ? { error } : body);
+        },
+      ),
+    );
+
+    // Verify a remember token and create a new session (for app restart persistence)
+    this.authRouter.post(
+      "/verify-remember",
+      asyncHandler(async (req: CustomRequest, res: Response) => {
+        const { rememberToken } = req.body;
+        if (!rememberToken) {
+          res.status(400).json({ error: "Remember token is required" });
+          return;
+        }
+        const { status, body, error } =
+          await this.authService.verifyRememberToken(rememberToken);
+        res.status(status).json(error ? { error } : body);
+      }),
+    );
+
+    // Verify email exists for password reset
+    this.authRouter.post(
+      "/verify-email",
+      asyncHandler(async (req: CustomRequest, res: Response) => {
+        const { email } = req.body;
+        if (!email) {
+          res.status(400).json({ error: "Email is required" });
+          return;
+        }
+        const { status, body, error } =
+          await this.authService.verifyEmail(email);
+        res.status(status).json(error ? { error } : body);
+      }),
+    );
+
+    // Reset password using email verification
+    this.authRouter.post(
+      "/reset-password",
+      asyncHandler(async (req: CustomRequest, res: Response) => {
+        const { email, newPassword } = req.body;
+        if (!email || !newPassword) {
+          res.status(400).json({ error: "Email and new password are required" });
+          return;
+        }
+        if (typeof newPassword === "string" && newPassword.length < 4) {
+          res.status(400).json({ error: "Password must be at least 4 characters" });
+          return;
+        }
+        const { status, body, error } =
+          await this.authService.resetPassword(email, newPassword);
+        res.status(status).json(error ? { error } : body);
+      }),
+    );
   }
 
   // Custom Middleares:
@@ -109,17 +174,23 @@ export class authController {
       // attach DTO to request
       if (req.path === "/login") {
         req.dto = new loginDTO();
+        // Save optional rememberMe before DTO validation strips it
+        (req as any)._rememberMe = req.body?.rememberMe === true;
       }
 
       if (req.path === "/register") {
         req.dto = new registerDTO();
       }
 
-      // No DTOs needed for logout, verify, or me endpoints
+      // No DTOs needed for logout, verify, me, profile, verify-remember, or reset-password endpoints
       if (
         req.path === "/logout" ||
         req.path === "/verify" ||
-        req.path === "/me"
+        req.path === "/me" ||
+        req.path === "/profile" ||
+        req.path === "/verify-remember" ||
+        req.path === "/verify-email" ||
+        req.path === "/reset-password"
       ) {
         req.dto = true; // Skip validation
       }

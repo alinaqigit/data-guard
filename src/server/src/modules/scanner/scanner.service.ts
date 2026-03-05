@@ -516,12 +516,7 @@ export class scannerService {
         includeDisabled: false,
       });
 
-      return {
-        filePath,
-        success: true,
-        threatsFound: result.totalMatches,
-        policyEngineResult: result,
-      };
+      return { filePath, success: true, threatsFound: result.policiesMatched, policyEngineResult: result };
     } catch (error: any) {
       // Count as scanned with no threats so it doesn't break progress tracking
       console.warn(`[Scanner] Skipped ${filePath}: ${error.message}`);

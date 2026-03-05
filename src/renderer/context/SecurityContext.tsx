@@ -135,9 +135,10 @@ interface SecurityContextType {
     rememberMe?: boolean,
   ) => Promise<void>;
   logout: () => Promise<void>;
-  updateUserProfile: (profile: UserProfile) => void;
-  theme: "light" | "dark";
-  toggleTheme: () => void;
+  updateUserProfile: (profile: UserProfile) => Promise<void>;
+  theme: "light" | "dark" | "system";
+  resolvedTheme: "light" | "dark";
+  setThemePreference: (pref: "light" | "dark" | "system") => void;
   addPolicy: (policy: Omit<Policy, "id">) => Promise<void>;
   updatePolicy: (policy: Policy) => Promise<void>;
   togglePolicyStatus: (id: string) => Promise<void>;
@@ -238,12 +239,36 @@ export function SecurityProvider({
   };
 
   const socketInitialized = useRef(false);
-  const realTimeRef = useRef(true);
+  // realTimeRef always mirrors monitoringSettings.realTime for use in socket callbacks
+  const realTimeRef = useRef(monitoringSettings.realTime);
 
   useEffect(() => {
     realTimeRef.current = monitoringSettings.realTime;
   }, [monitoringSettings.realTime]);
 
+  // Keep realTimeRef in sync with state
+  useEffect(() => {
+    realTimeRef.current = monitoringSettings.realTime;
+  }, [monitoringSettings.realTime]);
+
+  // ── Show global toast when new alerts arrive ────────────────────────────────
+  useEffect(() => {
+    if (alerts.length > prevAlertsLengthRef.current) {
+      const newest = alerts[0];
+      if (newest && monitoringSettings.notifications) {
+        const isEncryption = newest.source === "Auto-Response";
+        setGlobalToast({
+          message: isEncryption
+            ? `Auto-encrypted: ${newest.description}`
+            : `Threat detected: ${newest.description}`,
+          type: isEncryption ? "success" : "warning",
+        });
+      }
+    }
+    prevAlertsLengthRef.current = alerts.length;
+  }, [alerts, monitoringSettings.notifications]);
+
+  // ── Socket setup ────────────────────────────────────────────────────────────
   useEffect(() => {
     if (socketInitialized.current) return;
     socketInitialized.current = true;
@@ -379,18 +404,22 @@ export function SecurityProvider({
     };
   }, []);
 
+  // ── Auth check on mount ─────────────────────────────────────────────────────
   useEffect(() => {
     const checkAuth = async () => {
       const sessionId = getSessionId();
+      let authenticated = false;
+
+      // 1. Try verifying existing session
       if (sessionId) {
         try {
           const userData = await authService.verifySession();
           setIsAuthenticated(true);
           setUser({
             name: userData.username,
-            email: `${userData.username.toLowerCase()}@example.com`,
+            email: userData.email || '',
             role: "Security Administrator",
-            bio: "Dashboard administrator managing Data Leak Prevention policies.",
+            bio: userData.bio || '',
           });
           await refreshPolicies();
           await refreshScans();
@@ -435,6 +464,25 @@ export function SecurityProvider({
           }
         }
       }
+
+      if (!authenticated) {
+        setIsAuthenticated(false);
+        setUser(null);
+        return;
+      }
+
+      await refreshPolicies();
+      await refreshScans();
+
+      // Auto-start live monitor based on saved settings
+      const saved = loadSavedSettings();
+      if (saved.realTime !== false) {
+        setTimeout(() => {
+          monitoringApiService
+            .startMonitoring(saved.autoResponse ?? false)
+            .catch((err) => console.warn("[Monitor] Auto-start failed:", err));
+        }, 1500);
+      }
     };
     checkAuth();
   }, []);
@@ -478,15 +526,26 @@ export function SecurityProvider({
   }, [theme]);
 
   useEffect(() => {
-    const saved = localStorage.getItem("dlp_monitoring_settings");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setMonitoringSettings(parsed);
-        realTimeRef.current = parsed.realTime ?? true;
-      } catch {}
+    localStorage.setItem("dlp_theme", theme);
+
+    const applyResolvedTheme = (resolved: "light" | "dark") => {
+      const html = document.documentElement;
+      html.setAttribute("data-theme", resolved);
+      html.classList.remove("light", "dark");
+      html.classList.add(resolved);
+      setResolvedTheme(resolved);
+    };
+
+    if (theme === "system") {
+      const mql = window.matchMedia("(prefers-color-scheme: dark)");
+      applyResolvedTheme(mql.matches ? "dark" : "light");
+      const handler = (e: MediaQueryListEvent) => applyResolvedTheme(e.matches ? "dark" : "light");
+      mql.addEventListener("change", handler);
+      return () => mql.removeEventListener("change", handler);
+    } else {
+      applyResolvedTheme(theme);
     }
-  }, []);
+  }, [theme]);
 
   const updateMonitoringSettings = async (
     settings: Partial<MonitoringSettings>,
@@ -502,6 +561,7 @@ export function SecurityProvider({
       return updated;
     });
 
+    // Start/stop backend monitoring based on realTime toggle
     if (settings.realTime === true) {
       try {
         setWatcherReady(false);
@@ -533,6 +593,7 @@ export function SecurityProvider({
       }
     }
 
+    // Update auto-response on backend if changed
     if (settings.autoResponse !== undefined) {
       try {
         await monitoringApiService.updateAutoResponse(
@@ -696,9 +757,9 @@ export function SecurityProvider({
     setIsAuthenticated(true);
     setUser({
       name: response.user.username,
-      email: `${response.user.username.toLowerCase()}@example.com`,
+      email: response.user.email || '',
       role: "Security Administrator",
-      bio: "Dashboard administrator managing Data Leak Prevention policies.",
+      bio: response.user.bio || '',
     });
     if (rememberMe) {
       setRememberedCredentials(username, password);
@@ -726,12 +787,26 @@ export function SecurityProvider({
     }
   };
 
-  const updateUserProfile = (profile: UserProfile) => {
-    setUser(profile);
-    localStorage.setItem("dlp_user", JSON.stringify(profile));
+  const updateUserProfile = async (profile: UserProfile) => {
+    try {
+      const updated = await authService.updateProfile({
+        name: profile.name,
+        email: profile.email,
+        bio: profile.bio,
+      });
+      setUser({
+        name: updated.username,
+        email: updated.email || '',
+        role: profile.role,
+        bio: updated.bio || '',
+      });
+    } catch (err) {
+      console.error('Failed to update profile:', err);
+      throw err;
+    }
   };
 
-  // ── Policy management ─────────────────────────────────────────────────────
+  // ── Policy management ───────────────────────────────────────────────────────
   const addPolicy = async (p: Omit<Policy, "id">) => {
     const newPolicy = await policyService.createPolicy({
       name: p.name,
@@ -814,6 +889,14 @@ export function SecurityProvider({
       }}
     >
       {children}
+      {/* Global toast — visible on any page */}
+      {globalToast && (
+        <Toast
+          message={globalToast.message}
+          type={globalToast.type}
+          onClose={() => setGlobalToast(null)}
+        />
+      )}
     </SecurityContext.Provider>
   );
 }

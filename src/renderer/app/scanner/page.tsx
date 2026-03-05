@@ -40,7 +40,6 @@ const SENSITIVITY_DESCRIPTION: Record<string, string> = {
   Medium: "Small model · Balanced speed and accuracy",
   High: "Tiny model · Fastest detection, lower accuracy",
 };
-
 const SCAN_TYPE_OPTIONS = [
   {
     value: "quick",
@@ -58,7 +57,6 @@ const SCAN_TYPE_OPTIONS = [
     description: "Scan a specific directory or path",
   },
 ];
-
 const SENSITIVITY_OPTIONS = [
   {
     value: "Low",
@@ -92,16 +90,20 @@ function formatETA(
   return `~${Math.round(remaining / 3600)}h left`;
 }
 
-function formatDuration(ms: number): string {
-  const s = Math.round(ms / 1000);
-  if (s < 60) return `${s}s`;
-  return `${Math.floor(s / 60)}m ${s % 60}s`;
-}
+const INITIAL: ScanState = { isActive: false, scanId: null, totalFiles: 0, filesScanned: 0, filesWithThreats: 0, totalThreats: 0, currentFile: "", startTime: null, status: "idle" };
 
-const cardStyle = {
-  background: "linear-gradient(135deg, #020617 0%, #000000 100%)",
-  borderColor: "rgba(51, 65, 85, 0.3)",
-};
+function formatETA(filesScanned: number, totalFiles: number, startTime: number) {
+  if (!filesScanned || !totalFiles) return "Calculating...";
+  const rate = filesScanned / ((Date.now() - startTime) / 1000);
+  const rem = (totalFiles - filesScanned) / rate;
+  if (rem < 60) return `~${Math.round(rem)}s left`;
+  if (rem < 3600) return `~${Math.round(rem / 60)}m left`;
+  return `~${Math.round(rem / 3600)}h left`;
+}
+function formatDuration(ms: number) {
+  const s = Math.round(ms / 1000);
+  return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`;
+}
 
 export default function ScannerPage() {
   // scanState and setScanState live in context — survive navigation
@@ -130,8 +132,7 @@ export default function ScannerPage() {
   } | null>(null);
   const scanStateRef = useRef<ScanState>(IDLE_SCAN);
   const completionTimeRef = useRef<number | null>(null);
-  // FIX: Track cancellation so the onComplete callback doesn't fire a toast after cancel
-  const cancelledRef = useRef(false);
+  const cancelledRef    = useRef(false);
 
   // Throttle ref for scan:progress — prevents UI freeze from rapid socket events
   const progressThrottleRef = useRef<ReturnType<
@@ -272,14 +273,12 @@ export default function ScannerPage() {
   // Load saved preferences on mount
   useEffect(() => {
     const saved = localStorage.getItem("dlp_scanner_prefs");
-    if (saved) {
-      try {
-        const p = JSON.parse(saved);
-        setExcludedKeywords(p.excludedKeywords || []);
-        setWhitelistedPaths(p.whitelistedPaths || []);
-        setSensitivity(p.sensitivity || "Medium");
-      } catch {}
-    }
+    if (saved) try {
+      const p = JSON.parse(saved);
+      setExcludedKeywords(p.excludedKeywords || []);
+      setWhitelistedPaths(p.whitelistedPaths || []);
+      setSensitivity(p.sensitivity || "Medium");
+    } catch {}
   }, []);
 
   const addKeywords = () => {
@@ -344,7 +343,6 @@ export default function ScannerPage() {
       return;
     }
     completionTimeRef.current = null;
-    // FIX: Reset cancelled flag on new scan
     cancelledRef.current = false;
 
     updateScanState({
@@ -436,9 +434,7 @@ export default function ScannerPage() {
 
   return (
     <div className="space-y-6 pb-12">
-      <h1 className="text-3xl md:text-4xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-500 mb-8 tracking-tight">
-        Content Scanner
-      </h1>
+      <h1 style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Content Scanner</h1>
 
       {/* ── Config + Model ──────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -546,7 +542,7 @@ export default function ScannerPage() {
         </div>
       </div>
 
-      {/* ── Progress Panel ───────────────────────────────────────────────────── */}
+      {/* Progress */}
       {showProgress && (
         <div
           className={`border rounded-2xl p-5 shadow-lg transition-all duration-300 ${
@@ -593,7 +589,15 @@ export default function ScannerPage() {
               )}
             </h3>
             <div className="flex items-center gap-3">
-              {/* Dismiss button — only when cancelled */}
+              {isCompleted ? <CheckCircle2 size={18} style={{ color: 'var(--success-alt)' }} /> :
+               isFailed    ? <AlertTriangle size={18} style={{ color: 'var(--danger)' }} /> :
+               isCancelled ? <X size={18} style={{ color: 'var(--warning)' }} /> :
+               <div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--brand-a30)', borderTopColor: 'var(--brand-light)' }} />}
+              <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                {isCompleted ? 'Scan Complete' : isFailed ? 'Scan Failed' : isCancelled ? 'Scan Cancelled' : 'Scanning in Progress'}
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
               {isCancelled && (
                 <button
                   onClick={() => updateScanState(IDLE_SCAN)}
@@ -717,7 +721,6 @@ export default function ScannerPage() {
             </div>
           </div>
 
-          {/* Current file */}
           {scanState.currentFile && !isCompleted && !isCancelled && (
             <div className="flex items-center gap-2 text-xs text-neutral-500 font-mono truncate px-1">
               <FileSearch
@@ -857,6 +860,22 @@ export default function ScannerPage() {
             )}
           </button>
         </div>
+
+        <button onClick={() => {
+          setIsSaving(true);
+          if (keywordInput.trim()) addKeywords();
+          if (pathInput.trim()) addPaths();
+          localStorage.setItem("dlp_scanner_prefs", JSON.stringify({ excludedKeywords, whitelistedPaths, sensitivity }));
+          setTimeout(() => { setIsSaving(false); setToast({ message: "Preferences saved.", type: "success" }); }, 800);
+        }}
+          disabled={isSaving}
+          className="flex items-center gap-2 px-6 py-2.5 rounded-xl transition-all"
+          style={{ background: isSaving ? 'var(--brand-mid)' : 'var(--brand-light)', color: 'var(--text-on-brand)', fontSize: '13px', fontWeight: 600, opacity: isSaving ? 0.7 : 1 }}
+          onMouseEnter={e => { if (!isSaving) (e.currentTarget as HTMLButtonElement).style.background = 'var(--brand-main)'; }}
+          onMouseLeave={e => { if (!isSaving) (e.currentTarget as HTMLButtonElement).style.background = 'var(--brand-light)'; }}
+        >
+          {isSaving ? <><div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--spinner-track)', borderTopColor: 'var(--text-on-brand)' }} /> Saving...</> : 'Save Preferences'}
+        </button>
       </div>
 
       {/* ── Recent Scan Results ──────────────────────────────────────────────── */}
@@ -955,12 +974,16 @@ export default function ScannerPage() {
         />
       )}
 
-      <ConfirmDialog
-        isOpen={showDeleteConfirm}
-        title="Delete All Scans?"
+      <style>{`
+        @keyframes shimmer {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
+      `}</style>
+
+      <ConfirmDialog isOpen={showDeleteConfirm} title="Delete All Scans?"
         message="This will permanently remove all scan records. This action cannot be undone."
-        confirmText="Delete All"
-        isDestructive
+        confirmText="Delete All" cancelText="Cancel" isDestructive
         onCancel={() => setShowDeleteConfirm(false)}
         onConfirm={() => {
           clearAllScans();

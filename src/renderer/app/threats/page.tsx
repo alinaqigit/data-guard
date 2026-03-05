@@ -439,8 +439,17 @@ export default function ThreatsPage() {
     });
   };
 
-  const Spinner = () => (
-    <div className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+  const Spinner = () => <div className="w-3.5 h-3.5 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--spinner-track)', borderTopColor: 'var(--text-primary)' }} />;
+  const cardStyle = { background: 'var(--background-card)', border: '1px solid var(--border)', borderRadius: '16px' };
+  const thStyle = { padding: '12px 20px', fontSize: '11px', fontWeight: 600 as const, color: 'var(--text-disabled)', textTransform: 'uppercase' as const, letterSpacing: '0.08em' };
+
+  const ActionBtn = ({ onClick, title, disabled, color, hoverBg, children }: any) => (
+    <button onClick={onClick} disabled={disabled} title={title}
+      className="p-1.5 rounded-lg transition-all disabled:opacity-40"
+      style={{ color: 'var(--text-disabled)' }}
+      onMouseEnter={e => { e.currentTarget.style.color = color; e.currentTarget.style.background = hoverBg; }}
+      onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-disabled)'; e.currentTarget.style.background = 'transparent'; }}
+    >{children}</button>
   );
 
   return (
@@ -494,12 +503,10 @@ export default function ThreatsPage() {
         }
       />
 
-      <h1 className="text-3xl md:text-4xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-500 tracking-tight">
-        Threat Intelligence
-      </h1>
+      <h1 style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Threat Intelligence</h1>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat, i) => (
           <div
             key={i}
@@ -591,7 +598,7 @@ export default function ThreatsPage() {
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-800/60">
+              <tbody>
                 {filtered.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="py-20 text-center">
@@ -769,9 +776,7 @@ export default function ThreatsPage() {
                 <X size={18} />
               </button>
             </div>
-
-            <div className="p-4 space-y-4">
-              {/* ID + severity */}
+            <div style={{ padding: '16px' }} className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="font-mono text-xs text-neutral-500 font-bold">
                   THR-
@@ -806,10 +811,17 @@ export default function ThreatsPage() {
                 </p>
               </div>
 
-              {/* Description */}
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 text-xs text-neutral-500 font-bold uppercase tracking-wider">
-                  <AlertTriangle size={12} /> Description
+              {[
+                { icon: Activity, label: 'Type',    value: selectedThreat.type,        valueStyle: { color: 'var(--text-primary)', fontWeight: 500 } },
+                { icon: FileText, label: 'Source',  value: selectedThreat.source,      valueStyle: { color: 'var(--text-secondary)' } },
+                { icon: AlertTriangle, label: 'Description', value: selectedThreat.description, valueStyle: { color: 'var(--text-tertiary)' } },
+                { icon: Clock,    label: 'Detected', value: selectedThreat.time,        valueStyle: { color: 'var(--text-tertiary)' } },
+              ].map(({ icon: Icon, label, value, valueStyle }) => (
+                <div key={label}>
+                  <div className="flex items-center gap-1.5 mb-1" style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-disabled)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    <Icon size={11} />{label}
+                  </div>
+                  <p style={{ fontSize: '13px', lineHeight: 1.5, ...valueStyle }}>{value}</p>
                 </div>
                 <CopyableText
                   text={selectedThreat.description}
@@ -873,9 +885,9 @@ export default function ThreatsPage() {
 
               {/* File path */}
               {selectedThreat.filePath && (
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 text-xs text-neutral-500 font-bold uppercase tracking-wider">
-                    <MapPin size={12} /> File Path
+                <div>
+                  <div className="flex items-center gap-1.5 mb-1" style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-disabled)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    <MapPin size={11} /> File Path
                   </div>
                   <CopyableText
                     text={selectedThreat.filePath}
@@ -948,7 +960,6 @@ export default function ThreatsPage() {
 
               <hr className="border-white/5" />
 
-              {/* Action buttons */}
               <div className="space-y-2">
                 <p className="text-xs text-neutral-500 font-bold uppercase tracking-wider">
                   File Actions

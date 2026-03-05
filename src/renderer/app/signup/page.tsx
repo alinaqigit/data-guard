@@ -14,14 +14,13 @@ import {
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-
 import Toast from "@/components/Toast";
 
 export default function SignupPage() {
   const router = useRouter();
   const { login } = useSecurity();
   const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail]       = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [toast, setToast] = useState<{
@@ -33,7 +32,6 @@ export default function SignupPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-
     try {
       await authService.register({ username, password });
       // Auto-login after successful registration
@@ -48,111 +46,68 @@ export default function SignupPage() {
         router.push("/");
       }, 2000);
     } catch (error) {
-      setToast({
-        message:
-          error instanceof Error
-            ? error.message
-            : "Failed to create account",
-        type: "error",
-      });
-    } finally {
-      setIsLoading(false);
-    }
+      setToast({ message: error instanceof Error ? error.message : "Failed to create account", type: "error" });
+    } finally { setIsLoading(false); }
   };
 
+  const inputStyle = {
+    width: '100%', background: 'var(--background-input)', border: '1px solid var(--border)',
+    borderRadius: '12px', paddingLeft: '44px', paddingRight: '16px',
+    paddingTop: '12px', paddingBottom: '12px',
+    color: 'var(--text-primary)', fontSize: '14px', fontWeight: 400, outline: 'none',
+    transition: 'border-color 0.2s',
+  };
+  const labelStyle = { fontSize: '11px', fontWeight: 600, color: 'var(--text-disabled)', textTransform: 'uppercase' as const, letterSpacing: '0.08em', display: 'block', marginBottom: '8px' };
+  const iconStyle  = { position: 'absolute' as const, left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-disabled)' };
+
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center p-4">
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
-      )}
-      <div className="w-full max-w-md">
-        <div className="text-center mb-12">
-          <div className="inline-flex p-6 mb-4 group transition-all duration-500">
-            <div className="w-24 h-24 relative">
-              <Image
-                src="/images/logo.png"
-                alt="DataGuard Logo"
-                fill
-                className="object-contain drop-shadow-[0_0_15px_rgba(16,185,129,0.5)]"
-              />
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'var(--background)' }}>
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      <div style={{ width: '100%', maxWidth: '400px' }}>
+        {/* Logo */}
+        <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+          <div style={{ display: 'inline-flex', marginBottom: '16px' }}>
+            <div style={{ width: '64px', height: '64px', position: 'relative' }}>
+              <Image src="/images/logo.png" alt="DataGuard" fill className="object-contain" />
             </div>
           </div>
-          <h1 className="text-5xl font-black text-white tracking-tighter mb-3">
-            Create Account
-          </h1>
-          <p className="text-neutral-400 font-bold text-lg tracking-wide uppercase opacity-75">
-            Join the security network
-          </p>
+          <h1 style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', marginBottom: '8px' }}>Create Account</h1>
+          <p style={{ fontSize: '13px', fontWeight: 400, color: 'var(--text-disabled)' }}>Join the DataGuard security network</p>
         </div>
 
-        <div
-          className="border border-white/5 rounded-[2.5rem] p-10 shadow-2xl transition-all duration-500"
-          style={{
-            background:
-              "linear-gradient(135deg, #020617 0%, #000000 100%)",
-          }}
-        >
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-3">
-              <label className="text-sm font-black text-neutral-400 uppercase tracking-widest ml-1">
-                Username
-              </label>
-              <div className="relative group">
-                <User
-                  className="absolute left-5 top-1/2 -translate-y-1/2 text-neutral-500 group-focus-within:text-emerald-500 transition-colors"
-                  size={20}
-                />
-                <input
-                  type="text"
-                  required
-                  className="w-full bg-black/40 border border-white/5 rounded-2xl pl-12 pr-6 py-4.5 text-white focus:outline-none focus:border-emerald-500/50 focus:ring-4 focus:ring-emerald-500/10 transition-all outline-none font-bold text-lg placeholder:text-neutral-700"
-                  placeholder="Choose a username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+        {/* Card */}
+        <div style={{ background: 'var(--background-card)', border: '1px solid var(--border)', borderRadius: '20px', padding: '32px' }}>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label style={labelStyle}>Username</label>
+              <div style={{ position: 'relative' }}>
+                <User size={16} style={iconStyle} />
+                <input type="text" required placeholder="Choose a username" value={username} onChange={e => setUsername(e.target.value)}
+                  style={inputStyle}
+                  onFocus={e => (e.currentTarget.style.borderColor = 'var(--brand-main)')}
+                  onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
                 />
               </div>
             </div>
-
-            <div className="space-y-3">
-              <label className="text-sm font-black text-neutral-400 uppercase tracking-widest ml-1">
-                Email Address
-              </label>
-              <div className="relative group">
-                <Mail
-                  className="absolute left-5 top-1/2 -translate-y-1/2 text-neutral-500 group-focus-within:text-emerald-500 transition-colors"
-                  size={20}
-                />
-                <input
-                  type="email"
-                  required
-                  className="w-full bg-black/40 border border-white/5 rounded-2xl pl-12 pr-6 py-4.5 text-white focus:outline-none focus:border-emerald-500/50 focus:ring-4 focus:ring-emerald-500/10 transition-all outline-none font-bold text-lg placeholder:text-neutral-700"
-                  placeholder="Enter your email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+            <div>
+              <label style={labelStyle}>Email Address</label>
+              <div style={{ position: 'relative' }}>
+                <Mail size={16} style={iconStyle} />
+                <input type="email" required placeholder="Enter your email" value={email} onChange={e => setEmail(e.target.value)}
+                  style={inputStyle}
+                  onFocus={e => (e.currentTarget.style.borderColor = 'var(--brand-main)')}
+                  onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
                 />
               </div>
             </div>
-
-            <div className="space-y-3">
-              <label className="text-sm font-black text-neutral-400 uppercase tracking-widest ml-1">
-                Password
-              </label>
-              <div className="relative group">
-                <Lock
-                  className="absolute left-5 top-1/2 -translate-y-1/2 text-neutral-500 group-focus-within:text-emerald-500 transition-colors"
-                  size={20}
-                />
-                <input
-                  type="password"
-                  required
-                  className="w-full bg-black/40 border border-white/5 rounded-2xl pl-12 pr-6 py-4.5 text-white focus:outline-none focus:border-emerald-500/50 focus:ring-4 focus:ring-emerald-500/10 transition-all outline-none font-bold text-lg placeholder:text-neutral-700"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+            <div>
+              <label style={labelStyle}>Password</label>
+              <div style={{ position: 'relative' }}>
+                <Lock size={16} style={iconStyle} />
+                <input type="password" required placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)}
+                  style={inputStyle}
+                  onFocus={e => (e.currentTarget.style.borderColor = 'var(--brand-main)')}
+                  onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
                 />
               </div>
             </div>
@@ -174,30 +129,19 @@ export default function SignupPage() {
               disabled={isLoading}
               className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-4.5 rounded-2xl transition-all shadow-xl shadow-emerald-600/20 active:scale-[0.98] flex items-center justify-center gap-3 mt-6 text-xl tracking-tight disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading ? (
-                <>
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Creating account...
-                </>
-              ) : (
-                <>
-                  Sign Up
-                  <UserPlus size={22} />
-                </>
-              )}
+              {isLoading
+                ? <><div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--spinner-track)', borderTopColor: 'var(--text-on-brand)' }} /> Creating account...</>
+                : <>Sign Up <UserPlus size={16} /></>}
             </button>
           </form>
 
-          <div className="mt-10 pt-10 border-t border-white/5 text-center">
-            <Link
-              href="/login"
-              className="inline-flex items-center gap-3 text-neutral-400 hover:text-white transition-all font-black text-lg group"
+          <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid var(--surface-1)', textAlign: 'center' }}>
+            <Link href="/login" className="inline-flex items-center gap-2 transition-all group"
+              style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-disabled)', textDecoration: 'none' }}
+              onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-disabled)')}
             >
-              <ArrowLeft
-                size={20}
-                className="group-hover:-translate-x-1 transition-transform"
-              />
-              Back to Login
+              <ArrowLeft size={14} /> Back to Login
             </Link>
           </div>
         </div>
