@@ -3,6 +3,8 @@ CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   username TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
+  email TEXT DEFAULT '',
+  bio TEXT DEFAULT '',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 `;
@@ -62,4 +64,27 @@ CREATE TABLE IF NOT EXISTS live_scanners (
 );
 `;
 
-export const initializeDatabaseQuery = `${createUserTableQuery} ${createPolicyTableQuery} ${createScanTableQuery} ${createLiveScannerTableQuery}`;
+const createRememberTokensTableQuery = `
+CREATE TABLE IF NOT EXISTS remember_tokens (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  token TEXT NOT NULL UNIQUE,
+  user_id INTEGER NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  expires_at DATETIME NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+`;
+
+export const initializeDatabaseQuery = `${createUserTableQuery} ${createPolicyTableQuery} ${createScanTableQuery} ${createLiveScannerTableQuery} ${createRememberTokensTableQuery}`;
+
+// Migration: add email and bio columns to existing users table
+export const migrateUsersProfileColumns = (db: any): void => {
+  const columns = db.pragma('table_info(users)') as { name: string }[];
+  const columnNames = columns.map((c: { name: string }) => c.name);
+  if (!columnNames.includes('email')) {
+    db.exec("ALTER TABLE users ADD COLUMN email TEXT DEFAULT ''");
+  }
+  if (!columnNames.includes('bio')) {
+    db.exec("ALTER TABLE users ADD COLUMN bio TEXT DEFAULT ''");
+  }
+};

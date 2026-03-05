@@ -17,199 +17,126 @@ const SENSITIVITY_DESCRIPTION: Record<string, string> = {
   Medium: "Small model · Balanced speed and accuracy",
   High:   "Tiny model · Fastest detection, lower accuracy",
 };
-
 const SCAN_TYPE_OPTIONS = [
-  { value: "quick",  label: "Quick Scan (Fast)",  description: "Shallow scan across all drives and user folders" },
-  { value: "full",   label: "Full Scan (Slow)",   description: "Deep recursive scan across all drives" },
-  { value: "custom", label: "Custom Path",        description: "Scan a specific directory or path" },
+  { value: "quick",  label: "Quick Scan",   description: "Shallow scan across all drives and user folders" },
+  { value: "full",   label: "Full Scan",    description: "Deep recursive scan across all drives" },
+  { value: "custom", label: "Custom Path",  description: "Scan a specific directory or path" },
 ];
-
 const SENSITIVITY_OPTIONS = [
   { value: "Low",    label: "Low",    description: "Base model · Highest confidence" },
   { value: "Medium", label: "Medium", description: "Small model · Balanced" },
   { value: "High",   label: "High",   description: "Tiny model · Fastest" },
 ];
 
-function formatETA(filesScanned: number, totalFiles: number, startTime: number): string {
-  if (filesScanned === 0 || totalFiles === 0) return "Calculating...";
-  const elapsed = (Date.now() - startTime) / 1000;
-  const rate = filesScanned / elapsed;
-  const remaining = (totalFiles - filesScanned) / rate;
-  if (!isFinite(remaining) || remaining <= 0) return "Almost done...";
-  if (remaining < 60)   return `~${Math.round(remaining)}s left`;
-  if (remaining < 3600) return `~${Math.round(remaining / 60)}m left`;
-  return `~${Math.round(remaining / 3600)}h left`;
+interface ScanState {
+  isActive: boolean; scanId: number | null; totalFiles: number;
+  filesScanned: number; filesWithThreats: number; totalThreats: number;
+  currentFile: string; startTime: number | null;
+  status: "idle" | "running" | "completed" | "failed" | "cancelled";
 }
 
-function formatDuration(ms: number): string {
+const INITIAL: ScanState = { isActive: false, scanId: null, totalFiles: 0, filesScanned: 0, filesWithThreats: 0, totalThreats: 0, currentFile: "", startTime: null, status: "idle" };
+
+function formatETA(filesScanned: number, totalFiles: number, startTime: number) {
+  if (!filesScanned || !totalFiles) return "Calculating...";
+  const rate = filesScanned / ((Date.now() - startTime) / 1000);
+  const rem = (totalFiles - filesScanned) / rate;
+  if (rem < 60) return `~${Math.round(rem)}s left`;
+  if (rem < 3600) return `~${Math.round(rem / 60)}m left`;
+  return `~${Math.round(rem / 3600)}h left`;
+}
+function formatDuration(ms: number) {
   const s = Math.round(ms / 1000);
-  if (s < 60) return `${s}s`;
-  return `${Math.floor(s / 60)}m ${s % 60}s`;
+  return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`;
 }
-
-const cardStyle = {
-  background: "linear-gradient(135deg, #020617 0%, #000000 100%)",
-  borderColor: "rgba(51, 65, 85, 0.3)",
-};
 
 export default function ScannerPage() {
-  // scanState and setScanState live in context — survive navigation
-  const { scans, runScan, clearAllScans, scanState, setScanState } = useSecurity();
-
+  const { scans, runScan, clearAllScans } = useSecurity();
   const [scanType, setScanType]     = useState("quick");
   const [scanPath, setScanPath]     = useState("");
-  const [isStarting, setIsStarting] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
   const [sensitivity, setSensitivity] = useState("Medium");
-
   const [excludedKeywords, setExcludedKeywords] = useState<string[]>([]);
   const [whitelistedPaths, setWhitelistedPaths] = useState<string[]>([]);
   const [keywordInput, setKeywordInput] = useState("");
   const [pathInput, setPathInput]       = useState("");
   const [isSaving, setIsSaving]         = useState(false);
-
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
-  const [scanState, setScanState] = useState<ScanState>(INITIAL_SCAN_STATE);
-  const scanStateRef = useRef<ScanState>(INITIAL_SCAN_STATE);
+  const [toast, setToast]               = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [scanState, setScanState]       = useState<ScanState>(INITIAL);
+  const scanStateRef    = useRef<ScanState>(INITIAL);
   const completionTimeRef = useRef<number | null>(null);
-  // FIX: Track cancellation so the onComplete callback doesn't fire a toast after cancel
-  const cancelledRef = useRef(false);
+  const cancelledRef    = useRef(false);
 
-  const updateScanState = (updates: Partial<ScanState>) => {
-    setScanState((prev) => {
-      const next = { ...prev, ...updates };
-      scanStateRef.current = next;
-      return next;
-    });
-  };
+  const update = (updates: Partial<ScanState>) => setScanState(prev => {
+    const next = { ...prev, ...updates };
+    scanStateRef.current = next;
+    return next;
+  });
 
   useEffect(() => {
     const socket = getSocket();
-
     socket.on("scan:start", (data: ScanStart) => {
-      const currentId = scanStateRef.current.scanId;
-      if (currentId !== null && currentId !== -1 && data.scanId !== currentId) return;
-      updateScanState({
-        scanId: data.scanId,
-        totalFiles: data.totalFiles,
-        startTime: Date.now(),
-        status: "running",
-        isActive: true,
-      });
+      const cur = scanStateRef.current.scanId;
+      if (cur !== null && cur !== -1 && data.scanId !== cur) return;
+      update({ scanId: data.scanId, totalFiles: data.totalFiles, startTime: Date.now(), status: "running", isActive: true });
     });
-
     socket.on("scan:progress", (data: ScanProgress) => {
-      const currentId = scanStateRef.current.scanId;
-      if (currentId !== null && currentId !== -1 && data.scanId !== currentId) return;
-      // FIX: Stop updating progress after cancel
+      const cur = scanStateRef.current.scanId;
+      if (cur !== null && cur !== -1 && data.scanId !== cur) return;
       if (scanStateRef.current.status === "cancelled") return;
-      updateScanState({
-        scanId: data.scanId,
-        filesScanned: data.filesScanned,
-        filesWithThreats: data.filesWithThreats,
-        totalThreats: data.totalThreats,
-        totalFiles: data.totalFiles,
-        currentFile: data.currentFile || "",
-        status: "running",
-        isActive: true,
-      });
+      update({ scanId: data.scanId, filesScanned: data.filesScanned, filesWithThreats: data.filesWithThreats, totalThreats: data.totalThreats, totalFiles: data.totalFiles, currentFile: data.currentFile || "", status: "running", isActive: true });
     });
-
     socket.on("scan:complete", (data: any) => {
-      const currentId = scanStateRef.current.scanId;
-      if (currentId !== null && currentId !== -1 && data.scanId !== currentId) return;
-      // FIX: Ignore completion event if scan was cancelled
+      const cur = scanStateRef.current.scanId;
+      if (cur !== null && cur !== -1 && data.scanId !== cur) return;
       if (scanStateRef.current.status === "cancelled") return;
       completionTimeRef.current = Date.now();
-      updateScanState({
-        filesScanned: data.filesScanned,
-        totalThreats: data.totalThreats,
-        totalFiles: data.totalFiles || scanStateRef.current.totalFiles,
-        status: "completed",
-        isActive: false,
-        currentFile: "",
-      });
+      update({ filesScanned: data.filesScanned, totalThreats: data.totalThreats, totalFiles: data.totalFiles || scanStateRef.current.totalFiles, status: "completed", isActive: false, currentFile: "" });
       setIsScanning(false);
     });
-
-    return () => {
-      socket.off("scan:start");
-      socket.off("scan:progress");
-      socket.off("scan:complete");
-    };
+    return () => { socket.off("scan:start"); socket.off("scan:progress"); socket.off("scan:complete"); };
   }, []);
 
   // Load saved preferences on mount
   useEffect(() => {
     const saved = localStorage.getItem("dlp_scanner_prefs");
-    if (saved) {
-      try {
-        const p = JSON.parse(saved);
-        setExcludedKeywords(p.excludedKeywords || []);
-        setWhitelistedPaths(p.whitelistedPaths || []);
-        setSensitivity(p.sensitivity || "Medium");
-      } catch {}
-    }
+    if (saved) try {
+      const p = JSON.parse(saved);
+      setExcludedKeywords(p.excludedKeywords || []);
+      setWhitelistedPaths(p.whitelistedPaths || []);
+      setSensitivity(p.sensitivity || "Medium");
+    } catch {}
   }, []);
 
   const addKeywords = () => {
-    const words = keywordInput.split(",").map((w) => w.trim()).filter((w) => w && !excludedKeywords.includes(w));
-    if (words.length) { setExcludedKeywords((p) => [...p, ...words]); setKeywordInput(""); }
+    const words = keywordInput.split(",").map(w => w.trim()).filter(w => w && !excludedKeywords.includes(w));
+    if (words.length) { setExcludedKeywords(prev => [...prev, ...words]); setKeywordInput(""); }
   };
   const addPaths = () => {
-    const paths = pathInput.split(",").map((p) => p.trim()).filter((p) => p && !whitelistedPaths.includes(p));
-    if (paths.length) { setWhitelistedPaths((p) => [...p, ...paths]); setPathInput(""); }
-  };
-  const handleKeywordKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addKeywords(); }
-  };
-  const handlePathKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") { e.preventDefault(); addPaths(); }
-  };
-
-  const handleSavePreferences = () => {
-    setIsSaving(true);
-    if (keywordInput.trim()) addKeywords();
-    if (pathInput.trim())    addPaths();
-    localStorage.setItem("dlp_scanner_prefs", JSON.stringify({ excludedKeywords, whitelistedPaths, sensitivity }));
-    setTimeout(() => {
-      setIsSaving(false);
-      setToast({ message: "Preferences saved.", type: "success" });
-    }, 600);
+    const paths = pathInput.split(",").map(p => p.trim()).filter(p => p && !whitelistedPaths.includes(p));
+    if (paths.length) { setWhitelistedPaths(prev => [...prev, ...paths]); setPathInput(""); }
   };
 
   const handleStartScan = async () => {
-    if (scanType === "custom" && !scanPath.trim()) {
-      setToast({ message: "Please enter a path for Custom Scan.", type: "error" });
-      return;
-    }
+    if (scanType === "custom" && !scanPath.trim()) { setToast({ message: "Please enter a path for Custom Scan.", type: "error" }); return; }
     setIsScanning(true);
     completionTimeRef.current = null;
-    // FIX: Reset cancelled flag on new scan
     cancelledRef.current = false;
-
-    updateScanState({ ...INITIAL_SCAN_STATE, isActive: true, status: "running", startTime: Date.now(), scanId: -1 });
-
+    update({ ...INITIAL, isActive: true, status: "running", startTime: Date.now(), scanId: -1 });
     try {
       await runScan(scanType, "All Files", scanPath || process.cwd(), (threatsFound) => {
-        // FIX: Don't fire completion toast if scan was cancelled
         if (cancelledRef.current) return;
-        if (threatsFound === -1) {
-          setToast({ message: "Scan encountered an error.", type: "error" });
-        } else if (threatsFound > 0) {
-          setToast({ message: `Scan complete — ${threatsFound} threat(s) detected!`, type: "error" });
-        } else {
-          setToast({ message: "Scan complete — no threats found.", type: "success" });
-        }
+        if (threatsFound === -1) setToast({ message: "Scan encountered an error.", type: "error" });
+        else if (threatsFound > 0) setToast({ message: `Scan complete — ${threatsFound} threat(s) detected!`, type: "error" });
+        else setToast({ message: "Scan complete — no threats found.", type: "success" });
         setIsScanning(false);
       });
-
       setToast({ message: "Scan started!", type: "success" });
-    } catch (err) {
-      setScanState(IDLE_SCAN);
-      setToast({ message: err instanceof Error ? err.message : "Failed to start scan", type: "error" });
-    } finally {
-      setIsStarting(false);
+    } catch (error) {
+      setIsScanning(false);
+      update({ ...INITIAL });
+      setToast({ message: error instanceof Error ? error.message : "Failed to start scan", type: "error" });
     }
   };
 
@@ -217,7 +144,7 @@ export default function ScannerPage() {
     try {
       cancelledRef.current = true;
       await scannerService.cancelScan(scanState.scanId!);
-      updateScanState({ status: "cancelled", isActive: false, currentFile: "" });
+      update({ status: "cancelled", isActive: false, currentFile: "" });
       setIsScanning(false);
       setToast({ message: "Scan cancelled.", type: "success" });
     } catch {
@@ -226,301 +153,304 @@ export default function ScannerPage() {
     }
   };
 
-  const percentage = scanState.totalFiles > 0
-    ? Math.min(100, Math.round((scanState.filesScanned / scanState.totalFiles) * 100))
-    : 0;
-
+  const percentage = scanState.totalFiles > 0 ? Math.min(100, Math.round((scanState.filesScanned / scanState.totalFiles) * 100)) : 0;
   const isCompleted = scanState.status === "completed";
   const isFailed    = scanState.status === "failed";
   const isCancelled = scanState.status === "cancelled";
   const showProgress = scanState.isActive || isCompleted || isFailed || isCancelled;
+  const confidence = SENSITIVITY_CONFIDENCE[sensitivity];
+
+  const cardStyle = { background: 'var(--background-card)', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px 24px' };
+  const inputStyle = { background: 'var(--background-input)', border: '1px solid var(--border)', borderRadius: '10px', padding: '10px 14px', color: 'var(--text-primary)', fontSize: '13px', outline: 'none', width: '100%' };
+  const labelStyle = { fontSize: '11px', fontWeight: 600 as const, color: 'var(--text-disabled)', textTransform: 'uppercase' as const, letterSpacing: '0.08em', display: 'block', marginBottom: '8px' };
+
+  const progressBorderColor = isCompleted ? 'var(--success-a30)' : isFailed ? 'var(--danger-a30)' : isCancelled ? 'var(--warning-a30)' : 'var(--brand-a30)';
+  const progressBg          = isCompleted ? 'var(--success-a05)' : isFailed ? 'var(--danger-a05)' : isCancelled ? 'var(--warning-a05)' : 'var(--background-card)';
+  const progressBarColor    = isCompleted ? 'var(--success-alt)' : isFailed ? 'var(--danger)' : isCancelled ? 'var(--warning)' : 'var(--brand-light)';
 
   return (
     <div className="space-y-6 pb-12">
-      <h1 className="text-3xl md:text-4xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-500 mb-8 tracking-tight">
-        Content Scanner
-      </h1>
+      <h1 style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Content Scanner</h1>
 
       {/* ── Config + Model ──────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 border rounded-2xl p-4 md:p-5 shadow-lg" style={cardStyle}>
-          <h2 className="text-xl font-black text-white mb-8 flex items-center gap-3 tracking-tight">
-            <Shield className="text-blue-500" size={28} />Scan Configuration
-          </h2>
+        {/* Scan Config */}
+        <div style={cardStyle} className="lg:col-span-2">
+          <div className="flex items-center gap-3 mb-6">
+            <Shield size={18} style={{ color: 'var(--brand-light)' }} />
+            <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>Scan Configuration</span>
+          </div>
           <div className="space-y-5">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-neutral-400">Scan Type</label>
+            <div>
+              <label style={labelStyle}>Scan Type</label>
               <CustomSelect value={scanType} onChange={setScanType} options={SCAN_TYPE_OPTIONS} />
             </div>
             {scanType === "custom" && (
-              <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
-                <label className="text-sm font-medium text-neutral-400">Custom Path</label>
-                <input
-                  type="text"
-                  placeholder="e.g. C:\Users\Documents or /home/user/documents"
-                  className="w-full bg-neutral-950 border border-neutral-800 text-white rounded-xl px-4 py-2.5 focus:outline-none focus:border-blue-500 transition-colors placeholder:text-neutral-600"
-                  value={scanPath}
-                  onChange={(e) => setScanPath(e.target.value)}
+              <div>
+                <label style={labelStyle}>Custom Path</label>
+                <input type="text" placeholder="e.g. C:\Users\Documents" value={scanPath}
+                  onChange={e => setScanPath(e.target.value)} style={inputStyle}
+                  onFocus={e => (e.currentTarget.style.borderColor = 'var(--brand-main)')}
+                  onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
                 />
               </div>
             )}
-
-            <div className="text-xs text-neutral-500 px-1">
+            <p style={{ fontSize: '12px', color: 'var(--text-disabled)' }}>
               {scanType === "quick"  && "Scans top-level files across all drives and user folders. Fast."}
               {scanType === "full"   && "Recursively scans every accessible file across all drives. May take several minutes."}
               {scanType === "custom" && "Scans only the path you specify, recursively."}
             </p>
-            <button
-              onClick={handleStartScan}
-              disabled={isStarting || isRunning}
-              className={`w-full py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg active:scale-95
-                ${isStarting || isRunning ? "bg-blue-600/50 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-500 shadow-blue-900/20"} text-white`}
+            <button onClick={handleStartScan} disabled={isScanning}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl transition-all"
+              style={{ background: isScanning ? 'var(--brand-mid)' : 'var(--brand-light)', color: 'var(--text-on-brand)', fontSize: '14px', fontWeight: 600, opacity: isScanning ? 0.7 : 1, cursor: isScanning ? 'not-allowed' : 'pointer' }}
+              onMouseEnter={e => { if (!isScanning) (e.currentTarget as HTMLButtonElement).style.background = 'var(--brand-main)'; }}
+              onMouseLeave={e => { if (!isScanning) (e.currentTarget as HTMLButtonElement).style.background = 'var(--brand-light)'; }}
             >
-              {isStarting || isRunning
-                ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />{isRunning ? "Scanning..." : "Starting..."}</>
-                : <><Search size={18} />Start Scan</>}
+              {isScanning
+                ? <><div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--spinner-track)', borderTopColor: 'var(--text-on-brand)' }} /> Scanning...</>
+                : <><Search size={16} /> Start Scan</>}
             </button>
           </div>
         </div>
 
-        <div className="border rounded-2xl p-4 md:p-5 shadow-lg flex flex-col justify-center" style={cardStyle}>
-          <h3 className="text-lg font-bold text-white mb-6">Model Configuration</h3>
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-neutral-400">Model Sensitivity</label>
+        {/* Model Config */}
+        <div style={cardStyle}>
+          <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)', display: 'block', marginBottom: '20px' }}>Model Configuration</span>
+          <div className="space-y-5">
+            <div>
+              <label style={labelStyle}>Model Sensitivity</label>
               <CustomSelect value={sensitivity} onChange={setSensitivity} options={SENSITIVITY_OPTIONS} />
             </div>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <label className="text-sm font-medium text-neutral-400">Detection Confidence</label>
-                <span className="text-indigo-400 font-mono font-bold text-sm">{confidence}%</span>
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <label style={{ ...labelStyle, marginBottom: 0 }}>Detection Confidence</label>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--brand-light)', fontFamily: 'monospace' }}>{confidence}%</span>
               </div>
-              <div className="relative w-full h-2 bg-white/5 rounded-full overflow-hidden border border-white/5">
-                <div className="absolute top-0 left-0 h-full bg-gradient-to-r from-indigo-600 to-indigo-400 transition-all duration-500 rounded-full" style={{ width: `${confidence}%` }} />
+              <div style={{ height: '6px', background: 'var(--surface-1)', borderRadius: '99px', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${confidence}%`, background: 'var(--brand-light)', borderRadius: '99px', transition: 'width 0.5s ease' }} />
               </div>
-              <p className="text-xs text-neutral-600 px-1">{SENSITIVITY_DESCRIPTION[sensitivity]}</p>
+              <p style={{ fontSize: '12px', color: 'var(--text-disabled)', marginTop: '8px' }}>{SENSITIVITY_DESCRIPTION[sensitivity]}</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* ── Progress Panel ───────────────────────────────────────────────────── */}
+      {/* Progress */}
       {showProgress && (
-        <div className={`border rounded-2xl p-5 shadow-lg transition-all duration-300 ${
-          isCompleted ? "border-emerald-500/30 bg-emerald-950/20" :
-          isFailed    ? "border-rose-500/30 bg-rose-950/20" :
-          isCancelled ? "border-amber-500/30 bg-amber-950/20" :
-                        "border-blue-500/30"
-        }`} style={isCompleted || isFailed || isCancelled ? {} : cardStyle}>
-
+        <div style={{ background: progressBg, border: `1px solid ${progressBorderColor}`, borderRadius: '16px', padding: '20px 24px' }}>
           <div className="flex items-center justify-between mb-5">
-            <h3 className="text-lg font-black text-white flex items-center gap-3">
-              {isCompleted ? (
-                <><CheckCircle2 className="text-emerald-500" size={22} />Scan Complete</>
-              ) : isFailed ? (
-                <><AlertTriangle className="text-rose-500" size={22} />Scan Failed</>
-              ) : isCancelled ? (
-                <><X className="text-amber-500" size={22} />Scan Cancelled</>
-              ) : (
-                <><div className="w-5 h-5 border-2 border-blue-400/30 border-t-blue-400 rounded-full animate-spin" />Scanning in Progress</>
-              )}
-            </h3>
             <div className="flex items-center gap-3">
-              {/* Dismiss button — only when cancelled */}
+              {isCompleted ? <CheckCircle2 size={18} style={{ color: 'var(--success-alt)' }} /> :
+               isFailed    ? <AlertTriangle size={18} style={{ color: 'var(--danger)' }} /> :
+               isCancelled ? <X size={18} style={{ color: 'var(--warning)' }} /> :
+               <div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--brand-a30)', borderTopColor: 'var(--brand-light)' }} />}
+              <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                {isCompleted ? 'Scan Complete' : isFailed ? 'Scan Failed' : isCancelled ? 'Scan Cancelled' : 'Scanning in Progress'}
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
               {isCancelled && (
-                <button
-                  onClick={() => updateScanState(INITIAL_SCAN_STATE)}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 text-neutral-400 hover:text-white hover:bg-white/10 rounded-xl text-sm font-black transition-colors"
-                >
-                  <X size={14} />Dismiss
-                </button>
+                <button onClick={() => update(INITIAL)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all"
+                  style={{ background: 'var(--background-subtle)', border: '1px solid var(--border)', color: 'var(--text-tertiary)', fontSize: '12px', fontWeight: 500 }}
+                  onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
+                  onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-tertiary)')}
+                ><X size={13} /> Dismiss</button>
               )}
-              {/* Cancel button — only while actively scanning */}
               {isScanning && scanState.scanId && scanState.scanId !== -1 && (
-                <button
-                  onClick={handleCancelScan}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500/20 rounded-xl text-sm font-black transition-colors"
-                >
-                  <X size={14} />Cancel
-                </button>
+                <button onClick={handleCancelScan}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all"
+                  style={{ background: 'var(--danger-a10)', border: '1px solid var(--danger-a30)', color: 'var(--danger)', fontSize: '12px', fontWeight: 500 }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--danger-a20)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'var(--danger-a10)')}
+                ><X size={13} /> Cancel</button>
               )}
-              <span className="text-2xl font-black text-white tabular-nums">{percentage}%</span>
+              <span style={{ fontSize: '22px', fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{percentage}%</span>
             </div>
           </div>
 
-          <div className="relative w-full h-3 bg-white/5 rounded-full overflow-hidden mb-5">
-            <div
-              className={`absolute top-0 left-0 h-full rounded-full transition-all duration-500 ${
-                isCompleted ? "bg-emerald-500" :
-                isFailed    ? "bg-rose-500" :
-                isCancelled ? "bg-amber-500" :
-                              "bg-gradient-to-r from-blue-600 to-indigo-400"
-              }`}
-              style={{ width: `${percentage}%` }}
-            />
+          {/* Bar */}
+          <div style={{ height: '6px', background: 'var(--surface-1)', borderRadius: '99px', overflow: 'hidden', marginBottom: '20px', position: 'relative' }}>
+            <div style={{ height: '100%', width: `${percentage}%`, background: progressBarColor, borderRadius: '99px', transition: 'width 0.5s ease' }} />
             {!isCompleted && !isFailed && !isCancelled && (
-              <div
-                className="absolute top-0 left-0 h-full w-full rounded-full opacity-30"
-                style={{
-                  background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%)",
-                  animation: "shimmer 1.5s infinite",
-                  backgroundSize: "200% 100%",
-                }}
-              />
+              <div style={{
+                position: 'absolute', top: 0, left: 0, height: '100%', width: '100%',
+                background: 'linear-gradient(90deg, transparent 0%, var(--shimmer) 50%, transparent 100%)',
+                backgroundSize: '200% 100%',
+                animation: 'shimmer 1.5s infinite',
+                borderRadius: '99px',
+              }} />
             )}
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
-            <div className="bg-white/5 rounded-xl p-3 text-center">
-              <p className="text-xs text-neutral-500 font-bold uppercase tracking-wider mb-1">Files Scanned</p>
-              <p className="text-xl font-black text-white tabular-nums">{scanState.filesScanned.toLocaleString()}</p>
-              {scanState.totalFiles > 0 && <p className="text-xs text-neutral-600 mt-0.5">of {scanState.totalFiles.toLocaleString()}</p>}
-            </div>
-            <div className="bg-white/5 rounded-xl p-3 text-center">
-              <p className="text-xs text-neutral-500 font-bold uppercase tracking-wider mb-1">Confirmed Leaks</p>
-              <p className={`text-xl font-black tabular-nums ${scanState.totalThreats > 0 ? "text-rose-400" : "text-emerald-400"}`}>{scanState.totalThreats}</p>
-              {scanState.filesWithThreats > 0 && <p className="text-xs text-neutral-600 mt-0.5">in {scanState.filesWithThreats} file{scanState.filesWithThreats !== 1 ? "s" : ""}</p>}
-            </div>
-            <div className="bg-white/5 rounded-xl p-3 text-center">
-              <p className="text-xs text-neutral-500 font-bold uppercase tracking-wider mb-1">{isCompleted ? "Duration" : "ETA"}</p>
-              <p className="text-xl font-black text-white">
-                {isCompleted && scanState.startTime && completionTimeRef.current
-                  ? formatDuration(completionTimeRef.current - scanState.startTime)
-                  : scanState.startTime && !isCancelled
-                  ? formatETA(scanState.filesScanned, scanState.totalFiles, scanState.startTime)
-                  : "—"}
-              </p>
-            </div>
-            <div className="bg-white/5 rounded-xl p-3 text-center">
-              <p className="text-xs text-neutral-500 font-bold uppercase tracking-wider mb-1">Status</p>
-              <p className={`text-sm font-black uppercase tracking-wide ${
-                isCompleted ? "text-emerald-400" :
-                isFailed    ? "text-rose-400" :
-                isCancelled ? "text-amber-400" :
-                              "text-blue-400"
-              }`}>
-                {scanState.status}
-              </p>
-            </div>
+          {/* Stats */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+            {[
+              { label: 'Files Scanned', value: scanState.filesScanned.toLocaleString(), sub: scanState.totalFiles > 0 ? `of ${scanState.totalFiles.toLocaleString()}` : undefined },
+              { label: 'Threats Found', value: String(scanState.totalThreats), valueColor: scanState.totalThreats > 0 ? 'var(--danger)' : 'var(--success-alt)', sub: scanState.filesWithThreats > 0 ? `in ${scanState.filesWithThreats} file(s)` : undefined },
+              { label: isCompleted ? 'Duration' : 'ETA', value: isCompleted && scanState.startTime && completionTimeRef.current ? formatDuration(completionTimeRef.current - scanState.startTime) : scanState.startTime && !isCancelled ? formatETA(scanState.filesScanned, scanState.totalFiles, scanState.startTime) : '—' },
+              { label: 'Status', value: scanState.status.charAt(0).toUpperCase() + scanState.status.slice(1), valueColor: isCompleted ? 'var(--success-alt)' : isFailed ? 'var(--danger)' : isCancelled ? 'var(--warning)' : 'var(--brand-light)' },
+            ].map(({ label, value, sub, valueColor }) => (
+              <div key={label} style={{ background: 'var(--background-subtle)', borderRadius: '10px', padding: '12px', textAlign: 'center' }}>
+                <p style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-disabled)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '6px' }}>{label}</p>
+                <p style={{ fontSize: '18px', fontWeight: 700, color: valueColor || 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{value}</p>
+                {sub && <p style={{ fontSize: '11px', color: 'var(--border)', marginTop: '2px' }}>{sub}</p>}
+              </div>
+            ))}
           </div>
 
-          {/* Current file */}
           {scanState.currentFile && !isCompleted && !isCancelled && (
-            <div className="flex items-center gap-2 text-xs text-neutral-500 font-mono truncate px-1">
-              <FileSearch size={12} className="flex-shrink-0 text-neutral-600" />
+            <div className="flex items-center gap-2 truncate" style={{ fontSize: '11px', color: 'var(--text-disabled)', fontFamily: 'monospace' }}>
+              <FileSearch size={11} style={{ flexShrink: 0 }} />
               <span className="truncate">{scanState.currentFile}</span>
             </div>
           )}
         </div>
       )}
 
-      {/* ── Scanner Preferences ──────────────────────────────────────────────── */}
-      <div className="border rounded-2xl p-4 md:p-5 shadow-lg" style={cardStyle}>
-        <h3 className="text-lg font-bold text-white mb-6">Scanner Preferences</h3>
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-3">
-              <label className="text-sm font-medium text-neutral-400">Excluded Keywords</label>
-              <p className="text-xs text-neutral-600">Matches containing these keywords are skipped before ML analysis.</p>
-              <div className="flex gap-2">
-                <input type="text" placeholder="e.g. ticket, train, invoice"
-                  className="flex-1 bg-black border border-white/10 text-white rounded-xl px-4 py-2.5 focus:outline-none focus:border-indigo-500 transition-colors placeholder:text-neutral-600 text-sm"
-                  value={keywordInput} onChange={(e) => setKeywordInput(e.target.value)} onKeyDown={handleKeywordKeyDown} />
-                <button onClick={addKeywords} className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold text-sm transition-all active:scale-95">Add</button>
-              </div>
-              {excludedKeywords.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {excludedKeywords.map((kw) => (
-                    <span key={kw} className="flex items-center gap-1.5 px-3 py-1 bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 rounded-full text-xs font-bold">
-                      {kw}<button onClick={() => setExcludedKeywords((p) => p.filter((k) => k !== kw))} className="hover:text-white transition-colors"><X size={12} /></button>
-                    </span>
-                  ))}
-                </div>
-              )}
+      {/* Preferences */}
+      <div style={cardStyle}>
+        <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)', display: 'block', marginBottom: '20px' }}>Scanner Preferences</span>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-5">
+          {/* Excluded Keywords */}
+          <div>
+            <label style={labelStyle}>Excluded Keywords</label>
+            <div className="flex gap-2 mb-2">
+              <input type="text" placeholder="e.g. ticket, invoice" value={keywordInput}
+                onChange={e => setKeywordInput(e.target.value)}
+                onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addKeywords(); } }}
+                style={{ ...inputStyle, flex: 1 }}
+                onFocus={e => (e.currentTarget.style.borderColor = 'var(--brand-main)')}
+                onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+              />
+              <button onClick={addKeywords}
+                className="px-4 rounded-xl transition-all"
+                style={{ background: 'var(--brand-light)', color: 'var(--text-on-brand)', fontSize: '13px', fontWeight: 600, flexShrink: 0 }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'var(--brand-main)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'var(--brand-light)')}
+              >Add</button>
             </div>
-
-            <div className="space-y-3">
-              <label className="text-sm font-medium text-neutral-400">Whitelisted Paths</label>
-              <p className="text-xs text-neutral-600">These directories are completely skipped during scanning.</p>
-              <div className="flex gap-2">
-                <input type="text" placeholder="e.g. C:\Users\Public"
-                  className="flex-1 bg-black border border-white/10 text-white rounded-xl px-4 py-2.5 focus:outline-none focus:border-indigo-500 transition-colors placeholder:text-neutral-600 text-sm"
-                  value={pathInput} onChange={(e) => setPathInput(e.target.value)} onKeyDown={handlePathKeyDown} />
-                <button onClick={addPaths} className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold text-sm transition-all active:scale-95">Add</button>
-              </div>
-              {whitelistedPaths.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {whitelistedPaths.map((p) => (
-                    <span key={p} className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 rounded-full text-xs font-bold">
-                      {p}<button onClick={() => setWhitelistedPaths((prev) => prev.filter((x) => x !== p))} className="hover:text-white transition-colors"><X size={12} /></button>
-                    </span>
-                  ))}
-                </div>
-              )}
+            <p style={{ fontSize: '11px', color: 'var(--text-disabled)', marginBottom: '8px' }}>Separate multiple keywords with commas</p>
+            <div className="flex flex-wrap gap-2">
+              {excludedKeywords.map(kw => (
+                <span key={kw} className="flex items-center gap-1.5"
+                  style={{ background: 'var(--brand-a10)', border: '1px solid var(--brand-a25)', borderRadius: '99px', padding: '3px 10px', fontSize: '12px', fontWeight: 500, color: 'var(--brand-light)' }}>
+                  {kw}
+                  <button onClick={() => setExcludedKeywords(prev => prev.filter(k => k !== kw))}
+                    style={{ color: 'var(--brand-light)' }}
+                    onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
+                    onMouseLeave={e => (e.currentTarget.style.color = 'var(--brand-light)')}
+                  ><X size={11} /></button>
+                </span>
+              ))}
             </div>
           </div>
 
-          <button onClick={handleSavePreferences} disabled={isSaving}
-            className={`px-8 py-2.5 rounded-xl font-bold transition-all active:scale-95 flex items-center gap-2 ${isSaving ? "bg-indigo-600/50 cursor-not-allowed" : "bg-indigo-600 hover:bg-indigo-500"} text-white`}>
-            {isSaving ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Saving...</> : "Save Preferences"}
-          </button>
+          {/* Whitelisted Paths */}
+          <div>
+            <label style={labelStyle}>Whitelisted Paths</label>
+            <div className="flex gap-2 mb-2">
+              <input type="text" placeholder="e.g. C:\Windows\System32" value={pathInput}
+                onChange={e => setPathInput(e.target.value)}
+                onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') { e.preventDefault(); addPaths(); } }}
+                style={{ ...inputStyle, flex: 1 }}
+                onFocus={e => (e.currentTarget.style.borderColor = 'var(--brand-main)')}
+                onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+              />
+              <button onClick={addPaths}
+                className="px-4 rounded-xl transition-all"
+                style={{ background: 'var(--brand-light)', color: 'var(--text-on-brand)', fontSize: '13px', fontWeight: 600, flexShrink: 0 }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'var(--brand-main)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'var(--brand-light)')}
+              >Add</button>
+            </div>
+            <p style={{ fontSize: '11px', color: 'var(--text-disabled)', marginBottom: '8px' }}>Press Enter or click Add</p>
+            <div className="flex flex-wrap gap-2">
+              {whitelistedPaths.map(p => (
+                <span key={p} className="flex items-center gap-1.5"
+                  style={{ background: 'var(--success-a10)', border: '1px solid var(--success-a25)', borderRadius: '99px', padding: '3px 10px', fontSize: '12px', fontWeight: 500, color: 'var(--success-alt)' }}>
+                  {p}
+                  <button onClick={() => setWhitelistedPaths(prev => prev.filter(x => x !== p))}
+                    style={{ color: 'var(--success-alt)' }}
+                    onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
+                    onMouseLeave={e => (e.currentTarget.style.color = 'var(--success-alt)')}
+                  ><X size={11} /></button>
+                </span>
+              ))}
+            </div>
+          </div>
         </div>
+
+        <button onClick={() => {
+          setIsSaving(true);
+          if (keywordInput.trim()) addKeywords();
+          if (pathInput.trim()) addPaths();
+          localStorage.setItem("dlp_scanner_prefs", JSON.stringify({ excludedKeywords, whitelistedPaths, sensitivity }));
+          setTimeout(() => { setIsSaving(false); setToast({ message: "Preferences saved.", type: "success" }); }, 800);
+        }}
+          disabled={isSaving}
+          className="flex items-center gap-2 px-6 py-2.5 rounded-xl transition-all"
+          style={{ background: isSaving ? 'var(--brand-mid)' : 'var(--brand-light)', color: 'var(--text-on-brand)', fontSize: '13px', fontWeight: 600, opacity: isSaving ? 0.7 : 1 }}
+          onMouseEnter={e => { if (!isSaving) (e.currentTarget as HTMLButtonElement).style.background = 'var(--brand-main)'; }}
+          onMouseLeave={e => { if (!isSaving) (e.currentTarget as HTMLButtonElement).style.background = 'var(--brand-light)'; }}
+        >
+          {isSaving ? <><div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--spinner-track)', borderTopColor: 'var(--text-on-brand)' }} /> Saving...</> : 'Save Preferences'}
+        </button>
       </div>
 
-      {/* ── Recent Scan Results ──────────────────────────────────────────────── */}
-      <div className="border rounded-2xl p-4 md:p-5 shadow-lg" style={cardStyle}>
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-lg font-black text-white">Recent Scan Results</h3>
+      {/* Recent Results */}
+      <div style={cardStyle}>
+        <div className="flex justify-between items-center mb-5">
+          <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>Recent Scan Results</span>
           {scans.length > 0 && (
-            <button onClick={() => setShowDeleteConfirm(true)} className="flex items-center gap-2 text-red-500 hover:text-red-400 text-sm font-medium transition-colors">
-              <Trash2 size={16} />Delete All Scans
-            </button>
+            <button onClick={() => setShowDeleteConfirm(true)}
+              className="flex items-center gap-1.5 transition-all"
+              style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-disabled)' }}
+              onMouseEnter={e => (e.currentTarget.style.color = 'var(--danger)')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-disabled)')}
+            ><Trash2 size={14} /> Delete All</button>
           )}
         </div>
         {scans.length === 0 ? (
-          <div className="py-12 text-center text-neutral-500">
-            <FileSearch size={36} className="mx-auto mb-3 opacity-20" />
-            <p className="font-bold">No scans yet</p>
-            <p className="text-sm mt-1">Run a scan above to see results here.</p>
+          <div style={{ padding: '48px', textAlign: 'center' }}>
+            <FileSearch size={32} style={{ color: 'var(--border)', margin: '0 auto 12px' }} />
+            <p style={{ color: 'var(--text-disabled)', fontWeight: 500 }}>No scans yet</p>
+            <p style={{ color: 'var(--border)', fontSize: '13px', marginTop: '4px' }}>Run a scan above to see results here.</p>
           </div>
         ) : (
           <Table<any>
             columns={[
-              { header: "Scan ID",  accessor: "scanid",   render: (v) => <span className="font-mono text-xs px-2 py-1 bg-white/5 rounded text-neutral-400 border border-white/5">{v}</span> },
-              { header: "Type",     accessor: "type",     className: "w-[35%]", render: (v) => <span className="font-semibold text-neutral-100">{v}</span> },
-              { header: "Threats",  accessor: "threats",  render: (v) => (
+              { header: "Scan ID", accessor: "scanid", render: v => (
+                <span style={{ fontFamily: 'monospace', fontSize: '12px', padding: '2px 8px', background: 'var(--background-subtle)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text-tertiary)' }}>{v}</span>
+              )},
+              { header: "Type", accessor: "filename", className: "w-[40%]", render: v => <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{v}</span> },
+              { header: "Threats", accessor: "threats", render: v => (
                 <div className="flex items-center gap-2">
-                  <span className={`w-2 h-2 rounded-full ${v > 0 ? "bg-rose-500 animate-pulse" : "bg-emerald-500"}`} />
-                  <span className={v > 0 ? "text-rose-500 font-bold" : "text-neutral-500"}>{v}</span>
+                  <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: v > 0 ? 'var(--danger)' : 'var(--success-alt)', display: 'inline-block' }} />
+                  <span style={{ color: v > 0 ? 'var(--danger)' : 'var(--text-disabled)', fontWeight: v > 0 ? 600 : 400 }}>{v}</span>
                 </div>
               )},
-              { header: "Time", accessor: "time", className: "text-neutral-500 text-xs text-right" },
+              { header: "Time", accessor: "date", className: "text-right", render: v => <span style={{ color: 'var(--text-disabled)', fontSize: '12px' }}>{v}</span> },
             ]}
-            data={scans.map((s) => ({
-              scanid:  `SCN-${String(s.id).padStart(4, "0")}`,
-              type:    s.type,
-              threats: s.threats,
-              time:    s.time,
-            }))}
+            data={scans.map(s => ({ scanid: `SCN-${String(s.id).padStart(4, '0')}`, filename: s.type, threats: s.threats, date: s.time }))}
           />
         )}
       </div>
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
-      <ConfirmDialog
-        isOpen={showDeleteConfirm}
-        title="Delete All Scans?"
+      <style>{`
+        @keyframes shimmer {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
+      `}</style>
+
+      <ConfirmDialog isOpen={showDeleteConfirm} title="Delete All Scans?"
         message="This will permanently remove all scan records. This action cannot be undone."
-        confirmText="Delete All"
-        isDestructive
+        confirmText="Delete All" cancelText="Cancel" isDestructive
         onCancel={() => setShowDeleteConfirm(false)}
-        onConfirm={() => {
-          clearAllScans();
-          setShowDeleteConfirm(false);
-          setToast({ message: "All scans deleted.", type: "success" });
-        }}
-      />
+        onConfirm={() => { clearAllScans(); setShowDeleteConfirm(false); setToast({ message: "All scans deleted.", type: "success" }); }} />
     </div>
   );
 }

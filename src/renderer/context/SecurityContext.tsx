@@ -1,12 +1,13 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useRef } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
 import {
   authService, policyService, scannerService, getSessionId,
   Policy as ApiPolicy, Scan as ApiScan, User,
 } from "@/lib/api";
 import { getSocket, disconnectSocket, SystemMetrics, SocketAlert } from "@/lib/api/socket";
 import { fileActionsService, monitoringApiService } from "@/lib/api/fileActions.service";
+import Toast from "@/components/Toast";
 
 interface Scan {
   id: number; time: string; type: string; files: string; threats: number; status: string;
@@ -78,11 +79,12 @@ interface SecurityContextType {
   clearAllScans: () => Promise<void>;
   deleteAlert: (id: number) => void;
   deleteAllAlerts: () => void;
-  login: (username: string, pass: string) => Promise<void>;
+  login: (username: string, pass: string, rememberMe?: boolean) => Promise<void>;
   logout: () => Promise<void>;
-  updateUserProfile: (profile: UserProfile) => void;
-  theme: "light" | "dark";
-  toggleTheme: () => void;
+  updateUserProfile: (profile: UserProfile) => Promise<void>;
+  theme: "light" | "dark" | "system";
+  resolvedTheme: "light" | "dark";
+  setThemePreference: (pref: "light" | "dark" | "system") => void;
   addPolicy: (policy: Omit<Policy, "id">) => Promise<void>;
   updatePolicy: (policy: Policy) => Promise<void>;
   togglePolicyStatus: (id: string) => Promise<void>;
@@ -90,7 +92,7 @@ interface SecurityContextType {
   refreshPolicies: () => Promise<void>;
   refreshScans: () => Promise<void>;
   monitoringSettings: MonitoringSettings;
-  updateMonitoringSettings: (settings: Partial<MonitoringSettings>) => void;
+  updateMonitoringSettings: (settings: Partial<MonitoringSettings>) => Promise<void>;
   quarantineFile: (alertId: number, filePath: string) => Promise<void>;
   encryptFile: (alertId: number, filePath: string) => Promise<void>;
   deleteFile: (alertId: number, filePath: string) => Promise<void>;
@@ -126,13 +128,22 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
   const [alerts, setAlerts]                 = useState<Alert[]>([]);
   const [totalFilesScanned, setTotalFilesScanned] = useState(0);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser]                     = useState<UserProfile | null>(null);
-  const [theme, setTheme]                   = useState<"light" | "dark">("dark");
-  const [policies, setPolicies]             = useState<Policy[]>([]);
-  const [systemMetrics, setSystemMetrics]   = useState<SystemMetrics>(DEFAULT_METRICS);
-  const [monitoringSettings, setMonitoringSettings] = useState<MonitoringSettings>({
-    realTime: true, autoResponse: false, notifications: true, sensitivity: "Medium",
-  });
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [theme, setTheme] = useState<"light" | "dark" | "system">("dark");
+  const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">("dark");
+  const [policies, setPolicies] = useState<Policy[]>([]);
+  const [systemMetrics, setSystemMetrics] = useState<SystemMetrics>(DEFAULT_METRICS);
+
+  // Load saved settings from localStorage as initial state
+  const loadSavedSettings = (): MonitoringSettings => {
+    try {
+      const saved = localStorage.getItem("dlp_monitoring_settings");
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return { realTime: true, autoResponse: false, notifications: true, sensitivity: "Medium" };
+  };
+
+  const [monitoringSettings, setMonitoringSettings] = useState<MonitoringSettings>(loadSavedSettings);
 
   // ── Scan progress state — survives navigation because it's in context ─────
   const [scanState, setScanStateRaw] = useState<ScanState>(IDLE_SCAN);
@@ -147,10 +158,36 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
   };
 
   const socketInitialized = useRef(false);
-  const realTimeRef = useRef(true);
+  // realTimeRef always mirrors monitoringSettings.realTime for use in socket callbacks
+  const realTimeRef = useRef(monitoringSettings.realTime);
 
-  useEffect(() => { realTimeRef.current = monitoringSettings.realTime; }, [monitoringSettings.realTime]);
+  // Global toast state — shown on any page
+  const [globalToast, setGlobalToast] = useState<{ message: string; type: "success" | "error" | "warning" } | null>(null);
+  const prevAlertsLengthRef = useRef(0);
 
+  // Keep realTimeRef in sync with state
+  useEffect(() => {
+    realTimeRef.current = monitoringSettings.realTime;
+  }, [monitoringSettings.realTime]);
+
+  // ── Show global toast when new alerts arrive ────────────────────────────────
+  useEffect(() => {
+    if (alerts.length > prevAlertsLengthRef.current) {
+      const newest = alerts[0];
+      if (newest && monitoringSettings.notifications) {
+        const isEncryption = newest.source === "Auto-Response";
+        setGlobalToast({
+          message: isEncryption
+            ? `Auto-encrypted: ${newest.description}`
+            : `Threat detected: ${newest.description}`,
+          type: isEncryption ? "success" : "warning",
+        });
+      }
+    }
+    prevAlertsLengthRef.current = alerts.length;
+  }, [alerts, monitoringSettings.notifications]);
+
+  // ── Socket setup ────────────────────────────────────────────────────────────
   useEffect(() => {
     if (socketInitialized.current) return;
     socketInitialized.current = true;
@@ -162,7 +199,6 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
     });
 
     socket.on("alert:new", (alert: Alert) => {
-      if (!realTimeRef.current) return;
       setAlerts((prev) => {
         if (prev.find((a) => a.id === alert.id)) return prev;
         return [alert, ...prev];
@@ -211,7 +247,6 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
     });
 
     socket.on("liveScanner:activity", (activity: any) => {
-      if (!realTimeRef.current) return;
       if (activity.threatsFound > 0) {
         const newAlert: Alert = {
           id: Date.now(),
@@ -237,72 +272,121 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // ── Auth check on mount ─────────────────────────────────────────────────────
   useEffect(() => {
     const checkAuth = async () => {
       const sessionId = getSessionId();
+      let authenticated = false;
+
+      // 1. Try verifying existing session
       if (sessionId) {
         try {
           const userData = await authService.verifySession();
           setIsAuthenticated(true);
           setUser({
             name: userData.username,
-            email: `${userData.username.toLowerCase()}@example.com`,
+            email: userData.email || '',
             role: "Security Administrator",
-            bio: "Dashboard administrator managing Data Leak Prevention policies.",
+            bio: userData.bio || '',
           });
-          await refreshPolicies();
-          await refreshScans();
-          // Auto-start live monitor if realTime was enabled in last session
-          const saved = localStorage.getItem("dlp_monitoring_settings");
-          const savedSettings = saved ? JSON.parse(saved) : null;
-          if (!savedSettings || savedSettings.realTime !== false) {
-            monitoringApiService
-              .startMonitoring(savedSettings?.autoResponse ?? false)
-              .catch((err) => console.warn("[Monitor] Auto-start failed:", err));
+          authenticated = true;
+        } catch {
+          // Session invalid (likely app restarted), try remember token
+        }
+      }
+
+      // 2. Fallback: try remember token if session failed
+      if (!authenticated) {
+        try {
+          const response = await authService.verifyRememberToken();
+          if (response) {
+            setIsAuthenticated(true);
+            setUser({
+              name: response.user.username,
+              email: response.user.email || '',
+              role: "Security Administrator",
+              bio: response.user.bio || '',
+            });
+            authenticated = true;
           }
         } catch {
-          setIsAuthenticated(false);
-          setUser(null);
+          // No valid remember token either
         }
+      }
+
+      if (!authenticated) {
+        setIsAuthenticated(false);
+        setUser(null);
+        return;
+      }
+
+      await refreshPolicies();
+      await refreshScans();
+
+      // Auto-start live monitor based on saved settings
+      const saved = loadSavedSettings();
+      if (saved.realTime !== false) {
+        setTimeout(() => {
+          monitoringApiService
+            .startMonitoring(saved.autoResponse ?? false)
+            .catch((err) => console.warn("[Monitor] Auto-start failed:", err));
+        }, 1500);
       }
     };
     checkAuth();
   }, []);
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem("dlp_theme") as "light" | "dark";
+    const savedTheme = localStorage.getItem("dlp_theme") as "light" | "dark" | "system" | null;
     if (savedTheme) setTheme(savedTheme);
   }, []);
 
-  useEffect(() => { localStorage.setItem("dlp_theme", theme); }, [theme]);
-
+  // Apply theme to <html> element and handle system preference
   useEffect(() => {
-    const saved = localStorage.getItem("dlp_monitoring_settings");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setMonitoringSettings(parsed);
-        realTimeRef.current = parsed.realTime ?? true;
-      } catch {}
+    localStorage.setItem("dlp_theme", theme);
+
+    const applyResolvedTheme = (resolved: "light" | "dark") => {
+      const html = document.documentElement;
+      html.setAttribute("data-theme", resolved);
+      html.classList.remove("light", "dark");
+      html.classList.add(resolved);
+      setResolvedTheme(resolved);
+    };
+
+    if (theme === "system") {
+      const mql = window.matchMedia("(prefers-color-scheme: dark)");
+      applyResolvedTheme(mql.matches ? "dark" : "light");
+      const handler = (e: MediaQueryListEvent) => applyResolvedTheme(e.matches ? "dark" : "light");
+      mql.addEventListener("change", handler);
+      return () => mql.removeEventListener("change", handler);
+    } else {
+      applyResolvedTheme(theme);
     }
-  }, []);
+  }, [theme]);
 
+  // ── Update monitoring settings and persist ──────────────────────────────────
   const updateMonitoringSettings = async (settings: Partial<MonitoringSettings>) => {
-    setMonitoringSettings((prev) => {
-      const updated = { ...prev, ...settings };
-      localStorage.setItem("dlp_monitoring_settings", JSON.stringify(updated));
-      if (settings.realTime !== undefined) realTimeRef.current = settings.realTime;
-      return updated;
-    });
+    const current = monitoringSettings;
+    const updated = { ...current, ...settings };
 
+    // Update state and persist to localStorage
+    setMonitoringSettings(updated);
+    realTimeRef.current = updated.realTime;
+    localStorage.setItem("dlp_monitoring_settings", JSON.stringify(updated));
+
+    // Start/stop backend monitoring based on realTime toggle
     if (settings.realTime === true) {
-      try { await monitoringApiService.startMonitoring(monitoringSettings.autoResponse); }
-      catch (err) { console.warn("[Monitor] Could not start live monitoring:", err); }
+      try {
+        await monitoringApiService.startMonitoring(updated.autoResponse);
+      } catch (err) {
+        console.warn("[Monitor] Could not start live monitoring:", err);
+      }
     } else if (settings.realTime === false) {
       try { await monitoringApiService.stopMonitoring(); }
       catch (err) { console.warn("[Monitor] Could not stop live monitoring:", err); }
     }
 
+    // Update auto-response on backend if changed
     if (settings.autoResponse !== undefined) {
       try { await monitoringApiService.updateAutoResponse(settings.autoResponse); }
       catch (err) { console.warn("[Monitor] Could not update auto-response:", err); }
@@ -345,27 +429,44 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
       options: { ...(extraOptions || {}) },
     });
 
-    // Register onComplete callback against this scanId
-    // The scan:complete socket listener above fires setScanState,
-    // this just additionally calls the page's toast callback
-    const socket = getSocket();
-    const handler = (data: any) => {
-      if (data.scanId !== result.scanId) return;
-      socket.off("scan:complete", handler);
-      onComplete?.(data.totalThreats ?? 0);
-    };
-    socket.on("scan:complete", handler);
-    setTimeout(() => socket.off("scan:complete", handler), 10 * 60 * 1000);
-
-    return result;
+    const pollInterval = setInterval(async () => {
+      try {
+        const scanData = await scannerService.getScanById(result.scanId);
+        if (scanData.status !== "running") {
+          clearInterval(pollInterval);
+          await refreshScans();
+          if (scanData.totalThreats > 0) {
+            const newAlerts: Alert[] = Array.from({ length: Math.min(scanData.totalThreats, 5) }).map((_, i) => ({
+              id: Date.now() + i,
+              severity: scanData.totalThreats > 5 ? "High" : "Medium",
+              time: new Date().toISOString().replace("T", " ").split(".")[0],
+              type: "Policy Violation: Sensitive Content",
+              description: `Detected ${scanData.totalThreats} threat(s) in ${scanData.filesWithThreats} file(s) during ${type} scan.`,
+              source: type,
+              status: "New" as const,
+              filePath: scanData.targetPath,
+            }));
+            setAlerts((prev) => [...newAlerts, ...prev]);
+          }
+          onComplete?.(scanData.totalThreats);
+        }
+      } catch {
+        clearInterval(pollInterval);
+        onComplete?.(-1);
+      }
+    }, 2000);
   };
 
-  // ── Alert management ──────────────────────────────────────────────────────
-  const resolveAlert     = (id: number) => setAlerts((prev) => prev.map((a) => a.id === id ? { ...a, status: "Resolved" } : a));
-  const updateAlertStatus = (id: number, status: Alert["status"]) => setAlerts((prev) => prev.map((a) => a.id === id ? { ...a, status } : a));
-  const deleteAlert      = (id: number) => setAlerts((prev) => prev.filter((a) => a.id !== id));
-  const deleteAllAlerts  = () => setAlerts([]);
-  const clearAllAlerts   = () => setAlerts([]);
+  // ── Alert management ────────────────────────────────────────────────────────
+  const resolveAlert = (id: number) => {
+    setAlerts((prev) => prev.map((a) => (a.id === id ? { ...a, status: "Resolved" } : a)));
+  };
+  const updateAlertStatus = (id: number, status: Alert["status"]) => {
+    setAlerts((prev) => prev.map((a) => (a.id === id ? { ...a, status } : a)));
+  };
+  const deleteAlert = (id: number) => setAlerts((prev) => prev.filter((a) => a.id !== id));
+  const deleteAllAlerts = () => setAlerts([]);
+  const clearAllAlerts = () => setAlerts([]);
 
   const clearAllScans = async () => {
     try { await scannerService.deleteAllScans(); } catch {}
@@ -373,7 +474,7 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
     setTotalFilesScanned(0);
   };
 
-  // ── File actions ──────────────────────────────────────────────────────────
+  // ── File actions ────────────────────────────────────────────────────────────
   const quarantineFile = async (alertId: number, filePath: string) => {
     await fileActionsService.quarantine(filePath);
     updateAlertStatus(alertId, "Quarantined");
@@ -387,22 +488,34 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
     deleteAlert(alertId);
   };
 
-  // ── Auth ──────────────────────────────────────────────────────────────────
-  const login = async (username: string, password: string) => {
-    const response = await authService.login({ username, password });
+  // ── Auth ────────────────────────────────────────────────────────────────────
+  const login = async (username: string, password: string, rememberMe?: boolean) => {
+    const response = await authService.login({ username, password, rememberMe });
     setIsAuthenticated(true);
     setUser({
       name: response.user.username,
-      email: `${response.user.username.toLowerCase()}@example.com`,
+      email: response.user.email || '',
       role: "Security Administrator",
-      bio: "Dashboard administrator managing Data Leak Prevention policies.",
+      bio: response.user.bio || '',
     });
     await refreshPolicies();
     await refreshScans();
+    // Start monitoring on login if realTime is enabled
+    const saved = loadSavedSettings();
+    if (saved.realTime !== false) {
+      setTimeout(() => {
+        monitoringApiService
+          .startMonitoring(saved.autoResponse ?? false)
+          .catch((err) => console.warn("[Monitor] Auto-start on login failed:", err));
+      }, 1500);
+    }
   };
 
   const logout = async () => {
-    try { await authService.logout(); } finally {
+    try {
+      await monitoringApiService.stopMonitoring().catch(() => {});
+      await authService.logout();
+    } finally {
       disconnectSocket();
       socketInitialized.current = false;
       setIsAuthenticated(false);
@@ -414,12 +527,26 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const updateUserProfile = (profile: UserProfile) => {
-    setUser(profile);
-    localStorage.setItem("dlp_user", JSON.stringify(profile));
+  const updateUserProfile = async (profile: UserProfile) => {
+    try {
+      const updated = await authService.updateProfile({
+        name: profile.name,
+        email: profile.email,
+        bio: profile.bio,
+      });
+      setUser({
+        name: updated.username,
+        email: updated.email || '',
+        role: profile.role,
+        bio: updated.bio || '',
+      });
+    } catch (err) {
+      console.error('Failed to update profile:', err);
+      throw err;
+    }
   };
 
-  // ── Policy management ─────────────────────────────────────────────────────
+  // ── Policy management ───────────────────────────────────────────────────────
   const addPolicy = async (p: Omit<Policy, "id">) => {
     const newPolicy = await policyService.createPolicy({
       name: p.name, pattern: p.pattern,
@@ -448,21 +575,28 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
     setPolicies((prev) => prev.filter((p) => p.id !== id));
   };
 
-  const toggleTheme = () => setTheme((prev) => prev === "light" ? "dark" : "light");
+  const setThemePreference = (pref: "light" | "dark" | "system") => setTheme(pref);
 
   return (
     <SecurityContext.Provider value={{
       scans, alerts, policies, totalFilesScanned, isAuthenticated, user,
-      systemMetrics, theme, monitoringSettings,
-      scanState, setScanState,
+      systemMetrics, theme, resolvedTheme, monitoringSettings,
       runScan, resolveAlert, updateAlertStatus, clearAllAlerts, clearAllScans,
       deleteAlert, deleteAllAlerts,
       login, logout, updateUserProfile,
       addPolicy, updatePolicy, togglePolicyStatus, deletePolicy,
-      toggleTheme, refreshPolicies, refreshScans, updateMonitoringSettings,
+      setThemePreference, refreshPolicies, refreshScans, updateMonitoringSettings,
       quarantineFile, encryptFile, deleteFile,
     }}>
       {children}
+      {/* Global toast — visible on any page */}
+      {globalToast && (
+        <Toast
+          message={globalToast.message}
+          type={globalToast.type}
+          onClose={() => setGlobalToast(null)}
+        />
+      )}
     </SecurityContext.Provider>
   );
 }

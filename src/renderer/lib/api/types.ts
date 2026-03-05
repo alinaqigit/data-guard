@@ -9,19 +9,25 @@ export interface AuthRegisterRequest {
 export interface AuthLoginRequest {
   username: string;
   password: string;
+  rememberMe?: boolean;
 }
 
 export interface AuthResponse {
   user: {
     id: number;
     username: string;
+    email?: string;
+    bio?: string;
   };
   sessionId: string;
+  rememberToken?: string;
 }
 
 export interface User {
   id: number;
   username: string;
+  email?: string;
+  bio?: string;
 }
 
 // Policy Module Types

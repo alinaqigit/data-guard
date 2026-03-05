@@ -434,7 +434,7 @@ export class liveScannerService {
       maxMatchesPerPolicy: aw.options.maxMatchesPerFile,
     });
     console.log(`[LiveScanner] Policy result for ${filePath}: ${result.totalMatches} matches, policies: ${aw.policies.length}`);
-    const threatsFound = result.totalMatches;
+    const threatsFound = result.policiesMatched;
     this.logActivity(aw, filePath, changeType, threatsFound);
     this.updateScannerStats(aw.scannerId, aw.userId, threatsFound);
 

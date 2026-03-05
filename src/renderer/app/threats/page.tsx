@@ -11,351 +11,219 @@ import {
   X, FileText, Clock, MapPin, Activity,
 } from 'lucide-react';
 
-const STATUS_OPTIONS = [
-  { value: 'all', label: 'All Statuses' },
-  { value: 'New', label: 'New' },
-  { value: 'Investigating', label: 'Investigating' },
-  { value: 'Quarantined', label: 'Quarantined' },
-  { value: 'Resolved', label: 'Resolved' },
-];
-
-const SEVERITY_OPTIONS = [
-  { value: 'all', label: 'All Severities' },
-  { value: 'High', label: 'High' },
-  { value: 'Medium', label: 'Medium' },
-  { value: 'Low', label: 'Low' },
-];
-
+const STATUS_OPTIONS  = [{ value: 'all', label: 'All Statuses' }, { value: 'New', label: 'New' }, { value: 'Investigating', label: 'Investigating' }, { value: 'Quarantined', label: 'Quarantined' }, { value: 'Resolved', label: 'Resolved' }];
+const SEVERITY_OPTIONS = [{ value: 'all', label: 'All Severities' }, { value: 'High', label: 'High' }, { value: 'Medium', label: 'Medium' }, { value: 'Low', label: 'Low' }];
 const STATUS_ORDER: Record<string, number> = { New: 0, Investigating: 1, Quarantined: 2, Resolved: 3 };
+const NEXT_STATUS: Record<string, string> = { New: 'Investigating', Investigating: 'Quarantined', Quarantined: 'Resolved', Resolved: 'New' };
+const STATUS_ICON: Record<string, any> = { New: AlertTriangle, Investigating: Search, Quarantined: Box, Resolved: ShieldCheck };
 
-const getStatusStyles = (status: string) => {
-  switch (status) {
-    case 'Resolved':      return 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20';
-    case 'Quarantined':   return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
-    case 'Investigating': return 'bg-amber-500/10 text-amber-500 border-amber-500/20';
-    default:              return 'bg-rose-500/10 text-rose-500 border-rose-500/20';
-  }
-};
+const severityStyle = (s: string) => s === 'High'
+  ? { color: 'var(--danger)', bg: 'var(--danger-a10)',   border: 'var(--danger-a25)' }
+  : s === 'Medium'
+  ? { color: 'var(--warning)', bg: 'var(--warning-a10)',  border: 'var(--warning-a25)' }
+  : { color: 'var(--brand-light)', bg: 'var(--brand-a10)',  border: 'var(--brand-a25)' };
 
-const getSeverityStyles = (severity: string) => {
-  switch (severity) {
-    case 'High':   return 'bg-rose-500/10 text-rose-500 border-rose-500/20';
-    case 'Medium': return 'bg-amber-500/10 text-amber-500 border-amber-500/20';
-    default:       return 'bg-sky-500/10 text-sky-400 border-sky-500/20';
-  }
-};
+const statusStyle = (s: string) => s === 'Resolved'
+  ? { color: 'var(--success-alt)', bg: 'var(--success-a10)',   border: 'var(--success-a25)' }
+  : s === 'Quarantined'
+  ? { color: 'var(--brand-light)', bg: 'var(--brand-a10)',  border: 'var(--brand-a25)' }
+  : s === 'Investigating'
+  ? { color: 'var(--warning)', bg: 'var(--warning-a10)',  border: 'var(--warning-a25)' }
+  : { color: 'var(--danger)', bg: 'var(--danger-a10)',   border: 'var(--danger-a25)' };
 
-const cardStyle = {
-  background: 'linear-gradient(135deg, #020617 0%, #000000 100%)',
-  borderColor: 'rgba(51, 65, 85, 0.3)',
-};
-
-// Next status in the progression cycle
-const NEXT_STATUS: Record<string, string> = {
-  New: 'Investigating',
-  Investigating: 'Quarantined',
-  Quarantined: 'Resolved',
-  Resolved: 'New',
-};
-
-const STATUS_ICON: Record<string, any> = {
-  New: AlertTriangle,
-  Investigating: Search,
-  Quarantined: Box,
-  Resolved: ShieldCheck,
-};
+const Badge = ({ label, style }: { label: string; style: { color: string; bg: string; border: string } }) => (
+  <span style={{
+    background: style.bg, color: style.color, border: `1px solid ${style.border}`,
+    borderRadius: '99px', padding: '2px 10px', fontSize: '11px', fontWeight: 600,
+    textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap',
+  }}>{label}</span>
+);
 
 interface Alert {
-  id: number;
-  severity: 'High' | 'Medium' | 'Low';
-  time: string;
-  type: string;
-  description: string;
-  source: string;
-  status: 'New' | 'Resolved' | 'Quarantined' | 'Investigating';
+  id: number; severity: 'High' | 'Medium' | 'Low'; time: string; type: string;
+  description: string; source: string; status: 'New' | 'Resolved' | 'Quarantined' | 'Investigating';
   filePath?: string;
 }
 
 export default function ThreatsPage() {
   const { alerts, deleteAlert, deleteAllAlerts, updateAlertStatus, quarantineFile, encryptFile, deleteFile } = useSecurity();
-
-  const [statusFilter, setStatusFilter]     = useState('all');
+  const [statusFilter,   setStatusFilter]   = useState('all');
   const [severityFilter, setSeverityFilter] = useState('all');
   const [selectedThreat, setSelectedThreat] = useState<Alert | null>(null);
   const [toast, setToast]                   = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  const [confirmState, setConfirmState]     = useState<{ isOpen: boolean; threatId: number | null; mode: 'single' | 'all' }>({ isOpen: false, threatId: null, mode: 'single' });
-  const [actionLoading, setActionLoading]   = useState<Record<number, string>>({});
-
-  const totalThreats        = alerts.length;
-  const resolvedThreats     = alerts.filter(a => a.status === 'Resolved').length;
-  const quarantinedThreats  = alerts.filter(a => a.status === 'Quarantined').length;
-  const investigatingThreats = alerts.filter(a => a.status === 'Investigating').length;
+  const [confirmState,   setConfirmState]   = useState<{ isOpen: boolean; threatId: number | null; mode: 'single' | 'all' }>({ isOpen: false, threatId: null, mode: 'single' });
+  const [actionLoading,  setActionLoading]  = useState<Record<number, string>>({});
 
   const stats = [
-    { label: 'Total Threats',  count: totalThreats,           icon: ShieldAlert, color: 'text-rose-500',    bg: 'bg-rose-500/10' },
-    { label: 'Resolved',       count: resolvedThreats,         icon: ShieldCheck, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-    { label: 'Quarantined',    count: quarantinedThreats,      icon: Box,         color: 'text-blue-500',    bg: 'bg-blue-500/10' },
-    { label: 'Investigating',  count: investigatingThreats,    icon: Search,      color: 'text-amber-500',   bg: 'bg-amber-500/10' },
+    { label: 'Total Threats',  count: alerts.length,                                         icon: ShieldAlert, sty: severityStyle('High') },
+    { label: 'Resolved',       count: alerts.filter(a => a.status === 'Resolved').length,    icon: ShieldCheck, sty: { color: 'var(--success-alt)', bg: 'var(--success-a10)',  border: 'var(--success-a25)' } },
+    { label: 'Quarantined',    count: alerts.filter(a => a.status === 'Quarantined').length, icon: Box,         sty: severityStyle('Low') },
+    { label: 'Investigating',  count: alerts.filter(a => a.status === 'Investigating').length,icon: Search,     sty: severityStyle('Medium') },
   ];
 
   const filtered = useMemo(() =>
-    alerts
-      .filter(a => statusFilter   === 'all' || a.status   === statusFilter)
-      .filter(a => severityFilter === 'all' || a.severity === severityFilter)
-      .sort((a, b) => (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99)),
+    alerts.filter(a => statusFilter === 'all' || a.status === statusFilter)
+          .filter(a => severityFilter === 'all' || a.severity === severityFilter)
+          .sort((a, b) => (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99)),
     [alerts, statusFilter, severityFilter]
   );
 
-  const setLoading = (id: number, action: string) =>
-    setActionLoading(prev => ({ ...prev, [id]: action }));
-  const clearLoading = (id: number) =>
-    setActionLoading(prev => { const n = { ...prev }; delete n[id]; return n; });
+  const setLoading = (id: number, action: string) => setActionLoading(prev => ({ ...prev, [id]: action }));
+  const clearLoading = (id: number) => setActionLoading(prev => { const n = { ...prev }; delete n[id]; return n; });
 
-  const handleAdvanceStatus = (threat: Alert) => {
-    const next = NEXT_STATUS[threat.status] as Alert['status'];
-    updateAlertStatus(threat.id, next);
-    if (selectedThreat?.id === threat.id) setSelectedThreat({ ...threat, status: next });
+  const handleAdvanceStatus = (t: Alert) => {
+    const next = NEXT_STATUS[t.status] as Alert['status'];
+    updateAlertStatus(t.id, next);
+    if (selectedThreat?.id === t.id) setSelectedThreat({ ...t, status: next });
   };
 
-  const handleQuarantine = async (threat: Alert) => {
-    if (!threat.filePath) {
-      setToast({ message: 'No file path available for this threat.', type: 'error' });
-      return;
-    }
-    setLoading(threat.id, 'quarantine');
-    try {
-      await quarantineFile(threat.id, threat.filePath);
-      setToast({ message: 'File quarantined successfully.', type: 'success' });
-      if (selectedThreat?.id === threat.id) setSelectedThreat(null);
-    } catch (err: any) {
-      setToast({ message: err.message || 'Quarantine failed.', type: 'error' });
-    } finally { clearLoading(threat.id); }
+  const handleQuarantine = async (t: Alert) => {
+    if (!t.filePath) { setToast({ message: 'No file path available.', type: 'error' }); return; }
+    setLoading(t.id, 'quarantine');
+    try { await quarantineFile(t.id, t.filePath); setToast({ message: 'File quarantined.', type: 'success' }); if (selectedThreat?.id === t.id) setSelectedThreat(null); }
+    catch (err: any) { setToast({ message: err.message || 'Quarantine failed.', type: 'error' }); }
+    finally { clearLoading(t.id); }
   };
 
-  const handleEncrypt = async (threat: Alert) => {
-    if (!threat.filePath) {
-      setToast({ message: 'No file path available for this threat.', type: 'error' });
-      return;
-    }
-    setLoading(threat.id, 'encrypt');
-    try {
-      await encryptFile(threat.id, threat.filePath);
-      setToast({ message: 'File encrypted and threat resolved.', type: 'success' });
-      if (selectedThreat?.id === threat.id) setSelectedThreat(null);
-    } catch (err: any) {
-      setToast({ message: err.message || 'Encryption failed.', type: 'error' });
-    } finally { clearLoading(threat.id); }
+  const handleEncrypt = async (t: Alert) => {
+    if (!t.filePath) { setToast({ message: 'No file path available.', type: 'error' }); return; }
+    setLoading(t.id, 'encrypt');
+    try { await encryptFile(t.id, t.filePath); setToast({ message: 'File encrypted.', type: 'success' }); if (selectedThreat?.id === t.id) setSelectedThreat(null); }
+    catch (err: any) { setToast({ message: err.message || 'Encryption failed.', type: 'error' }); }
+    finally { clearLoading(t.id); }
   };
 
-  const handleDeleteFile = async (threat: Alert) => {
-    if (!threat.filePath) {
-      setToast({ message: 'No file path available for this threat.', type: 'error' });
-      return;
-    }
-    setLoading(threat.id, 'deletefile');
-    try {
-      await deleteFile(threat.id, threat.filePath);
-      setToast({ message: 'File permanently deleted.', type: 'success' });
-      if (selectedThreat?.id === threat.id) setSelectedThreat(null);
-    } catch (err: any) {
-      setToast({ message: err.message || 'Deletion failed.', type: 'error' });
-    } finally { clearLoading(threat.id); }
-  };
-
-  const handleDeleteRecord = (id: number) => {
-    setConfirmState({ isOpen: true, threatId: id, mode: 'single' });
+  const handleDeleteFile = async (t: Alert) => {
+    if (!t.filePath) { setToast({ message: 'No file path available.', type: 'error' }); return; }
+    setLoading(t.id, 'deletefile');
+    try { await deleteFile(t.id, t.filePath); setToast({ message: 'File deleted.', type: 'success' }); if (selectedThreat?.id === t.id) setSelectedThreat(null); }
+    catch (err: any) { setToast({ message: err.message || 'Deletion failed.', type: 'error' }); }
+    finally { clearLoading(t.id); }
   };
 
   const handleConfirmDelete = () => {
-    if (confirmState.mode === 'all') {
-      deleteAllAlerts();
-      setToast({ message: 'All threat records deleted.', type: 'success' });
-      setSelectedThreat(null);
-    } else if (confirmState.threatId) {
-      deleteAlert(confirmState.threatId);
-      if (selectedThreat?.id === confirmState.threatId) setSelectedThreat(null);
-      setToast({ message: 'Threat record deleted.', type: 'success' });
-    }
+    if (confirmState.mode === 'all') { deleteAllAlerts(); setToast({ message: 'All threat records deleted.', type: 'success' }); setSelectedThreat(null); }
+    else if (confirmState.threatId) { deleteAlert(confirmState.threatId); if (selectedThreat?.id === confirmState.threatId) setSelectedThreat(null); setToast({ message: 'Threat record deleted.', type: 'success' }); }
     setConfirmState({ isOpen: false, threatId: null, mode: 'single' });
   };
 
-  const Spinner = () => (
-    <div className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+  const Spinner = () => <div className="w-3.5 h-3.5 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--spinner-track)', borderTopColor: 'var(--text-primary)' }} />;
+  const cardStyle = { background: 'var(--background-card)', border: '1px solid var(--border)', borderRadius: '16px' };
+  const thStyle = { padding: '12px 20px', fontSize: '11px', fontWeight: 600 as const, color: 'var(--text-disabled)', textTransform: 'uppercase' as const, letterSpacing: '0.08em' };
+
+  const ActionBtn = ({ onClick, title, disabled, color, hoverBg, children }: any) => (
+    <button onClick={onClick} disabled={disabled} title={title}
+      className="p-1.5 rounded-lg transition-all disabled:opacity-40"
+      style={{ color: 'var(--text-disabled)' }}
+      onMouseEnter={e => { e.currentTarget.style.color = color; e.currentTarget.style.background = hoverBg; }}
+      onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-disabled)'; e.currentTarget.style.background = 'transparent'; }}
+    >{children}</button>
   );
 
   return (
-    <div className="space-y-8 pb-12">
+    <div className="space-y-6 pb-12">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-
-      <ConfirmDialog
-        isOpen={confirmState.isOpen}
+      <ConfirmDialog isOpen={confirmState.isOpen}
         title={confirmState.mode === 'all' ? 'Delete All Threat Records?' : 'Delete Threat Record?'}
-        message={confirmState.mode === 'all'
-          ? 'All threat records will be permanently deleted. This does not affect files on disk.'
-          : 'This threat record will be permanently deleted. This does not affect files on disk.'}
+        message={confirmState.mode === 'all' ? 'All threat records will be permanently deleted.' : 'This threat record will be permanently deleted.'}
         confirmText={confirmState.mode === 'all' ? 'Delete All' : 'Delete Record'}
-        isDestructive
-        onConfirm={handleConfirmDelete}
-        onCancel={() => setConfirmState({ isOpen: false, threatId: null, mode: 'single' })}
-      />
+        isDestructive onConfirm={handleConfirmDelete}
+        onCancel={() => setConfirmState({ isOpen: false, threatId: null, mode: 'single' })} />
 
-      <h1 className="text-3xl md:text-4xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-500 tracking-tight">
-        Threat Intelligence
-      </h1>
+      <h1 style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Threat Intelligence</h1>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat, i) => (
-          <div key={i} className="border rounded-2xl p-4 md:p-5 shadow-xl flex items-center gap-5 hover:-translate-y-1 transition-all duration-300" style={cardStyle}>
-            <div className={`p-4 rounded-xl ${stat.bg} ${stat.color}`}><stat.icon size={28} /></div>
+          <div key={i} style={{ ...cardStyle, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{ padding: '10px', background: stat.sty.bg, borderRadius: '10px' }}>
+              <stat.icon size={20} style={{ color: stat.sty.color }} />
+            </div>
             <div>
-              <p className="text-sm font-bold text-neutral-400 uppercase tracking-widest">{stat.label}</p>
-              <p className="text-2xl font-black text-white mt-1 tracking-tight">{stat.count.toLocaleString()}</p>
+              <p style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-disabled)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{stat.label}</p>
+              <p style={{ fontSize: '22px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>{stat.count}</p>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Main layout: table + detail panel */}
-      <div className={`flex gap-6 transition-all duration-300 ${selectedThreat ? 'items-start' : ''}`}>
-
-        {/* Threat table */}
-        <div className={`border rounded-2xl shadow-xl overflow-hidden flex-1 min-w-0 transition-all duration-300 ${selectedThreat ? 'max-w-[calc(100%-340px)]' : 'w-full'}`} style={cardStyle}>
-          <div className="p-4 md:p-5 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <h2 className="text-xl font-black text-white flex items-center gap-3 tracking-tight">
-              <AlertTriangle className="text-rose-500" size={26} />
-              Active Threat Registry
+      <div className={`flex gap-6 ${selectedThreat ? 'items-start' : ''}`}>
+        {/* Table */}
+        <div style={{ ...cardStyle, overflow: 'hidden', flex: 1, minWidth: 0 }}>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4" style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
+            <div className="flex items-center gap-3">
+              <AlertTriangle size={18} style={{ color: 'var(--danger)' }} />
+              <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>Active Threat Registry</span>
               {filtered.length !== alerts.length && (
-                <span className="text-sm font-bold text-neutral-500">({filtered.length} of {alerts.length})</span>
+                <span style={{ fontSize: '13px', color: 'var(--text-disabled)' }}>({filtered.length} of {alerts.length})</span>
               )}
-            </h2>
-            <div className="flex items-center gap-3 flex-wrap">
-              <div className="w-40">
-                <CustomSelect value={statusFilter} onChange={setStatusFilter} options={STATUS_OPTIONS} />
-              </div>
-              <div className="w-40">
-                <CustomSelect value={severityFilter} onChange={setSeverityFilter} options={SEVERITY_OPTIONS} />
-              </div>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="w-36"><CustomSelect value={statusFilter}   onChange={setStatusFilter}   options={STATUS_OPTIONS} /></div>
+              <div className="w-36"><CustomSelect value={severityFilter} onChange={setSeverityFilter} options={SEVERITY_OPTIONS} /></div>
               {alerts.length > 0 && (
-                <button
-                  onClick={() => setConfirmState({ isOpen: true, threatId: null, mode: 'all' })}
-                  className="flex items-center gap-2 px-3 py-2 text-xs font-black text-rose-500 hover:bg-rose-500/10 rounded-xl transition-colors border border-rose-500/20 uppercase tracking-wider"
-                >
-                  <Trash2 size={14} /> Delete All
-                </button>
+                <button onClick={() => setConfirmState({ isOpen: true, threatId: null, mode: 'all' })}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all"
+                  style={{ fontSize: '12px', fontWeight: 500, color: 'var(--danger)', border: '1px solid var(--danger-a30)' }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--danger-a08)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                ><Trash2 size={13} /> Delete All</button>
               )}
             </div>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-neutral-950/50 border-b border-neutral-800 text-neutral-400 text-xs uppercase tracking-wider">
-                  <th className="py-4 px-5 font-semibold">Threat ID</th>
-                  <th className="py-4 px-5 font-semibold">Sev.</th>
-                  <th className="py-4 px-5 font-semibold">Type / Source</th>
-                  <th className="py-4 px-5 font-semibold">Status</th>
-                  <th className="py-4 px-5 font-semibold text-right">Actions</th>
-                </tr>
+            <table className="w-full text-left">
+              <thead style={{ background: 'var(--background-subtle)', borderBottom: '1px solid var(--border)' }}>
+                <tr>{['Threat ID','Sev.','Type / Source','Status','Actions'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr>
               </thead>
-              <tbody className="divide-y divide-neutral-800/60">
+              <tbody>
                 {filtered.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="py-20 text-center">
-                      <div className="flex flex-col items-center gap-2 text-neutral-500">
-                        <ShieldCheck size={48} className="opacity-20 mb-2" />
-                        <p className="text-lg font-bold text-neutral-400">
-                          {alerts.length === 0 ? 'Environment Secure' : 'No matches found'}
-                        </p>
-                        <p className="text-sm">
-                          {alerts.length === 0 ? 'No active threats detected.' : 'Adjust your filters.'}
-                        </p>
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  filtered.map((threat) => {
-                    const NextIcon = STATUS_ICON[NEXT_STATUS[threat.status]] || ChevronRight;
-                    const isSelected = selectedThreat?.id === threat.id;
-                    const loading = actionLoading[threat.id];
-                    return (
-                      <tr
-                        key={threat.id}
-                        className={`group transition-colors cursor-pointer ${isSelected ? 'bg-indigo-500/5 border-l-2 border-indigo-500' : 'hover:bg-white/5'}`}
-                        onClick={() => setSelectedThreat(isSelected ? null : threat as Alert)}
-                      >
-                        <td className="py-4 px-5">
-                          <span className="text-xs font-mono text-neutral-500 font-bold">
-                            THR-{String(threat.id).slice(-6).padStart(6, '0')}
-                          </span>
-                        </td>
-                        <td className="py-4 px-5">
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-black uppercase border ${getSeverityStyles(threat.severity)}`}>
-                            {threat.severity}
-                          </span>
-                        </td>
-                        <td className="py-4 px-5">
-                          <div>
-                            <p className="text-white font-black text-sm tracking-tight">{threat.type}</p>
-                            <p className="text-neutral-500 text-xs font-bold uppercase tracking-wider">{threat.source}</p>
-                          </div>
-                        </td>
-                        <td className="py-4 px-5">
-                          <span className={`px-3 py-1 rounded-full text-xs font-black uppercase border ${getStatusStyles(threat.status)}`}>
-                            {threat.status}
-                          </span>
-                        </td>
-                        <td className="py-4 px-5" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center justify-end gap-1">
-                            {/* View detail */}
-                            <button
-                              onClick={() => setSelectedThreat(isSelected ? null : threat as Alert)}
-                              className="p-2 hover:bg-indigo-500/10 hover:text-indigo-400 text-neutral-500 rounded-lg transition-colors"
-                              title="View Details"
-                            >
-                              <Eye size={16} />
-                            </button>
-                            {/* Advance status */}
-                            <button
-                              onClick={() => handleAdvanceStatus(threat as Alert)}
-                              className="p-2 hover:bg-amber-500/10 hover:text-amber-400 text-neutral-500 rounded-lg transition-colors"
-                              title={`Advance to ${NEXT_STATUS[threat.status]}`}
-                            >
-                              <NextIcon size={16} />
-                            </button>
-                            {/* Quarantine */}
-                            <button
-                              onClick={() => handleQuarantine(threat as Alert)}
-                              disabled={!!loading}
-                              className="p-2 hover:bg-blue-500/10 hover:text-blue-400 text-neutral-500 rounded-lg transition-colors disabled:opacity-40"
-                              title="Quarantine File"
-                            >
-                              {loading === 'quarantine' ? <Spinner /> : <FolderX size={16} />}
-                            </button>
-                            {/* Encrypt */}
-                            <button
-                              onClick={() => handleEncrypt(threat as Alert)}
-                              disabled={!!loading}
-                              className="p-2 hover:bg-emerald-500/10 hover:text-emerald-400 text-neutral-500 rounded-lg transition-colors disabled:opacity-40"
-                              title="Encrypt File (Safe)"
-                            >
-                              {loading === 'encrypt' ? <Spinner /> : <Lock size={16} />}
-                            </button>
-                            {/* Delete file */}
-                            <button
-                              onClick={() => handleDeleteFile(threat as Alert)}
-                              disabled={!!loading}
-                              className="p-2 hover:bg-red-500/10 hover:text-red-500 text-neutral-500 rounded-lg transition-colors disabled:opacity-40"
-                              title="Delete File (Destructive)"
-                            >
-                              {loading === 'deletefile' ? <Spinner /> : <Trash2 size={16} />}
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
+                  <tr><td colSpan={5} style={{ padding: '60px', textAlign: 'center' }}>
+                    <ShieldCheck size={36} style={{ color: 'var(--border)', margin: '0 auto 12px' }} />
+                    <p style={{ color: 'var(--text-disabled)', fontWeight: 500 }}>{alerts.length === 0 ? 'Environment Secure' : 'No matches'}</p>
+                    <p style={{ color: 'var(--border)', fontSize: '13px', marginTop: '4px' }}>{alerts.length === 0 ? 'No active threats detected.' : 'Adjust your filters.'}</p>
+                  </td></tr>
+                ) : filtered.map((threat, i) => {
+                  const NextIcon = STATUS_ICON[NEXT_STATUS[threat.status]] || ChevronRight;
+                  const isSelected = selectedThreat?.id === threat.id;
+                  const loading = actionLoading[threat.id];
+                  const ssty = severityStyle(threat.severity);
+                  const sttsty = statusStyle(threat.status);
+                  return (
+                    <tr key={threat.id} onClick={() => setSelectedThreat(isSelected ? null : threat as Alert)}
+                      style={{
+                        borderTop: i > 0 ? '1px solid var(--surface-1)' : undefined,
+                        background: isSelected ? 'var(--brand-a06)' : 'transparent',
+                        cursor: 'pointer',
+                        borderLeft: isSelected ? '2px solid var(--brand-light)' : '2px solid transparent',
+                      }}
+                      onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'var(--background-subtle)'; }}
+                      onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
+                    >
+                      <td style={{ padding: '14px 20px' }}>
+                        <span style={{ fontFamily: 'monospace', fontSize: '12px', color: 'var(--text-disabled)' }}>
+                          THR-{String(threat.id).slice(-6).padStart(6, '0')}
+                        </span>
+                      </td>
+                      <td style={{ padding: '14px 20px' }}><Badge label={threat.severity} style={ssty} /></td>
+                      <td style={{ padding: '14px 20px' }}>
+                        <p style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)' }}>{threat.type}</p>
+                        <p style={{ fontSize: '11px', fontWeight: 500, color: 'var(--text-disabled)', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: '2px' }}>{threat.source}</p>
+                      </td>
+                      <td style={{ padding: '14px 20px' }}><Badge label={threat.status} style={sttsty} /></td>
+                      <td style={{ padding: '14px 20px' }} onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-0.5">
+                          <ActionBtn onClick={() => setSelectedThreat(isSelected ? null : threat as Alert)} title="View Details" color="var(--brand-light)" hoverBg="var(--brand-a10)"><Eye size={15} /></ActionBtn>
+                          <ActionBtn onClick={() => handleAdvanceStatus(threat as Alert)} title={`→ ${NEXT_STATUS[threat.status]}`} color="var(--warning)" hoverBg="var(--warning-a10)"><NextIcon size={15} /></ActionBtn>
+                          <ActionBtn onClick={() => handleQuarantine(threat as Alert)} disabled={!!loading} title="Quarantine" color="var(--brand-light)" hoverBg="var(--brand-a10)">{loading === 'quarantine' ? <Spinner /> : <FolderX size={15} />}</ActionBtn>
+                          <ActionBtn onClick={() => handleEncrypt(threat as Alert)} disabled={!!loading} title="Encrypt" color="var(--success-alt)" hoverBg="var(--success-a10)">{loading === 'encrypt' ? <Spinner /> : <Lock size={15} />}</ActionBtn>
+                          <ActionBtn onClick={() => handleDeleteFile(threat as Alert)} disabled={!!loading} title="Delete File" color="var(--danger)" hoverBg="var(--danger-a10)">{loading === 'deletefile' ? <Spinner /> : <Trash2 size={15} />}</ActionBtn>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -363,124 +231,79 @@ export default function ThreatsPage() {
 
         {/* Detail panel */}
         {selectedThreat && (
-          <div className="w-80 flex-shrink-0 border rounded-2xl shadow-xl overflow-hidden animate-in slide-in-from-right-4 duration-200" style={cardStyle}>
-            <div className="p-4 border-b border-white/5 flex items-center justify-between">
-              <h3 className="text-base font-black text-white">Threat Detail</h3>
-              <button onClick={() => setSelectedThreat(null)} className="p-1 text-neutral-500 hover:text-white transition-colors">
-                <X size={18} />
-              </button>
+          <div style={{ ...cardStyle, width: '300px', flexShrink: 0, overflow: 'hidden' }}>
+            <div className="flex items-center justify-between" style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
+              <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>Threat Detail</span>
+              <button onClick={() => setSelectedThreat(null)} style={{ color: 'var(--text-disabled)' }}
+                onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
+                onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-disabled)')}
+              ><X size={16} /></button>
             </div>
-
-            <div className="p-4 space-y-4">
-              {/* ID + severity */}
+            <div style={{ padding: '16px' }} className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="font-mono text-xs text-neutral-500 font-bold">
+                <span style={{ fontFamily: 'monospace', fontSize: '11px', color: 'var(--text-disabled)' }}>
                   THR-{String(selectedThreat.id).slice(-6).padStart(6, '0')}
                 </span>
-                <span className={`px-2 py-0.5 rounded-full text-xs font-black uppercase border ${getSeverityStyles(selectedThreat.severity)}`}>
-                  {selectedThreat.severity}
-                </span>
+                <Badge label={selectedThreat.severity} style={severityStyle(selectedThreat.severity)} />
               </div>
 
-              {/* Type */}
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 text-xs text-neutral-500 font-bold uppercase tracking-wider">
-                  <Activity size={12} /> Type
-                </div>
-                <p className="text-white font-bold text-sm">{selectedThreat.type}</p>
-              </div>
-
-              {/* Source */}
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 text-xs text-neutral-500 font-bold uppercase tracking-wider">
-                  <FileText size={12} /> Source
-                </div>
-                <p className="text-neutral-300 text-sm font-bold">{selectedThreat.source}</p>
-              </div>
-
-              {/* Description */}
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 text-xs text-neutral-500 font-bold uppercase tracking-wider">
-                  <AlertTriangle size={12} /> Description
-                </div>
-                <p className="text-neutral-400 text-sm leading-relaxed">{selectedThreat.description}</p>
-              </div>
-
-              {/* File path */}
-              {selectedThreat.filePath && (
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 text-xs text-neutral-500 font-bold uppercase tracking-wider">
-                    <MapPin size={12} /> File Path
+              {[
+                { icon: Activity, label: 'Type',    value: selectedThreat.type,        valueStyle: { color: 'var(--text-primary)', fontWeight: 500 } },
+                { icon: FileText, label: 'Source',  value: selectedThreat.source,      valueStyle: { color: 'var(--text-secondary)' } },
+                { icon: AlertTriangle, label: 'Description', value: selectedThreat.description, valueStyle: { color: 'var(--text-tertiary)' } },
+                { icon: Clock,    label: 'Detected', value: selectedThreat.time,        valueStyle: { color: 'var(--text-tertiary)' } },
+              ].map(({ icon: Icon, label, value, valueStyle }) => (
+                <div key={label}>
+                  <div className="flex items-center gap-1.5 mb-1" style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-disabled)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    <Icon size={11} />{label}
                   </div>
-                  <p className="text-indigo-400 text-xs font-mono break-all">{selectedThreat.filePath}</p>
+                  <p style={{ fontSize: '13px', lineHeight: 1.5, ...valueStyle }}>{value}</p>
+                </div>
+              ))}
+
+              {selectedThreat.filePath && (
+                <div>
+                  <div className="flex items-center gap-1.5 mb-1" style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-disabled)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    <MapPin size={11} /> File Path
+                  </div>
+                  <p style={{ fontSize: '11px', fontFamily: 'monospace', color: 'var(--brand-light)', wordBreak: 'break-all', lineHeight: 1.5 }}>{selectedThreat.filePath}</p>
                 </div>
               )}
 
-              {/* Time */}
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 text-xs text-neutral-500 font-bold uppercase tracking-wider">
-                  <Clock size={12} /> Detected
-                </div>
-                <p className="text-neutral-400 text-sm">{selectedThreat.time}</p>
+              <div>
+                <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-disabled)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Status</span>
+                <div style={{ marginTop: '6px' }}><Badge label={selectedThreat.status} style={statusStyle(selectedThreat.status)} /></div>
               </div>
 
-              {/* Status */}
-              <div className="space-y-1">
-                <p className="text-xs text-neutral-500 font-bold uppercase tracking-wider">Status</p>
-                <span className={`px-3 py-1 rounded-full text-xs font-black uppercase border ${getStatusStyles(selectedThreat.status)}`}>
-                  {selectedThreat.status}
-                </span>
-              </div>
+              <hr style={{ border: 'none', borderTop: '1px solid var(--surface-1)' }} />
 
-              <hr className="border-white/5" />
-
-              {/* Action buttons */}
               <div className="space-y-2">
-                <p className="text-xs text-neutral-500 font-bold uppercase tracking-wider">File Actions</p>
-
-                <button
-                  onClick={() => handleAdvanceStatus(selectedThreat)}
-                  className="w-full flex items-center gap-2 px-3 py-2.5 bg-amber-500/10 border border-amber-500/20 text-amber-400 hover:bg-amber-500/20 rounded-xl text-sm font-black transition-colors"
-                >
-                  {(() => { const I = STATUS_ICON[NEXT_STATUS[selectedThreat.status]]; return <I size={16} />; })()}
-                  Mark as {NEXT_STATUS[selectedThreat.status]}
-                </button>
-
-                {selectedThreat.filePath && (
-                  <>
-                    <button
-                      onClick={() => handleQuarantine(selectedThreat)}
-                      disabled={!!actionLoading[selectedThreat.id]}
-                      className="w-full flex items-center gap-2 px-3 py-2.5 bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20 rounded-xl text-sm font-black transition-colors disabled:opacity-50"
-                    >
-                      {actionLoading[selectedThreat.id] === 'quarantine' ? <Spinner /> : <FolderX size={16} />}
-                      Quarantine File
-                    </button>
-                    <button
-                      onClick={() => handleEncrypt(selectedThreat)}
-                      disabled={!!actionLoading[selectedThreat.id]}
-                      className="w-full flex items-center gap-2 px-3 py-2.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 rounded-xl text-sm font-black transition-colors disabled:opacity-50"
-                    >
-                      {actionLoading[selectedThreat.id] === 'encrypt' ? <Spinner /> : <Lock size={16} />}
-                      Encrypt File
-                    </button>
-                    <button
-                      onClick={() => handleDeleteFile(selectedThreat)}
-                      disabled={!!actionLoading[selectedThreat.id]}
-                      className="w-full flex items-center gap-2 px-3 py-2.5 bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500/20 rounded-xl text-sm font-black transition-colors disabled:opacity-50"
-                    >
-                      {actionLoading[selectedThreat.id] === 'deletefile' ? <Spinner /> : <Trash2 size={16} />}
-                      Delete File
-                    </button>
-                  </>
-                )}
-
-                <button
-                  onClick={() => handleDeleteRecord(selectedThreat.id)}
-                  className="w-full flex items-center gap-2 px-3 py-2.5 bg-white/5 border border-white/10 text-neutral-400 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/20 rounded-xl text-sm font-black transition-colors"
-                >
-                  <X size={16} /> Delete Record Only
-                </button>
+                <p style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-disabled)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Actions</p>
+                {[
+                  { label: `Mark as ${NEXT_STATUS[selectedThreat.status]}`, action: () => handleAdvanceStatus(selectedThreat), icon: STATUS_ICON[NEXT_STATUS[selectedThreat.status]], color: 'var(--warning)', bg: 'var(--warning-a10)', border: 'var(--warning-a25)', loadKey: null },
+                  ...(selectedThreat.filePath ? [
+                    { label: 'Quarantine File', action: () => handleQuarantine(selectedThreat), icon: FolderX, color: 'var(--brand-light)', bg: 'var(--brand-a10)', border: 'var(--brand-a25)', loadKey: 'quarantine' },
+                    { label: 'Encrypt File',    action: () => handleEncrypt(selectedThreat),    icon: Lock,    color: 'var(--success-alt)', bg: 'var(--success-a10)',  border: 'var(--success-a25)',  loadKey: 'encrypt' },
+                    { label: 'Delete File',     action: () => handleDeleteFile(selectedThreat), icon: Trash2,  color: 'var(--danger)', bg: 'var(--danger-a10)',  border: 'var(--danger-a25)',  loadKey: 'deletefile' },
+                  ] : []),
+                ].map(({ label, action, icon: Icon, color, bg, border, loadKey }) => (
+                  <button key={label} onClick={action}
+                    disabled={loadKey !== null && !!actionLoading[selectedThreat.id]}
+                    className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl transition-all disabled:opacity-50"
+                    style={{ color, background: bg, border: `1px solid ${border}`, fontSize: '13px', fontWeight: 500 }}
+                    onMouseEnter={e => (e.currentTarget.style.opacity = '0.8')}
+                    onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
+                  >
+                    {loadKey && actionLoading[selectedThreat.id] === loadKey ? <Spinner /> : <Icon size={14} />}
+                    {label}
+                  </button>
+                ))}
+                <button onClick={() => setConfirmState({ isOpen: true, threatId: selectedThreat.id, mode: 'single' })}
+                  className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl transition-all"
+                  style={{ color: 'var(--text-tertiary)', background: 'var(--background-subtle)', border: '1px solid var(--border)', fontSize: '13px', fontWeight: 500 }}
+                  onMouseEnter={e => { e.currentTarget.style.color = 'var(--danger)'; e.currentTarget.style.borderColor = 'var(--danger-a30)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-tertiary)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
+                ><X size={14} /> Delete Record Only</button>
               </div>
             </div>
           </div>

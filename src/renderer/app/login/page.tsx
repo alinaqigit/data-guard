@@ -2,166 +2,341 @@
 
 import { useState, useEffect } from "react";
 import { useSecurity } from "@/context/SecurityContext";
-import { Shield, Lock, User, ArrowRight } from "lucide-react";
+import { Lock, User, ArrowRight, Mail, KeyRound, ArrowLeft, CheckCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { authService } from "@/lib/api";
 
 export default function LoginPage() {
   const { login, isAuthenticated } = useSecurity();
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError]       = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      router.push("/");
-    }
-  }, [isAuthenticated, router]);
+  // Forgot password state
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [fpStep, setFpStep] = useState<"email" | "reset" | "done">("email");
+  const [fpEmail, setFpEmail] = useState("");
+  const [fpNewPassword, setFpNewPassword] = useState("");
+  const [fpConfirmPassword, setFpConfirmPassword] = useState("");
+  const [fpError, setFpError] = useState("");
+  const [fpLoading, setFpLoading] = useState(false);
+
+  useEffect(() => { if (isAuthenticated) router.push("/"); }, [isAuthenticated, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setIsLoading(true);
+    try { await login(username, password, rememberMe); }
+    catch (err) { setError(err instanceof Error ? err.message : "Login failed. Please check your credentials."); }
+    finally { setIsLoading(false); }
+  };
 
+  const handleForgotPasswordOpen = () => {
+    setShowForgotPassword(true);
+    setFpStep("email");
+    setFpEmail("");
+    setFpNewPassword("");
+    setFpConfirmPassword("");
+    setFpError("");
+  };
+
+  const handleForgotPasswordClose = () => {
+    setShowForgotPassword(false);
+    setFpError("");
+  };
+
+  const handleFpSubmitEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFpError("");
+    if (!fpEmail.trim()) {
+      setFpError("Please enter your email address");
+      return;
+    }
+    setFpLoading(true);
     try {
-      await login(username, password);
+      await authService.verifyEmail(fpEmail);
+      setFpStep("reset");
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Login failed. Please check your credentials.",
-      );
+      setFpError(err instanceof Error ? err.message : "No account found with that email");
     } finally {
-      setIsLoading(false);
+      setFpLoading(false);
     }
   };
 
+  const handleFpResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFpError("");
+
+    if (!fpNewPassword) {
+      setFpError("Please enter a new password");
+      return;
+    }
+    if (fpNewPassword.length < 4) {
+      setFpError("Password must be at least 4 characters");
+      return;
+    }
+    if (fpNewPassword !== fpConfirmPassword) {
+      setFpError("Passwords do not match");
+      return;
+    }
+
+    setFpLoading(true);
+    try {
+      await authService.resetPassword(fpEmail, fpNewPassword);
+      setFpStep("done");
+    } catch (err) {
+      setFpError(err instanceof Error ? err.message : "Failed to reset password");
+    } finally {
+      setFpLoading(false);
+    }
+  };
+
+  const inputStyle = {
+    width: '100%', background: 'var(--background-input)', border: '1px solid var(--border)',
+    borderRadius: '12px', paddingLeft: '44px', paddingRight: '16px',
+    paddingTop: '12px', paddingBottom: '12px',
+    color: 'var(--text-primary)', fontSize: '14px', fontWeight: 400, outline: 'none',
+    transition: 'border-color 0.2s',
+  };
+  const labelStyle = { fontSize: '11px', fontWeight: 600, color: 'var(--text-disabled)', textTransform: 'uppercase' as const, letterSpacing: '0.08em', display: 'block', marginBottom: '8px' };
+
+  // ── Forgot Password Modal ────────────────────────────────────────────────
+  if (showForgotPassword) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'var(--background)' }}>
+        <div style={{ width: '100%', maxWidth: '400px' }}>
+          {/* Logo */}
+          <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+            <div style={{ display: 'inline-flex', marginBottom: '16px' }}>
+              <div style={{ width: '64px', height: '64px', position: 'relative' }}>
+                <Image src="/images/logo.png" alt="DataGuard" fill className="object-contain" />
+              </div>
+            </div>
+            <h1 style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', marginBottom: '8px' }}>DataGuard</h1>
+            <p style={{ fontSize: '13px', fontWeight: 400, color: 'var(--text-disabled)', letterSpacing: '0.04em' }}>Password Recovery</p>
+          </div>
+
+          {/* Card */}
+          <div style={{ background: 'var(--background-card)', border: '1px solid var(--border)', borderRadius: '20px', padding: '32px' }}>
+
+            {fpStep === "email" && (
+              <>
+                <h2 style={{ fontSize: '18px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>Forgot Password</h2>
+                <p style={{ fontSize: '13px', color: 'var(--text-disabled)', marginBottom: '24px' }}>
+                  Enter the email address associated with your account.
+                </p>
+                <form onSubmit={handleFpSubmitEmail} className="space-y-5">
+                  <div>
+                    <label style={labelStyle}>Email Address</label>
+                    <div style={{ position: 'relative' }}>
+                      <Mail size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-disabled)' }} />
+                      <input
+                        type="email" required placeholder="Enter your email"
+                        value={fpEmail} onChange={e => setFpEmail(e.target.value)}
+                        style={inputStyle}
+                        onFocus={e => (e.currentTarget.style.borderColor = 'var(--brand-main)')}
+                        onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+                      />
+                    </div>
+                  </div>
+
+                  {fpError && (
+                    <div style={{ background: 'var(--danger-a10)', border: '1px solid var(--danger-a25)', borderRadius: '10px', padding: '10px 14px', color: 'var(--danger)', fontSize: '13px' }}>
+                      {fpError}
+                    </div>
+                  )}
+
+                  <button type="submit" disabled={fpLoading}
+                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl transition-all"
+                    style={{ background: fpLoading ? 'var(--brand-mid)' : 'var(--brand-light)', color: 'var(--text-on-brand)', fontSize: '14px', fontWeight: 600, border: 'none', cursor: fpLoading ? 'not-allowed' : 'pointer', opacity: fpLoading ? 0.7 : 1 }}
+                    onMouseEnter={e => { if (!fpLoading) e.currentTarget.style.background = 'var(--brand-main)'; }}
+                    onMouseLeave={e => { if (!fpLoading) e.currentTarget.style.background = 'var(--brand-light)'; }}
+                  >
+                    {fpLoading
+                      ? <><div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--spinner-track)', borderTopColor: 'var(--text-on-brand)' }} /> Verifying...</>
+                      : <>Continue <ArrowRight size={16} /></>}
+                  </button>
+                </form>
+              </>
+            )}
+
+            {fpStep === "reset" && (
+              <>
+                <h2 style={{ fontSize: '18px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>Reset Password</h2>
+                <p style={{ fontSize: '13px', color: 'var(--text-disabled)', marginBottom: '24px' }}>
+                  Enter a new password for <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>{fpEmail}</span>
+                </p>
+                <form onSubmit={handleFpResetPassword} className="space-y-5">
+                  <div>
+                    <label style={labelStyle}>New Password</label>
+                    <div style={{ position: 'relative' }}>
+                      <KeyRound size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-disabled)' }} />
+                      <input
+                        type="password" required placeholder="Enter new password"
+                        value={fpNewPassword} onChange={e => setFpNewPassword(e.target.value)}
+                        style={inputStyle}
+                        onFocus={e => (e.currentTarget.style.borderColor = 'var(--brand-main)')}
+                        onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Confirm Password</label>
+                    <div style={{ position: 'relative' }}>
+                      <Lock size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-disabled)' }} />
+                      <input
+                        type="password" required placeholder="Confirm new password"
+                        value={fpConfirmPassword} onChange={e => setFpConfirmPassword(e.target.value)}
+                        style={inputStyle}
+                        onFocus={e => (e.currentTarget.style.borderColor = 'var(--brand-main)')}
+                        onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+                      />
+                    </div>
+                  </div>
+
+                  {fpError && (
+                    <div style={{ background: 'var(--danger-a10)', border: '1px solid var(--danger-a25)', borderRadius: '10px', padding: '10px 14px', color: 'var(--danger)', fontSize: '13px' }}>
+                      {fpError}
+                    </div>
+                  )}
+
+                  <button type="submit" disabled={fpLoading}
+                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl transition-all"
+                    style={{ background: fpLoading ? 'var(--brand-mid)' : 'var(--brand-light)', color: 'var(--text-on-brand)', fontSize: '14px', fontWeight: 600, border: 'none', cursor: fpLoading ? 'not-allowed' : 'pointer', opacity: fpLoading ? 0.7 : 1 }}
+                    onMouseEnter={e => { if (!fpLoading) e.currentTarget.style.background = 'var(--brand-main)'; }}
+                    onMouseLeave={e => { if (!fpLoading) e.currentTarget.style.background = 'var(--brand-light)'; }}
+                  >
+                    {fpLoading
+                      ? <><div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--spinner-track)', borderTopColor: 'var(--text-on-brand)' }} /> Resetting...</>
+                      : "Reset Password"}
+                  </button>
+                </form>
+              </>
+            )}
+
+            {fpStep === "done" && (
+              <div className="text-center py-4">
+                <CheckCircle size={48} style={{ color: 'var(--success-alt)', margin: '0 auto 16px' }} />
+                <h2 style={{ fontSize: '18px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>Password Reset</h2>
+                <p style={{ fontSize: '13px', color: 'var(--text-disabled)', marginBottom: '24px' }}>
+                  Your password has been changed successfully. You can now sign in with your new password.
+                </p>
+                <button
+                  onClick={handleForgotPasswordClose}
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl transition-all"
+                  style={{ background: 'var(--brand-light)', color: 'var(--text-on-brand)', fontSize: '14px', fontWeight: 600, border: 'none', cursor: 'pointer' }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--brand-main)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'var(--brand-light)')}
+                >
+                  <ArrowLeft size={16} /> Back to Sign In
+                </button>
+              </div>
+            )}
+
+            {fpStep !== "done" && (
+              <div style={{ marginTop: '20px', textAlign: 'center' }}>
+                <button
+                  onClick={handleForgotPasswordClose}
+                  style={{ fontSize: '13px', fontWeight: 500, color: 'var(--brand-light)', background: 'none', border: 'none', cursor: 'pointer' }}
+                  onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-secondary)')}
+                  onMouseLeave={e => (e.currentTarget.style.color = 'var(--brand-light)')}
+                >
+                  <span className="inline-flex items-center gap-1"><ArrowLeft size={14} /> Back to Sign In</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Main Login Form ──────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-12">
-          <div className="inline-flex p-6 mb-4 group transition-all duration-500">
-            <div className="w-24 h-24 relative">
-              <Image
-                src="/images/logo.png"
-                alt="DataGuard Logo"
-                fill
-                className="object-contain drop-shadow-[0_0_15px_rgba(59,130,246,0.5)]"
-              />
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'var(--background)' }}>
+      <div style={{ width: '100%', maxWidth: '400px' }}>
+        {/* Logo */}
+        <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+          <div style={{ display: 'inline-flex', marginBottom: '16px' }}>
+            <div style={{ width: '64px', height: '64px', position: 'relative' }}>
+              <Image src="/images/logo.png" alt="DataGuard" fill className="object-contain" />
             </div>
           </div>
-          <h1 className="text-5xl font-black text-white tracking-tighter mb-3">
-            DataGaurd
-          </h1>
-          <p className="text-neutral-400 font-bold text-lg tracking-wide uppercase opacity-75">
-            Data Leak Prevention & Monitoring
-          </p>
+          <h1 style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', marginBottom: '8px' }}>DataGuard</h1>
+          <p style={{ fontSize: '13px', fontWeight: 400, color: 'var(--text-disabled)', letterSpacing: '0.04em' }}>Data Leak Prevention & Monitoring</p>
         </div>
 
-        <div
-          className="border border-white/5 rounded-[2.5rem] p-10 shadow-2xl transition-all duration-500"
-          style={{
-            background:
-              "linear-gradient(135deg, #020617 0%, #000000 100%)",
-          }}
-        >
-          <h2 className="text-2xl font-black text-white mb-8 tracking-tight">
-            Sign In
-          </h2>
+        {/* Card */}
+        <div style={{ background: 'var(--background-card)', border: '1px solid var(--border)', borderRadius: '20px', padding: '32px' }}>
+          <h2 style={{ fontSize: '18px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '24px' }}>Sign In</h2>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-3">
-              <label className="text-sm font-black text-neutral-400 uppercase tracking-widest ml-1">
-                Username
-              </label>
-              <div className="relative group">
-                <User
-                  className="absolute left-5 top-1/2 -translate-y-1/2 text-neutral-500 group-focus-within:text-blue-500 transition-colors"
-                  size={20}
-                />
-                <input
-                  type="text"
-                  required
-                  className="w-full bg-black/40 border border-white/5 rounded-2xl pl-12 pr-6 py-4.5 text-white focus:outline-none focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none font-bold text-lg placeholder:text-neutral-700"
-                  placeholder="Enter username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label style={labelStyle}>Username</label>
+              <div style={{ position: 'relative' }}>
+                <User size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-disabled)' }} />
+                <input type="text" required placeholder="Enter username" value={username} onChange={e => setUsername(e.target.value)}
+                  style={inputStyle}
+                  onFocus={e => (e.currentTarget.style.borderColor = 'var(--brand-main)')}
+                  onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
                 />
               </div>
             </div>
-            <div className="space-y-3">
-              <label className="text-sm font-black text-neutral-400 uppercase tracking-widest ml-1">
-                Password
-              </label>
-              <div className="relative group">
-                <Lock
-                  className="absolute left-5 top-1/2 -translate-y-1/2 text-neutral-500 group-focus-within:text-blue-500 transition-colors"
-                  size={20}
-                />
-                <input
-                  type="password"
-                  required
-                  className="w-full bg-black/40 border border-white/5 rounded-2xl pl-12 pr-6 py-4.5 text-white focus:outline-none focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none font-bold text-lg placeholder:text-neutral-700"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+            <div>
+              <label style={labelStyle}>Password</label>
+              <div style={{ position: 'relative' }}>
+                <Lock size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-disabled)' }} />
+                <input type="password" required placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)}
+                  style={inputStyle}
+                  onFocus={e => (e.currentTarget.style.borderColor = 'var(--brand-main)')}
+                  onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
                 />
               </div>
             </div>
 
-            <div className="flex items-center justify-between text-sm">
-              <label className="flex items-center gap-2 text-neutral-400 cursor-pointer hover:text-neutral-300">
-                <input
-                  type="checkbox"
-                  className="rounded border-neutral-800 bg-neutral-950 text-blue-600 focus:ring-blue-500"
-                />
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 cursor-pointer" style={{ fontSize: '13px', fontWeight: 400, color: 'var(--text-tertiary)' }}>
+                <input type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} style={{ accentColor: 'var(--brand-light)' }} />
                 Remember me
               </label>
-              <a
-                href="#"
-                className="text-blue-500 hover:text-blue-400 font-medium transition-colors"
-              >
-                Forgot Password?
-              </a>
+              <button type="button" onClick={handleForgotPasswordOpen}
+                style={{ fontSize: '13px', fontWeight: 500, color: 'var(--brand-light)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-secondary)')}
+                onMouseLeave={e => (e.currentTarget.style.color = 'var(--brand-light)')}
+              >Forgot Password?</button>
             </div>
 
             {error && (
-              <div className="bg-red-500/10 border border-red-500/20 text-red-500 px-4 py-3 rounded-xl text-sm font-bold">
+              <div style={{ background: 'var(--danger-a10)', border: '1px solid var(--danger-a25)', borderRadius: '10px', padding: '10px 14px', color: 'var(--danger)', fontSize: '13px', fontWeight: 400 }}>
                 {error}
               </div>
             )}
 
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-4.5 rounded-2xl transition-all shadow-xl shadow-blue-600/20 active:scale-[0.98] flex items-center justify-center gap-3 mt-6 text-xl tracking-tight disabled:opacity-50 disabled:cursor-not-allowed"
+            <button type="submit" disabled={isLoading}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl transition-all"
+              style={{ background: isLoading ? 'var(--brand-mid)' : 'var(--brand-light)', color: 'var(--text-on-brand)', fontSize: '14px', fontWeight: 600, border: 'none', cursor: isLoading ? 'not-allowed' : 'pointer', opacity: isLoading ? 0.7 : 1 }}
+              onMouseEnter={e => { if (!isLoading) (e.currentTarget as HTMLButtonElement).style.background = 'var(--brand-main)'; }}
+              onMouseLeave={e => { if (!isLoading) (e.currentTarget as HTMLButtonElement).style.background = 'var(--brand-light)'; }}
             >
-              {isLoading ? (
-                <>
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Logging in...
-                </>
-              ) : (
-                <>
-                  Login to DataGaurd
-                  <ArrowRight size={22} />
-                </>
-              )}
+              {isLoading
+                ? <><div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--spinner-track)', borderTopColor: 'var(--text-on-brand)' }} /> Signing in...</>
+                : <>Login to DataGuard <ArrowRight size={16} /></>}
             </button>
           </form>
 
-          <div className="mt-10 pt-10 border-t border-white/5 text-center">
-            <p className="text-neutral-500 font-bold text-lg">
-              Don't have an account?{" "}
-              <Link
-                href="/signup"
-                className="text-blue-500 hover:text-blue-400 font-black transition-all hover:tracking-tight"
-              >
-                Create Account
-              </Link>
+          <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid var(--surface-1)', textAlign: 'center' }}>
+            <p style={{ fontSize: '13px', fontWeight: 400, color: 'var(--text-disabled)' }}>
+              Don't have an account?{' '}
+              <Link href="/signup" style={{ color: 'var(--brand-light)', fontWeight: 500, textDecoration: 'none' }}
+                onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-secondary)')}
+                onMouseLeave={e => (e.currentTarget.style.color = 'var(--brand-light)')}
+              >Create Account</Link>
             </p>
           </div>
         </div>

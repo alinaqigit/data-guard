@@ -5,245 +5,261 @@ import { X, Save, Shield } from "lucide-react";
 import CustomSelect from "@/components/CustomSelect";
 
 interface Policy {
-  id: string;
-  name: string;
-  description: string;
-  type: string;
-  pattern: string;
-  status: "Active" | "Disabled";
+    id: string; name: string; description: string;
+    type: string; pattern: string; status: "Active" | "Disabled";
 }
 
 interface PolicyModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  policy: Policy | null;
-  onSave: (policy: Policy) => void;
-  isNew?: boolean;
+    isOpen: boolean;
+    onClose: () => void;
+    policy: Policy | null;
+    onSave: (policy: Policy) => void;
+    isNew?: boolean;
 }
 
 const TYPE_OPTIONS = [
-  { value: "KEYWORD", label: "Keyword", description: "Match exact words or phrases" },
-  { value: "REGEX", label: "RegEx Pattern", description: "Match using a regular expression" },
+    { value: "KEYWORD", label: "Keyword",      description: "Match exact words or phrases" },
+    { value: "REGEX",   label: "RegEx Pattern", description: "Match using a regular expression" },
 ];
 
 const STATUS_OPTIONS = [
-  { value: "Active", label: "Active" },
-  { value: "Disabled", label: "Disabled" },
+    { value: "Active",   label: "Active" },
+    { value: "Disabled", label: "Disabled" },
 ];
 
 const REGEX_PATTERNS = [
-  {
-    value: "[0-9]{5}-[0-9]{7}-[0-9]",
-    label: "CNIC",
-    description: "Pakistani CNIC — e.g. 12345-1234567-1",
-  },
-  {
-    value: "(\\+92|0092|0)[0-9]{10}",
-    label: "Phone Number (Pakistani)",
-    description: "e.g. +923001234567, 0092300123456, 03001234567",
-  },
-  {
-    value: "PK[0-9]{2}[A-Z]{4}[0-9]{16}",
-    label: "IBAN (Pakistani)",
-    description: "e.g. PK36SCBL0000001123456702",
-  },
-  {
-    value: "\\b(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13}|6(?:011|5[0-9]{2})[0-9]{12})\\b",
-    label: "Credit Card",
-    description: "Visa, Mastercard, Amex, Discover",
-  },
-  {
-    value: "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}",
-    label: "Email Address",
-    description: "Standard email format — e.g. user@example.com",
-  },
-  {
-    value: "(?:api[_\\-]?key|apikey)[\\s]*[=:][\\s]*['\"]?([a-zA-Z0-9_\\-]{20,})['\"]?",
-    label: "API Key",
-    description: "Matches api_key=..., apikey: ... patterns",
-  },
-  {
-    value: "(?:secret|secret[_\\-]?key)[\\s]*[=:][\\s]*['\"]?([a-zA-Z0-9_\\-]{16,})['\"]?",
-    label: "Secret Key",
-    description: "Matches secret=..., secret_key: ... patterns",
-  },
+    { value: "[0-9]{5}-[0-9]{7}-[0-9]",                                                                                                          label: "CNIC",                  description: "Pakistani CNIC — e.g. 12345-1234567-1" },
+    { value: "(\\+92|0092|0)[0-9]{10}",                                                                                                           label: "Phone (Pakistani)",      description: "e.g. +923001234567" },
+    { value: "PK[0-9]{2}[A-Z]{4}[0-9]{16}",                                                                                                      label: "IBAN (Pakistani)",       description: "e.g. PK36SCBL0000001123456702" },
+    { value: "\\b(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13}|6(?:011|5[0-9]{2})[0-9]{12})\\b",                                   label: "Credit Card",            description: "Visa, Mastercard, Amex, Discover" },
+    { value: "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}",                                                                                  label: "Email Address",          description: "Standard email format" },
+    { value: "(?:api[_\\-]?key|apikey)[\\s]*[=:][\\s]*['\"]?([a-zA-Z0-9_\\-]{20,})['\"]?",                                                       label: "API Key",                description: "Matches api_key=..., apikey: ..." },
+    { value: "(?:secret|secret[_\\-]?key)[\\s]*[=:][\\s]*['\"]?([a-zA-Z0-9_\\-]{16,})['\"]?",                                                    label: "Secret Key",             description: "Matches secret=..., secret_key: ..." },
 ];
 
-const DEFAULT_NEW_POLICY: Policy = {
-  id: "",
-  name: "",
-  description: "",
-  type: "KEYWORD",
-  pattern: "",
-  status: "Active",
+const DEFAULT: Policy = { id: "", name: "", description: "", type: "KEYWORD", pattern: "", status: "Active" };
+
+const labelStyle: React.CSSProperties = {
+    fontSize: '11px', fontWeight: 600, color: 'var(--text-disabled)',
+    textTransform: 'uppercase', letterSpacing: '0.08em',
+    display: 'block', marginBottom: '8px',
 };
 
-const PolicyModal: React.FC<PolicyModalProps> = ({
-  isOpen,
-  onClose,
-  policy,
-  onSave,
-  isNew = false,
-}) => {
-  const [formData, setFormData] = useState<Policy>(DEFAULT_NEW_POLICY);
-  const [visible, setVisible] = useState(false);
-  const [animating, setAnimating] = useState(false);
+const inputStyle: React.CSSProperties = {
+    width: '100%', background: 'var(--background-input)',
+    border: '1px solid var(--border)', borderRadius: '10px',
+    padding: '9px 12px', color: 'var(--text-primary)',
+    fontSize: '13px', outline: 'none',
+    transition: 'border-color 0.15s ease',
+    boxSizing: 'border-box',
+};
 
-  useEffect(() => {
-    if (isOpen) {
-      setFormData(policy ? { ...policy, type: policy.type?.toUpperCase() || 'KEYWORD' } : { ...DEFAULT_NEW_POLICY });
-      setVisible(true);
-      requestAnimationFrame(() => requestAnimationFrame(() => setAnimating(true)));
-    } else {
-      setAnimating(false);
-      const t = setTimeout(() => setVisible(false), 250);
-      return () => clearTimeout(t);
-    }
-  }, [isOpen, policy]);
+const PolicyModal: React.FC<PolicyModalProps> = ({ isOpen, onClose, policy, onSave, isNew = false }) => {
+    const [formData, setFormData] = useState<Policy>(DEFAULT);
+    const [visible, setVisible]   = useState(false);
+    const [animating, setAnimating] = useState(false);
 
-  if (!visible) return null;
+    useEffect(() => {
+        if (isOpen) {
+            setFormData(policy ? { ...policy, type: policy.type?.toUpperCase() || 'KEYWORD' } : { ...DEFAULT });
+            setVisible(true);
+            requestAnimationFrame(() => requestAnimationFrame(() => setAnimating(true)));
+        } else {
+            setAnimating(false);
+            const t = setTimeout(() => setVisible(false), 250);
+            return () => clearTimeout(t);
+        }
+    }, [isOpen, policy]);
 
-  const isRegex = formData.type === "REGEX";
+    if (!visible) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (formData) onSave(formData);
-  };
+    const isRegex = formData.type === "REGEX";
 
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{
-        backgroundColor: `rgba(0,0,0,${animating ? 0.6 : 0})`,
-        backdropFilter: `blur(${animating ? 6 : 0}px)`,
-        transition: "background-color 250ms ease, backdrop-filter 250ms ease",
-      }}
-    >
-      <div
-        style={{
-          background: "linear-gradient(135deg, #0f172a 0%, #020617 100%)",
-          boxShadow: "0 0 50px -12px rgba(0,0,0,0.5)",
-          opacity: animating ? 1 : 0,
-          transform: animating ? "scale(1)" : "scale(0.92)",
-          transition: "opacity 250ms cubic-bezier(0.16,1,0.3,1), transform 250ms cubic-bezier(0.16,1,0.3,1)",
-        }}
-        className="border border-white/10 rounded-2xl w-full max-w-lg"
-      >
-        {/* Header */}
-        <div className="p-6 border-b border-white/5 flex justify-between items-center">
-          <h3 className="text-xl font-bold text-white flex items-center gap-3">
-            <Shield className="text-indigo-500" size={24} />
-            {isNew ? "New Policy" : "Edit Policy"}
-          </h3>
-          <button
+    return (
+        <div
             onClick={onClose}
-            className="text-neutral-400 hover:text-white transition-colors p-1 hover:bg-white/10 rounded-lg"
-          >
-            <X size={20} />
-          </button>
+            style={{
+                position: 'fixed', inset: 0, zIndex: 50,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px',
+                backgroundColor: animating ? 'var(--overlay-medium)' : 'transparent',
+                backdropFilter: `blur(${animating ? 6 : 0}px)`,
+                transition: 'background-color 250ms ease, backdrop-filter 250ms ease',
+            }}
+        >
+            <div
+                onClick={e => e.stopPropagation()}
+                style={{
+                    background: 'var(--background-card)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '16px',
+                    width: '100%', maxWidth: '480px',
+                    boxShadow: '0 24px 64px var(--overlay-light)',
+                    opacity: animating ? 1 : 0,
+                    transform: animating ? 'scale(1) translateY(0)' : 'scale(0.94) translateY(8px)',
+                    transition: 'opacity 250ms cubic-bezier(0.16,1,0.3,1), transform 250ms cubic-bezier(0.16,1,0.3,1)',
+                }}
+            >
+                {/* Header */}
+                <div style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '18px 20px', borderBottom: '1px solid var(--surface-1)',
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div style={{
+                            width: '32px', height: '32px', borderRadius: '8px',
+                            background: 'var(--brand-a12)', border: '1px solid var(--brand-a25)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}>
+                            <Shield size={16} style={{ color: 'var(--brand-light)' }} />
+                        </div>
+                        <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                            {isNew ? 'New Policy' : 'Edit Policy'}
+                        </span>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        style={{
+                            width: '28px', height: '28px', borderRadius: '8px',
+                            background: 'transparent', border: '1px solid transparent',
+                            color: 'var(--text-disabled)', cursor: 'pointer', display: 'flex',
+                            alignItems: 'center', justifyContent: 'center',
+                            transition: 'all 0.15s ease',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'var(--background-subtle)'; e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent'; e.currentTarget.style.color = 'var(--text-disabled)'; }}
+                    >
+                        <X size={15} />
+                    </button>
+                </div>
+
+                {/* Body */}
+                <form
+                    onSubmit={e => { e.preventDefault(); onSave(formData); }}
+                    style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}
+                >
+                    {/* Name */}
+                    <div>
+                        <label style={labelStyle}>Policy Name</label>
+                        <input
+                            type="text" required value={formData.name}
+                            placeholder="e.g. CNIC Detection Policy"
+                            onChange={e => setFormData(p => ({ ...p, name: e.target.value }))}
+                            style={inputStyle}
+                            onFocus={e => (e.currentTarget.style.borderColor = 'var(--brand-main)')}
+                            onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+                        />
+                    </div>
+
+                    {/* Description */}
+                    <div>
+                        <label style={labelStyle}>Description</label>
+                        <textarea
+                            rows={2} value={formData.description}
+                            placeholder="Describe what this policy detects..."
+                            onChange={e => setFormData(p => ({ ...p, description: e.target.value }))}
+                            style={{ ...inputStyle, resize: 'none', lineHeight: 1.5 }}
+                            onFocus={e => (e.currentTarget.style.borderColor = 'var(--brand-main)')}
+                            onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+                        />
+                    </div>
+
+                    {/* Type + Status */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                        <div>
+                            <label style={labelStyle}>Type</label>
+                            <CustomSelect
+                                value={formData.type}
+                                onChange={val => setFormData(p => ({ ...p, type: val, pattern: "" }))}
+                                options={TYPE_OPTIONS}
+                            />
+                        </div>
+                        <div>
+                            <label style={labelStyle}>Status</label>
+                            <CustomSelect
+                                value={formData.status}
+                                onChange={val => setFormData(p => ({ ...p, status: val as "Active" | "Disabled" }))}
+                                options={STATUS_OPTIONS}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Pattern */}
+                    <div>
+                        <label style={labelStyle}>{isRegex ? 'RegEx Pattern' : 'Keyword or Phrase'}</label>
+                        {isRegex ? (
+                            <>
+                                <CustomSelect
+                                    value={formData.pattern}
+                                    onChange={val => setFormData(p => ({ ...p, pattern: val }))}
+                                    options={REGEX_PATTERNS}
+                                    placeholder="Select a predefined pattern..."
+                                />
+                                {formData.pattern && (
+                                    <div style={{
+                                        marginTop: '8px', padding: '10px 12px',
+                                        background: 'var(--background-input)', border: '1px solid var(--border)',
+                                        borderRadius: '8px',
+                                    }}>
+                                        <p style={{ fontSize: '11px', color: 'var(--text-disabled)', fontWeight: 500, marginBottom: '4px' }}>
+                                            Pattern preview
+                                        </p>
+                                        <code style={{ fontSize: '11px', color: 'var(--brand-light)', wordBreak: 'break-all' }}>
+                                            {formData.pattern}
+                                        </code>
+                                    </div>
+                                )}
+                            </>
+                        ) : (
+                            <input
+                                type="text" required value={formData.pattern}
+                                placeholder="e.g. confidential, salary, passport"
+                                onChange={e => setFormData(p => ({ ...p, pattern: e.target.value }))}
+                                style={inputStyle}
+                                onFocus={e => (e.currentTarget.style.borderColor = 'var(--brand-main)')}
+                                onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+                            />
+                        )}
+                    </div>
+
+                    {/* Actions */}
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', paddingTop: '4px' }}>
+                        <button
+                            type="button" onClick={onClose}
+                            style={{
+                                padding: '9px 18px', borderRadius: '10px',
+                                background: 'var(--background-subtle)', border: '1px solid var(--border)',
+                                color: 'var(--text-tertiary)', fontSize: '13px', fontWeight: 500,
+                                cursor: 'pointer', transition: 'all 0.15s ease',
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.color = 'var(--text-primary)'; e.currentTarget.style.borderColor = 'var(--text-disabled)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-tertiary)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={isRegex && !formData.pattern}
+                            style={{
+                                padding: '9px 18px', borderRadius: '10px',
+                                background: isRegex && !formData.pattern ? 'var(--brand-mid)' : 'var(--brand-light)',
+                                border: 'none', color: 'var(--text-on-brand)',
+                                fontSize: '13px', fontWeight: 600,
+                                cursor: isRegex && !formData.pattern ? 'not-allowed' : 'pointer',
+                                opacity: isRegex && !formData.pattern ? 0.6 : 1,
+                                display: 'flex', alignItems: 'center', gap: '8px',
+                                transition: 'background 0.15s ease',
+                            }}
+                            onMouseEnter={e => { if (!(isRegex && !formData.pattern)) e.currentTarget.style.background = 'var(--brand-main)'; }}
+                            onMouseLeave={e => { if (!(isRegex && !formData.pattern)) e.currentTarget.style.background = 'var(--brand-light)'; }}
+                        >
+                            <Save size={14} />
+                            {isNew ? 'Create Policy' : 'Save Changes'}
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
-
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
-          {/* Policy Name */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-neutral-400">Policy Name</label>
-            <input
-              type="text"
-              value={formData.name}
-              onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
-              required
-              placeholder="e.g. CNIC Detection Policy"
-              className="w-full bg-black/50 border border-white/10 text-white rounded-xl px-4 py-2.5 focus:outline-none focus:border-indigo-500 transition-colors placeholder:text-neutral-600"
-            />
-          </div>
-
-          {/* Description */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-neutral-400">Description</label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => setFormData((p) => ({ ...p, description: e.target.value }))}
-              rows={2}
-              placeholder="Describe what this policy detects..."
-              className="w-full bg-black/50 border border-white/10 text-white rounded-xl px-4 py-2.5 focus:outline-none focus:border-indigo-500 transition-colors resize-none placeholder:text-neutral-600"
-            />
-          </div>
-
-          {/* Type + Status row */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-neutral-400">Type</label>
-              <CustomSelect
-                value={formData.type}
-                onChange={(val) => setFormData((p) => ({ ...p, type: val, pattern: "" }))}
-                options={TYPE_OPTIONS}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-neutral-400">Status</label>
-              <CustomSelect
-                value={formData.status}
-                onChange={(val) => setFormData((p) => ({ ...p, status: val as "Active" | "Disabled" }))}
-                options={STATUS_OPTIONS}
-              />
-            </div>
-          </div>
-
-          {/* Pattern / Value — label and input change based on type */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-neutral-400">
-              {isRegex ? "RegEx Pattern" : "Keyword or Phrase"}
-            </label>
-
-            {isRegex ? (
-              <>
-                <CustomSelect
-                  value={formData.pattern}
-                  onChange={(val) => setFormData((p) => ({ ...p, pattern: val }))}
-                  options={REGEX_PATTERNS}
-                  placeholder="Select a predefined pattern..."
-                />
-                {formData.pattern && (
-                  <div className="mt-2 px-3 py-2 bg-white/5 border border-white/10 rounded-lg">
-                    <p className="text-xs text-neutral-500 font-medium mb-1">Pattern preview</p>
-                    <code className="text-xs text-indigo-300 break-all">{formData.pattern}</code>
-                  </div>
-                )}
-              </>
-            ) : (
-              <input
-                type="text"
-                value={formData.pattern}
-                onChange={(e) => setFormData((p) => ({ ...p, pattern: e.target.value }))}
-                required
-                placeholder="e.g. confidential, salary, passport"
-                className="w-full bg-black/50 border border-white/10 text-white rounded-xl px-4 py-2.5 focus:outline-none focus:border-indigo-500 transition-colors placeholder:text-neutral-600"
-              />
-            )}
-          </div>
-
-          {/* Actions */}
-          <div className="flex justify-end gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-xl font-bold text-neutral-400 hover:text-white hover:bg-white/5 transition-all"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isRegex && !formData.pattern}
-              className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2 rounded-xl font-bold transition-all shadow-lg active:scale-95 flex items-center gap-2"
-            >
-              <Save size={18} />
-              {isNew ? "Create Policy" : "Save Changes"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
+    );
 };
 
 export default PolicyModal;

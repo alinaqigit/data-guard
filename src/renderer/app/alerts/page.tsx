@@ -1,214 +1,154 @@
 'use client';
 
 import { useState } from 'react';
-import {
-    Bell,
-    Eye,
-    CheckCircle2,
-    Trash2,
-    Info,
-} from 'lucide-react';
-
+import { Bell, CheckCircle2, Trash2, Info } from 'lucide-react';
 import { useSecurity } from '@/context/SecurityContext';
 import ConfirmDialog from '@/components/ConfirmDialog';
-import Toast from '@/components/Toast';
 
 export default function AlertsPage() {
     const { alerts, resolveAlert, clearAllAlerts, deleteAlert } = useSecurity();
     const [showClearConfirm, setShowClearConfirm] = useState(false);
     const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
-    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-    const getSeverityStyles = (severity: string) => {
-        switch (severity) {
-            case 'High': return 'bg-red-500/10 text-red-500 border-red-500/20';
-            case 'Medium': return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
-            case 'Low': return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
-            default: return 'bg-neutral-800 text-neutral-400';
-        }
+    const severityColor: Record<string, { bg: string; text: string; border: string }> = {
+        High:   { bg: 'var(--danger-a10)',   text: 'var(--danger)', border: 'var(--danger-a25)' },
+        Medium: { bg: 'var(--warning-a10)',  text: 'var(--warning)', border: 'var(--warning-a25)' },
+        Low:    { bg: 'var(--brand-a10)',  text: 'var(--brand-light)', border: 'var(--brand-a25)' },
     };
 
-    const getStatusStyles = (status: string) => {
-        switch (status) {
-            case 'Resolved': return 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20';
-            case 'Investigating': return 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20';
-            case 'Quarantined': return 'bg-orange-500/10 text-orange-400 border-orange-500/20';
-            case 'New':
-            default: return 'bg-neutral-800 text-neutral-400 border-neutral-700/50';
-        }
+    const statusColor: Record<string, { bg: string; text: string; border: string }> = {
+        Resolved:     { bg: 'var(--success-a10)',   text: 'var(--success-alt)', border: 'var(--success-a25)' },
+        Investigating:{ bg: 'var(--brand-a10)',  text: 'var(--brand-light)', border: 'var(--brand-a25)' },
+        Quarantined:  { bg: 'var(--warning-a10)',  text: 'var(--warning)', border: 'var(--warning-a25)' },
+        New:          { bg: 'var(--neutral-a50)',    text: 'var(--text-tertiary)', border: 'var(--border)' },
     };
 
-    const handleClearAll = () => {
-        clearAllAlerts();
-        setShowClearConfirm(false);
-        setToast({ message: 'All alerts cleared.', type: 'success' });
-    };
+    const badge = (colors: { bg: string; text: string; border: string }, label: string) => (
+        <span style={{
+            background: colors.bg, color: colors.text,
+            border: `1px solid ${colors.border}`,
+            borderRadius: '99px', padding: '2px 10px',
+            fontSize: '11px', fontWeight: 600,
+            textTransform: 'uppercase', letterSpacing: '0.06em',
+        }}>{label}</span>
+    );
 
-    const handleDeleteOne = () => {
-        if (deleteTargetId !== null) {
-            deleteAlert(deleteTargetId);
-            setDeleteTargetId(null);
-            setToast({ message: 'Alert deleted.', type: 'success' });
-        }
-    };
+    const cardStyle = { background: 'var(--background-card)', border: '1px solid var(--border)', borderRadius: '16px' };
+    const thStyle = { color: 'var(--text-disabled)', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '0.08em', padding: '12px 20px' };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 pb-10">
+            {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <h1 className="text-3xl md:text-4xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-500 tracking-tight">
+                <h1 style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
                     Alerts Center
                 </h1>
-                {/* Summary badges */}
                 {alerts.length > 0 && (
-                    <div className="flex items-center gap-3">
-                        <span className="px-3 py-1 rounded-full text-xs font-black uppercase border bg-red-500/10 text-red-500 border-red-500/20">
-                            {alerts.filter(a => a.severity === 'High' && a.status !== 'Resolved').length} Critical
-                        </span>
-                        <span className="px-3 py-1 rounded-full text-xs font-black uppercase border bg-yellow-500/10 text-yellow-500 border-yellow-500/20">
-                            {alerts.filter(a => a.severity === 'Medium' && a.status !== 'Resolved').length} Warnings
-                        </span>
-                        <span className="px-3 py-1 rounded-full text-xs font-black uppercase border bg-emerald-500/10 text-emerald-500 border-emerald-500/20">
-                            {alerts.filter(a => a.status === 'Resolved').length} Resolved
-                        </span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                        {badge(severityColor.High,   `${alerts.filter(a => a.severity === 'High'   && a.status !== 'Resolved').length} Critical`)}
+                        {badge(severityColor.Medium, `${alerts.filter(a => a.severity === 'Medium' && a.status !== 'Resolved').length} Warnings`)}
+                        {badge(statusColor.Resolved, `${alerts.filter(a => a.status === 'Resolved').length} Resolved`)}
                     </div>
                 )}
             </div>
 
-            <div
-                className="border rounded-2xl shadow-xl overflow-hidden"
-                style={{
-                    background: 'linear-gradient(135deg, #020617 0%, #000000 100%)',
-                    borderColor: 'rgba(51, 65, 85, 0.3)'
-                }}
-            >
-                {/* Header */}
-                <div className="p-4 md:p-5 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <h2 className="text-xl font-black text-white flex items-center gap-3 tracking-tight">
-                        <Bell className="text-blue-500" size={28} />
-                        Security Alerts
+            {/* Table card */}
+            <div style={cardStyle} className="overflow-hidden">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-5 py-4"
+                    style={{ borderBottom: '1px solid var(--border)' }}>
+                    <div className="flex items-center gap-3">
+                        <Bell size={20} style={{ color: 'var(--brand-light)' }} />
+                        <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>Security Alerts</span>
                         {alerts.length > 0 && (
-                            <span className="text-sm font-bold text-neutral-500">({alerts.length})</span>
+                            <span style={{ fontSize: '13px', fontWeight: 400, color: 'var(--text-disabled)' }}>({alerts.length})</span>
                         )}
-                    </h2>
+                    </div>
                     <button
                         onClick={() => setShowClearConfirm(true)}
                         disabled={alerts.length === 0}
-                        className="flex items-center gap-2 text-red-500 hover:text-red-400 border border-red-500/50 hover:border-red-500 px-4 py-1.5 rounded-lg text-sm font-bold transition-all disabled:opacity-30 disabled:cursor-not-allowed active:scale-95"
+                        className="flex items-center gap-2 px-4 py-1.5 rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                        style={{ color: 'var(--danger)', border: '1px solid var(--danger-a30)', fontSize: '13px', fontWeight: 500 }}
+                        onMouseEnter={e => (e.currentTarget.style.background = 'var(--danger-a08)')}
+                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                     >
-                        <Trash2 size={16} />
-                        Delete All
+                        <Trash2 size={14} /> Delete All
                     </button>
                 </div>
 
                 <div className="overflow-x-auto">
-                    <table className="w-full text-left border-separate border-spacing-0">
-                        <thead>
-                            <tr className="bg-white/5 border-b border-white/10 text-neutral-400 text-sm font-black uppercase tracking-[0.1em]">
-                                <th className="py-4 px-5">Severity</th>
-                                <th className="py-4 px-5">Time</th>
-                                <th className="py-4 px-5">Alert Type</th>
-                                <th className="py-4 px-5">Description</th>
-                                <th className="py-4 px-5">Source</th>
-                                <th className="py-4 px-5">Status</th>
-                                <th className="py-4 px-5 text-right">Actions</th>
+                    <table className="w-full text-left">
+                        <thead style={{ background: 'var(--background-subtle)', borderBottom: '1px solid var(--border)' }}>
+                            <tr>
+                                {['Severity','Time','Alert Type','Description','Source','Status','Actions'].map(h => (
+                                    <th key={h} style={thStyle}>{h}</th>
+                                ))}
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-white/5">
+                        <tbody>
                             {alerts.length === 0 ? (
                                 <tr>
-                                    <td colSpan={7} className="py-24 text-center">
-                                        <div className="flex flex-col items-center gap-4">
-                                            <div className="p-6 bg-white/5 rounded-full text-neutral-500">
-                                                <Bell size={64} />
-                                            </div>
-                                            <p className="text-neutral-400 font-black text-2xl">No alerts found</p>
-                                            <p className="text-neutral-600 text-lg font-medium">Everything looks secure for now.</p>
+                                    <td colSpan={7} style={{ padding: '80px 20px', textAlign: 'center' }}>
+                                        <Bell size={40} style={{ color: 'var(--border)', margin: '0 auto 12px' }} />
+                                        <p style={{ color: 'var(--text-disabled)', fontWeight: 500, fontSize: '15px' }}>No alerts found</p>
+                                        <p style={{ color: 'var(--border)', fontSize: '13px', marginTop: '4px' }}>Everything looks secure for now.</p>
+                                    </td>
+                                </tr>
+                            ) : alerts.map((alert, i) => (
+                                <tr key={alert.id}
+                                    style={{ borderTop: i > 0 ? '1px solid var(--surface-1)' : undefined }}
+                                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--background-subtle)')}
+                                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                                >
+                                    <td style={{ padding: '14px 20px' }}>{badge(severityColor[alert.severity] || severityColor.Low, alert.severity)}</td>
+                                    <td style={{ padding: '14px 20px', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 400, whiteSpace: 'nowrap' }}>{alert.time}</td>
+                                    <td style={{ padding: '14px 20px', color: 'var(--text-primary)', fontSize: '13px', fontWeight: 500 }}>{alert.type}</td>
+                                    <td style={{ padding: '14px 20px', color: 'var(--text-tertiary)', fontSize: '13px', fontWeight: 400, minWidth: '240px', lineHeight: 1.5 }}>{alert.description}</td>
+                                    <td style={{ padding: '14px 20px' }}>
+                                        <div className="flex items-center gap-1.5" style={{ color: 'var(--text-disabled)' }}>
+                                            <Info size={13} />
+                                            <span style={{ fontSize: '13px', fontWeight: 400 }}>{alert.source}</span>
+                                        </div>
+                                    </td>
+                                    <td style={{ padding: '14px 20px' }}>{badge(statusColor[alert.status] || statusColor.New, alert.status)}</td>
+                                    <td style={{ padding: '14px 20px' }}>
+                                        <div className="flex items-center justify-end gap-1">
+                                            {alert.status !== 'Resolved' && (
+                                                <button onClick={() => resolveAlert(alert.id)}
+                                                    className="p-1.5 rounded-lg transition-colors"
+                                                    style={{ color: 'var(--success-alt)' }}
+                                                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--success-a10)')}
+                                                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                                                    title="Resolve">
+                                                    <CheckCircle2 size={16} />
+                                                </button>
+                                            )}
+                                            <button onClick={() => setDeleteTargetId(alert.id)}
+                                                className="p-1.5 rounded-lg transition-colors"
+                                                style={{ color: 'var(--text-disabled)' }}
+                                                onMouseEnter={e => { e.currentTarget.style.color = 'var(--danger)'; e.currentTarget.style.background = 'var(--danger-a10)'; }}
+                                                onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-disabled)'; e.currentTarget.style.background = 'transparent'; }}
+                                                title="Delete">
+                                                <Trash2 size={16} />
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
-                            ) : (
-                                alerts.map((alert) => (
-                                    <tr key={alert.id} className="group hover:bg-white/5 transition-colors">
-                                        <td className="py-4 px-5">
-                                            <span className={`px-3 py-1.5 rounded-full text-xs font-black uppercase border ${getSeverityStyles(alert.severity)}`}>
-                                                {alert.severity}
-                                            </span>
-                                        </td>
-                                        <td className="py-4 px-5 whitespace-nowrap">
-                                            <span className="text-neutral-300 text-sm font-bold">{alert.time}</span>
-                                        </td>
-                                        <td className="py-4 px-5">
-                                            <span className="text-white text-sm font-black tracking-tight">{alert.type}</span>
-                                        </td>
-                                        <td className="py-4 px-5 min-w-[280px]">
-                                            <p className="text-neutral-400 text-sm font-medium leading-relaxed">{alert.description}</p>
-                                        </td>
-                                        <td className="py-4 px-5">
-                                            <div className="flex items-center gap-2 text-neutral-500">
-                                                <Info size={14} />
-                                                <span className="text-sm font-bold">{alert.source}</span>
-                                            </div>
-                                        </td>
-                                        <td className="py-4 px-5">
-                                            <span className={`px-3 py-1 rounded text-xs font-black uppercase border ${getStatusStyles(alert.status)}`}>
-                                                {alert.status}
-                                            </span>
-                                        </td>
-                                        <td className="py-4 px-5">
-                                            <div className="flex items-center justify-end gap-1">
-                                                {alert.status !== 'Resolved' && (
-                                                    <button
-                                                        onClick={() => resolveAlert(alert.id)}
-                                                        title="Mark as Resolved"
-                                                        className="p-2 text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition-colors"
-                                                    >
-                                                        <CheckCircle2 size={17} />
-                                                    </button>
-                                                )}
-                                                <button
-                                                    onClick={() => setDeleteTargetId(alert.id)}
-                                                    title="Delete Alert"
-                                                    className="p-2 text-neutral-600 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
-                                                >
-                                                    <Trash2 size={17} />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
+                            ))}
                         </tbody>
                     </table>
                 </div>
             </div>
 
-            {/* Delete single alert confirmation */}
-            <ConfirmDialog
-                isOpen={deleteTargetId !== null}
-                title="Delete Alert?"
-                message="This alert will be permanently removed from the list."
-                confirmText="Delete"
-                cancelText="Cancel"
-                isDestructive={true}
-                onCancel={() => setDeleteTargetId(null)}
-                onConfirm={handleDeleteOne}
-            />
+            <ConfirmDialog isOpen={deleteTargetId !== null} title="Delete Alert?"
+                message="This alert will be permanently removed." confirmText="Delete"
+                cancelText="Cancel" isDestructive onCancel={() => setDeleteTargetId(null)}
+                onConfirm={() => { if (deleteTargetId !== null) { deleteAlert(deleteTargetId); setDeleteTargetId(null); } }} />
 
-            {/* Delete all confirmation */}
-            <ConfirmDialog
-                isOpen={showClearConfirm}
-                title="Delete All Alerts?"
+            <ConfirmDialog isOpen={showClearConfirm} title="Delete All Alerts?"
                 message="This will permanently remove all alerts. This action cannot be undone."
-                confirmText="Delete All"
-                cancelText="Cancel"
-                isDestructive={true}
+                confirmText="Delete All" cancelText="Cancel" isDestructive
                 onCancel={() => setShowClearConfirm(false)}
-                onConfirm={handleClearAll}
-            />
-
-            {toast && (
-                <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
-            )}
+                onConfirm={() => { clearAllAlerts(); setShowClearConfirm(false); }} />
         </div>
     );
 }
