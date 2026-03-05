@@ -415,7 +415,7 @@ describe("Live Scanner API Integration Tests", () => {
         .expect(400);
 
       expect(response.body.error).toContain(
-        "Only active live scanners can be paused",
+        "Only active scanners can be paused",
       );
     });
   });
@@ -475,7 +475,7 @@ describe("Live Scanner API Integration Tests", () => {
         .expect(400);
 
       expect(response.body.error).toContain(
-        "Only paused live scanners can be resumed",
+        "Only paused scanners can be resumed",
       );
     });
   });
@@ -534,7 +534,7 @@ describe("Live Scanner API Integration Tests", () => {
         .set("x-session-id", sessionId)
         .expect(400);
 
-      expect(response.body.error).toContain("already stopped");
+      expect(response.body.error).toContain("Already stopped");
     });
   });
 
@@ -611,8 +611,8 @@ describe("Live Scanner API Integration Tests", () => {
 
       const scannerId = createResponse.body.scannerId;
 
-      // Wait for scanner to be ready
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Wait for scanner to be ready (watcher needs time to initialize)
+      await new Promise((resolve) => setTimeout(resolve, 2000));
 
       // Create a new file with sensitive content
       fs.writeFileSync(
@@ -620,8 +620,8 @@ describe("Live Scanner API Integration Tests", () => {
         "password: secret123",
       );
 
-      // Wait for debounce and scanning
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      // Wait for debounce and scanning (needs extra time on Windows)
+      await new Promise((resolve) => setTimeout(resolve, 3000));
 
       // Check stats
       const statsResponse = await request(app)
@@ -642,7 +642,7 @@ describe("Live Scanner API Integration Tests", () => {
       await request(app)
         .post(`/api/live-scanners/${scannerId}/stop`)
         .set("x-session-id", sessionId);
-    });
+    }, 15000);
 
     it("should detect modified file", async () => {
       // Create initial file
@@ -665,13 +665,13 @@ describe("Live Scanner API Integration Tests", () => {
       const scannerId = createResponse.body.scannerId;
 
       // Wait for scanner to be ready
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 2500));
 
       // Modify file with sensitive content
       fs.writeFileSync(testFile, "password: modified_secret");
 
-      // Wait for debounce and scanning
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      // Wait for debounce + stabilityThreshold + scanning (needs extra time on Windows)
+      await new Promise((resolve) => setTimeout(resolve, 5000));
 
       // Check stats
       const statsResponse = await request(app)
@@ -689,7 +689,7 @@ describe("Live Scanner API Integration Tests", () => {
       await request(app)
         .post(`/api/live-scanners/${scannerId}/stop`)
         .set("x-session-id", sessionId);
-    });
+    }, 15000);
 
     it("should not scan when paused", async () => {
       const createResponse = await request(app)

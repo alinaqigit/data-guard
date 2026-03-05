@@ -40,6 +40,22 @@ export class User {
     return this.dbRepository.updateUserName(oldUsername, newUsername);
   }
 
+  public getUserById(id: number): UserEntity | null {
+    return this.dbRepository.getUserById(id);
+  }
+
+  public updateUserProfile(
+    id: number,
+    data: { email?: string; bio?: string; username?: string },
+  ): UserEntity | null {
+    const user = this.dbRepository.getUserById(id);
+    if (!user) {
+      throw new Error("User not found");
+    }
+    this.dbRepository.updateUserProfile(id, data);
+    return this.dbRepository.getUserById(id);
+  }
+
   public deleteUserByUsername(username: string): void {
     const user = this.dbRepository.getUserByUsername(username);
 
@@ -48,5 +64,35 @@ export class User {
     }
 
     return this.dbRepository.deleteUserByUsername(username);
+  }
+
+  public getUserByEmail(email: string): UserEntity | null {
+    return this.dbRepository.getUserByEmail(email);
+  }
+
+  public updateUserPassword(id: number, passwordHash: string): void {
+    const user = this.dbRepository.getUserById(id);
+    if (!user) {
+      throw new Error("User not found");
+    }
+    this.dbRepository.updateUserPassword(id, passwordHash);
+  }
+
+  // Remember Token operations
+
+  public createRememberToken(token: string, userId: number, expiresAt: string): void {
+    this.dbRepository.createRememberToken(token, userId, expiresAt);
+  }
+
+  public getRememberToken(token: string): { token: string; userId: number; expiresAt: string } | null {
+    return this.dbRepository.getRememberToken(token);
+  }
+
+  public deleteRememberToken(token: string): void {
+    this.dbRepository.deleteRememberToken(token);
+  }
+
+  public deleteRememberTokensByUserId(userId: number): void {
+    this.dbRepository.deleteRememberTokensByUserId(userId);
   }
 }

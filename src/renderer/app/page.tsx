@@ -1,149 +1,108 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
-
-import {
-  Users,
-  ShieldAlert,
-  FileSearch,
-  ScrollText,
-  Download,
-} from "lucide-react";
+import { useState } from "react";
+import { Users, ShieldAlert, FileSearch, ScrollText } from "lucide-react";
 import StatCard from "@/components/StatCard";
 import Table from "@/components/Table";
-
-interface RecentScan {
-  name: string;
-  type: string;
-  files: string;
-  threats: number;
-  status: string;
-  time: string;
-}
-
-interface RecentThreat {
-  id: string;
-  type: string;
-  file: string;
-  severity: string;
-  status: string;
-  detected: string;
-}
-
+import CustomSelect from "@/components/CustomSelect";
 import { useSecurity } from "@/context/SecurityContext";
+import { reportsService } from "@/lib/api/reports.service";
 
 export default function Home() {
   const router = useRouter();
-  const {
-    scans,
-    alerts,
-    runScan,
-    totalFilesScanned,
-    isAuthenticated,
-    policies,
-  } = useSecurity();
-  const [isScanning, setIsScanning] = useState(false);
+  const { scans, alerts, totalFilesScanned, isAuthenticated, policies } = useSecurity();
   const [isGenerating, setIsGenerating] = useState(false);
-  const [showDownloadSuccess, setShowDownloadSuccess] =
-    useState(false);
+  const [reportFormat, setReportFormat] = useState<"pdf" | "xlsx" | "json">("pdf");
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      router.push("/login");
-    }
-  }, [isAuthenticated, router]);
+  if (!isAuthenticated) {
+    router.push("/login");
+    return null;
+  }
 
-  const handleQuickScan = () => {
-    setIsScanning(true);
-    runScan("Quick Scan", "All Files", "/default/path");
-
-    // UI loading simulation
-    setTimeout(() => {
-      setIsScanning(false);
-    }, 1500);
-  };
-
-  const handleGenerateReport = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    setIsGenerating(true);
-    // Simulate report generation
-    setTimeout(() => {
-      setIsGenerating(false);
-      setShowDownloadSuccess(true);
-      // Auto-hide after 3 seconds
-      setTimeout(() => {
-        setShowDownloadSuccess(false);
-      }, 3000);
-    }, 1500);
-  };
+  const activePoliciesCount = policies.filter((p) => p.status === "Active").length;
+  const newAlertsCount = alerts.filter((a) => a.status === "New").length;
 
   const stats = [
     {
       title: "Total Scans",
-      value: (24500 + scans.length).toLocaleString(),
-      change: `+${scans.length} new scans`,
-      trend: "up",
+      value: scans.length.toLocaleString(),
+      change: scans.length > 0 ? `${scans.length} scan${scans.length !== 1 ? 's' : ''} recorded` : "No scans yet",
+      trend: scans.length > 0 ? "up" : "neutral",
       icon: FileSearch,
-      color: "text-blue-500",
+      color: "text-blue-400",
       bg: "bg-blue-500/10",
     },
     {
       title: "Total Threats",
       value: alerts.length.toString(),
-      change: `${alerts.filter((a) => a.status === "New").length} new alerts`,
-      trend: alerts.length > 5 ? "up" : "down",
+      change: newAlertsCount > 0 ? `${newAlertsCount} new alert${newAlertsCount !== 1 ? 's' : ''}` : "No new alerts",
+      trend: alerts.length > 0 ? "up" : "down",
       icon: ShieldAlert,
-      color: "text-rose-500",
+      color: "text-rose-400",
       bg: "bg-rose-500/10",
     },
     {
       title: "Files Scanned",
       value: totalFilesScanned.toLocaleString(),
-      change: "Across all sources",
-      trend: "up",
+      change: totalFilesScanned > 0 ? "Across all scans" : "Run a scan to start",
+      trend: totalFilesScanned > 0 ? "up" : "neutral",
       icon: Users,
-      color: "text-emerald-500",
+      color: "text-emerald-400",
       bg: "bg-emerald-500/10",
     },
     {
       title: "Active Policies",
-      value: policies
-        .filter((p) => p.status === "Active")
-        .length.toString(),
-      change: `${policies.length} total policies`,
-      trend: "neutral",
+      value: activePoliciesCount.toString(),
+      change: `${policies.length} total polic${policies.length !== 1 ? 'ies' : 'y'}`,
+      trend: activePoliciesCount > 0 ? "up" : "neutral",
       icon: ScrollText,
-      color: "text-indigo-500",
-      bg: "bg-indigo-500/10",
+      color: "text-blue-400",
+      bg: "bg-blue-500/10",
     },
   ];
 
+  const handleGenerateReport = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setIsGenerating(true);
+    try {
+      const { reportId } = await reportsService.generateReport({
+        reportType: "quick",
+        format: reportFormat,
+        dateRange: "today",
+        reportName: `Quick Report ${new Date().toLocaleDateString()}`,
+      });
+      const name = `quick_report_${new Date().toISOString().split("T")[0]}`;
+      await reportsService.downloadReport(reportId, `${name}.${reportFormat}`, reportFormat);
+    } catch (err) {
+      console.error("Report generation failed:", err);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const cardStyle = {
+    background: 'var(--background-card)',
+    border: '1px solid var(--border)',
+    borderRadius: '16px',
+    padding: '20px 24px',
+  };
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-3xl md:text-4xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-500 tracking-tight">
-            Security Overview
-          </h2>
-        </div>
-      </div>
+    <div className="space-y-6 pb-10">
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      {/* Page title */}
+      <h1 style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+        Security Overview
+      </h1>
+
+      {/* Stat cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat, index) => {
-          // Define navigation handlers for specific cards
           let handleClick: (() => void) | undefined;
-
-          if (stat.title === "Total Threats") {
-            handleClick = () => router.push("/threats");
-          } else if (stat.title === "Files Scanned") {
-            handleClick = () => router.push("/scanner");
-          } else if (stat.title === "Active Policies") {
-            handleClick = () => router.push("/policies");
-          }
-
+          if (stat.title === "Total Threats") handleClick = () => router.push("/threats");
+          else if (stat.title === "Files Scanned") handleClick = () => router.push("/scanner");
+          else if (stat.title === "Active Policies") handleClick = () => router.push("/policies");
           return (
             <StatCard
               key={index}
@@ -160,294 +119,225 @@ export default function Home() {
         })}
       </div>
 
-      {/* Main Grid: Recent Scans & System Health */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column: Tables */}
+      {/* Main grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          {/* Recent Scans Table */}
-          <div className="p-4 md:p-5 rounded-2xl bg-white dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 backdrop-blur-sm">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-black text-white tracking-tight">
+
+          {/* Recent Scans */}
+          <div style={cardStyle}>
+            <div className="flex items-center justify-between mb-5">
+              <h2 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)' }}>
                 Recent Scans
-              </h3>
+              </h2>
               <button
-                onClick={() => router.push("/scans")}
-                className="cursor-pointer text-sm font-bold text-indigo-400 hover:text-indigo-300 transition-colors"
+                onClick={() => router.push("/scanner")}
+                style={{ fontSize: '13px', fontWeight: 500, color: 'var(--brand-light)' }}
+                onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-secondary)')}
+                onMouseLeave={e => (e.currentTarget.style.color = 'var(--brand-light)')}
               >
-                View All Scans
+                View All
               </button>
             </div>
 
-            <Table<any>
-              columns={[
-                {
-                  header: "Scan ID",
-                  accessor: "scanid",
-                  render: (value) => (
-                    <span className="font-mono text-xs px-2 py-1 bg-neutral-100 dark:bg-white/5 rounded text-neutral-500 dark:text-neutral-400 border border-neutral-200 dark:border-white/5">
-                      {value}
-                    </span>
-                  ),
-                },
-                {
-                  header: "Filename",
-                  accessor: "filename",
-                  className: "w-[40%]",
-                  render: (value) => (
-                    <span className="font-semibold text-neutral-900 dark:text-neutral-100">
-                      {value}
-                    </span>
-                  ),
-                },
-                {
-                  header: "Threats",
-                  accessor: "threats",
-                  render: (value) => (
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`w-2 h-2 rounded-full ${value > 0 ? "bg-rose-500 animate-pulse" : "bg-emerald-500"}`}
-                      ></span>
-                      <span
-                        className={`${value > 0 ? "text-rose-500 font-bold" : "text-neutral-500"}`}
-                      >
-                        {value}
-                      </span>
-                    </div>
-                  ),
-                },
-                {
-                  header: "Date",
-                  accessor: "date",
-                  className: "text-neutral-500 text-xs text-right",
-                },
-              ]}
-              data={
-                scans.length > 0
-                  ? scans.slice(0, 5).map((s, i) => ({
-                      scanid: `SCN-${1000 + i}`,
-                      filename: `Session: ${s.type}`,
-                      threats: s.threats,
-                      date: s.time,
-                    }))
-                  : [
-                      {
-                        scanid: "SCN-1024",
-                        filename: "Weekly System Audit",
-                        threats: 12,
-                        date: "Yesterday",
-                      },
-                      {
-                        scanid: "SCN-1023",
-                        filename: "Quick Security Check",
-                        threats: 0,
-                        date: "2 days ago",
-                      },
-                    ]
-              }
-            />
+            {scans.length === 0 ? (
+              <div className="py-10 text-center">
+                <FileSearch size={32} className="mx-auto mb-3" style={{ color: 'var(--text-disabled)' }} />
+                <p style={{ color: 'var(--text-tertiary)', fontWeight: 500, fontSize: '14px' }}>No scans yet</p>
+                <p style={{ color: 'var(--text-disabled)', fontSize: '13px', marginTop: '4px' }}>
+                  Run a scan from the Content Scanner page.
+                </p>
+              </div>
+            ) : (
+              <Table<any>
+                columns={[
+                  {
+                    header: "Scan ID",
+                    accessor: "scanid",
+                    render: (value) => (
+                      <span style={{
+                        fontFamily: 'monospace', fontSize: '12px',
+                        padding: '2px 8px', background: 'var(--background-subtle)',
+                        border: '1px solid var(--border)', borderRadius: '6px',
+                        color: 'var(--text-tertiary)',
+                      }}>{value}</span>
+                    ),
+                  },
+                  {
+                    header: "Type",
+                    accessor: "filename",
+                    className: "w-[40%]",
+                    render: (value) => (
+                      <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{value}</span>
+                    ),
+                  },
+                  {
+                    header: "Threats",
+                    accessor: "threats",
+                    render: (value) => (
+                      <div className="flex items-center gap-2">
+                        <span style={{
+                          width: '7px', height: '7px', borderRadius: '50%',
+                          background: value > 0 ? 'var(--danger)' : 'var(--success-alt)',
+                          display: 'inline-block',
+                        }} />
+                        <span style={{
+                          color: value > 0 ? 'var(--danger)' : 'var(--text-disabled)',
+                          fontWeight: value > 0 ? 600 : 400,
+                        }}>{value}</span>
+                      </div>
+                    ),
+                  },
+                  {
+                    header: "Time", accessor: "date",
+                    className: "text-right",
+                    render: (value) => (
+                      <span style={{ color: 'var(--text-disabled)', fontSize: '12px' }}>{value}</span>
+                    ),
+                  },
+                ]}
+                data={scans.slice(0, 5).map((s) => ({
+                  scanid: `SCN-${String(s.id).padStart(4, '0')}`,
+                  filename: s.type,
+                  threats: s.threats,
+                  date: s.time,
+                }))}
+              />
+            )}
           </div>
 
-          {/* Recent Threats Table */}
-          <div className="p-4 md:p-5 rounded-2xl bg-white dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 backdrop-blur-sm transition-all duration-300">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-black text-white tracking-tight">
+          {/* Recent Threats */}
+          <div style={cardStyle}>
+            <div className="flex items-center justify-between mb-5">
+              <h2 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)' }}>
                 Recent Threats
-              </h3>
+              </h2>
               <button
                 onClick={() => router.push("/threats")}
-                className="cursor-pointer text-sm font-bold text-rose-400 hover:text-rose-300 transition-colors"
+                style={{ fontSize: '13px', fontWeight: 500, color: 'var(--danger)' }}
+                onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-secondary)')}
+                onMouseLeave={e => (e.currentTarget.style.color = 'var(--danger)')}
               >
-                View All Threats
+                View All
               </button>
             </div>
 
-            <Table<any>
-              columns={[
-                {
-                  header: "Scan ID",
-                  accessor: "scanid",
-                  render: (value) => (
-                    <span className="font-mono text-xs px-2 py-1 bg-neutral-100 dark:bg-white/5 rounded text-neutral-500 dark:text-neutral-400 border border-neutral-200 dark:border-white/5">
-                      {value}
-                    </span>
-                  ),
-                },
-                {
-                  header: "Filename",
-                  accessor: "filename",
-                  className: "w-[40%]",
-                  render: (value) => (
-                    <div className="flex flex-col group cursor-default">
-                      <span
-                        className="font-semibold text-neutral-900 dark:text-neutral-100 truncate group-hover:text-indigo-500 transition-colors"
-                        title={value}
-                      >
-                        {value}
-                      </span>
-                    </div>
-                  ),
-                },
-                {
-                  header: "Threats",
-                  accessor: "threats",
-                  render: (value) => {
-                    const colors = {
-                      Critical: "bg-rose-500 text-rose-500",
-                      High: "bg-orange-500 text-orange-500",
-                      Medium: "bg-amber-500 text-amber-500",
-                      Low: "bg-blue-500 text-blue-500",
-                    };
-                    const colorClass =
-                      colors[value as keyof typeof colors] ||
-                      "bg-neutral-500 text-neutral-500";
-
-                    return (
-                      <div className="flex items-center gap-2">
-                        <div
-                          className={`w-1.5 h-1.5 rounded-full ${colorClass.split(" ")[0]}`}
-                        ></div>
-                        <span
-                          className={`text-xs font-bold uppercase tracking-wider ${colorClass.split(" ")[1]}`}
-                        >
+            {alerts.length === 0 ? (
+              <div className="py-10 text-center">
+                <ShieldAlert size={32} className="mx-auto mb-3" style={{ color: 'var(--text-disabled)' }} />
+                <p style={{ color: 'var(--success-alt)', fontWeight: 500, fontSize: '14px' }}>
+                  No threats detected
+                </p>
+                <p style={{ color: 'var(--text-disabled)', fontSize: '13px', marginTop: '4px' }}>
+                  Your environment is currently secure.
+                </p>
+              </div>
+            ) : (
+              <Table<any>
+                columns={[
+                  {
+                    header: "Threat ID",
+                    accessor: "scanid",
+                    render: (value) => (
+                      <span style={{
+                        fontFamily: 'monospace', fontSize: '12px',
+                        padding: '2px 8px', background: 'var(--background-subtle)',
+                        border: '1px solid var(--border)', borderRadius: '6px',
+                        color: 'var(--text-tertiary)',
+                      }}>{value}</span>
+                    ),
+                  },
+                  {
+                    header: "Type",
+                    accessor: "filename",
+                    className: "w-[40%]",
+                    render: (value) => (
+                      <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}
+                        className="truncate block max-w-xs">{value}</span>
+                    ),
+                  },
+                  {
+                    header: "Severity",
+                    accessor: "threats",
+                    render: (value) => {
+                      const colors: Record<string, string> = {
+                        High: 'var(--danger)', Medium: 'var(--warning)', Low: 'var(--brand-light)',
+                      };
+                      return (
+                        <span style={{
+                          fontSize: '11px', fontWeight: 600,
+                          textTransform: 'uppercase', letterSpacing: '0.08em',
+                          color: colors[value] || 'var(--text-tertiary)',
+                        }}>
                           {value}
                         </span>
-                      </div>
-                    );
+                      );
+                    },
                   },
-                },
-                {
-                  header: "Date",
-                  accessor: "date",
-                  className: "text-neutral-500 text-xs text-right",
-                },
-              ]}
-              data={
-                alerts.length > 0
-                  ? alerts.slice(0, 4).map((a) => ({
-                      scanid: `THR-${a.id.toString().slice(-4)}`,
-                      filename:
-                        a.description
-                          .split(" in ")[1]
-                          ?.split(" during ")[0] || "Unknown",
-                      threats: a.severity,
-                      date: a.time.split(" ")[1] || a.time,
-                    }))
-                  : [
-                      {
-                        scanid: "THR-1024",
-                        filename: "invoice_2024.pdf.exe",
-                        threats: "Critical",
-                        date: "Yesterday",
-                      },
-                      {
-                        scanid: "THR-1023",
-                        filename: "customer_db.sql",
-                        threats: "High",
-                        date: "Yesterday",
-                      },
-                    ]
-              }
-            />
+                  {
+                    header: "Time", accessor: "date",
+                    className: "text-right",
+                    render: (value) => (
+                      <span style={{ color: 'var(--text-disabled)', fontSize: '12px' }}>{value}</span>
+                    ),
+                  },
+                ]}
+                data={alerts.slice(0, 4).map((a) => ({
+                  scanid: `THR-${String(a.id).slice(-4).padStart(4, '0')}`,
+                  filename: a.type,
+                  threats: a.severity,
+                  date: a.time.split(" ")[1] || a.time,
+                }))}
+              />
+            )}
           </div>
         </div>
 
-        {/* Right Column: System Status & Widgets */}
-        <div className="space-y-6">
-          {/* Quick Report Form */}
-          <div
-            className="p-4 md:p-5 rounded-2xl border transition-all duration-300 shadow-xl"
-            style={{
-              background:
-                "linear-gradient(135deg, #020617 0%, #000000 100%)",
-              borderColor: "rgba(51, 65, 85, 0.3)",
-            }}
-          >
-            <h3 className="text-xl font-black text-white mb-6 tracking-tight">
-              Quick Report
-            </h3>
-            <form
-              className="space-y-6"
-              onSubmit={handleGenerateReport}
+        {/* Quick Report */}
+        <div style={{ ...cardStyle, height: 'fit-content' }}>
+          <h2 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '20px' }}>
+            Quick Report
+          </h2>
+          <form className="space-y-4" onSubmit={handleGenerateReport}>
+            <div className="space-y-2">
+              <label style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                Format
+              </label>
+              <CustomSelect
+                value={reportFormat}
+                onChange={(val) => setReportFormat(val as "pdf" | "xlsx" | "json")}
+                options={[
+                  { value: "pdf", label: "PDF Document", description: ".pdf" },
+                  { value: "xlsx", label: "Excel Workbook", description: ".xlsx" },
+                  { value: "json", label: "JSON Data", description: ".json" },
+                ]}
+                placeholder="Select format"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={isGenerating}
+              className="w-full py-3 rounded-xl flex items-center justify-center gap-2 transition-all"
+              style={{
+                background: isGenerating ? 'var(--brand-mid)' : 'var(--brand-light)',
+                color: 'var(--text-on-brand)',
+                fontWeight: 600,
+                fontSize: '14px',
+                border: 'none',
+                cursor: isGenerating ? 'not-allowed' : 'pointer',
+                opacity: isGenerating ? 0.7 : 1,
+              }}
+              onMouseEnter={e => { if (!isGenerating) (e.currentTarget as HTMLButtonElement).style.background = 'var(--brand-main)'; }}
+              onMouseLeave={e => { if (!isGenerating) (e.currentTarget as HTMLButtonElement).style.background = 'var(--brand-light)'; }}
             >
-              <div className="space-y-3">
-                <label className="text-sm font-bold text-neutral-400 uppercase tracking-widest px-1">
-                  File Type
-                </label>
-                <select className="w-full h-12 px-4 bg-white dark:bg-neutral-800/80 border border-neutral-200 dark:border-neutral-700/50 rounded-xl text-base text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors font-bold">
-                  <option
-                    value="pdf"
-                    className="bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white"
-                  >
-                    PDF Document (.pdf)
-                  </option>
-                  <option
-                    value="csv"
-                    className="bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white"
-                  >
-                    CSV Spreadsheet (.csv)
-                  </option>
-                  <option
-                    value="json"
-                    className="bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white"
-                  >
-                    JSON Data (.json)
-                  </option>
-                  <option
-                    value="xlsx"
-                    className="bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white"
-                  >
-                    Excel Workbook (.xlsx)
-                  </option>
-                </select>
-              </div>
-
-              <button
-                type="submit"
-                disabled={isGenerating}
-                className="cursor-pointer w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black text-lg shadow-lg shadow-indigo-500/20 transition-all flex items-center justify-center gap-2 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
-              >
-                {isGenerating ? (
-                  <span className="flex items-center gap-2">
-                    <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
-                    Preparing...
-                  </span>
-                ) : (
-                  <>
-                    <Download size={20} />
-                    Download Report
-                  </>
-                )}
-              </button>
-            </form>
-          </div>
+              {isGenerating ? (
+                <><div className="w-4 h-4 border-2 rounded-full animate-spin"
+                  style={{ borderColor: 'var(--spinner-track)', borderTopColor: 'var(--text-on-brand)' }} />
+                  Generating...</>
+              ) : "Download Report"}
+            </button>
+          </form>
         </div>
       </div>
-
-      {/* Download Success Toast */}
-      {showDownloadSuccess && (
-        <div className="fixed top-8 right-8 z-50 animate-in slide-in-from-top-5 duration-300">
-          <div className="bg-emerald-500 text-white px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3">
-            <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
-            </div>
-            <span className="font-black text-lg">
-              Download Completed
-            </span>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

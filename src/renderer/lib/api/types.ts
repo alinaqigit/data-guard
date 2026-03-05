@@ -9,19 +9,25 @@ export interface AuthRegisterRequest {
 export interface AuthLoginRequest {
   username: string;
   password: string;
+  rememberMe?: boolean;
 }
 
 export interface AuthResponse {
   user: {
     id: number;
     username: string;
+    email?: string;
+    bio?: string;
   };
   sessionId: string;
+  rememberToken?: string;
 }
 
 export interface User {
   id: number;
   username: string;
+  email?: string;
+  bio?: string;
 }
 
 // Policy Module Types
@@ -68,6 +74,10 @@ export interface ScanOptions {
   maxDepth?: number;
   followSymlinks?: boolean;
   maxMatchesPerFile?: number;
+  // ── New fields ──────────────────────────────────────────────
+  mlTier?: "base" | "small" | "tiny";          // which ML model to use
+  excludedKeywords?: string[];                  // regex matches containing these are skipped
+  whitelistedPaths?: string[];                  // paths to completely skip during traversal
 }
 
 export interface StartScanRequest {

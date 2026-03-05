@@ -1,11 +1,15 @@
 import Database from "better-sqlite3-multiple-ciphers";
-import { initializeDatabaseQuery } from "./db.queries";
+import {
+  initializeDatabaseQuery,
+  migrationQueries,
+} from "./db.queries";
 import fs from "fs";
 import {
   UserEntity,
   PolicyEntity,
   ScanEntity,
   LiveScannerEntity,
+  ThreatEntity,
 } from "../../entities";
 
 export class dbRepository {
@@ -20,6 +24,15 @@ export class dbRepository {
       fileMustExist: false,
     });
     this.db.exec(initializeDatabaseQuery);
+
+    // Run schema migrations (silently skip already-applied ones)
+    for (const sql of migrationQueries) {
+      try {
+        this.db.exec(sql);
+      } catch {
+        // Column/table already exists — ignore
+      }
+    }
   }
 
   public createUser(userData: {
@@ -39,7 +52,7 @@ export class dbRepository {
 
   public getUserByUsername(username: string): UserEntity | null {
     const stmt = this.db.prepare(
-      "SELECT id, username, password_hash as passwordHash, created_at as createdAt FROM users WHERE username = ?",
+      "SELECT id, username, password_hash as passwordHash, email, bio, created_at as createdAt FROM users WHERE username = ?",
     );
     const user = stmt.get(username) as any;
 
@@ -51,7 +64,57 @@ export class dbRepository {
       id: user.id,
       username: user.username,
       passwordHash: user.passwordHash,
+      email: user.email || '',
+      bio: user.bio || '',
     };
+  }
+
+  public getUserById(id: number): UserEntity | null {
+    const stmt = this.db.prepare(
+      "SELECT id, username, password_hash as passwordHash, email, bio, created_at as createdAt FROM users WHERE id = ?",
+    );
+    const user = stmt.get(id) as any;
+
+    if (!user) {
+      return null;
+    }
+
+    return {
+      id: user.id,
+      username: user.username,
+      passwordHash: user.passwordHash,
+      email: user.email || '',
+      bio: user.bio || '',
+    };
+  }
+
+  public updateUserProfile(
+    id: number,
+    data: { email?: string; bio?: string; username?: string },
+  ): void {
+    const fields: string[] = [];
+    const values: any[] = [];
+
+    if (data.email !== undefined) {
+      fields.push("email = ?");
+      values.push(data.email);
+    }
+    if (data.bio !== undefined) {
+      fields.push("bio = ?");
+      values.push(data.bio);
+    }
+    if (data.username !== undefined) {
+      fields.push("username = ?");
+      values.push(data.username);
+    }
+
+    if (fields.length === 0) return;
+
+    values.push(id);
+    const stmt = this.db.prepare(
+      `UPDATE users SET ${fields.join(", ")} WHERE id = ?`,
+    );
+    stmt.run(...values);
   }
 
   public deleteUserByUsername(username: string): void {
@@ -59,6 +122,58 @@ export class dbRepository {
       "DELETE FROM users WHERE username = ?",
     );
     stmt.run(username);
+  }
+
+  public getUserByEmail(email: string): UserEntity | null {
+    const stmt = this.db.prepare(
+      "SELECT id, username, password_hash as passwordHash, email, bio, created_at as createdAt FROM users WHERE email = ? AND email != ''",
+    );
+    const user = stmt.get(email) as any;
+    if (!user) return null;
+    return {
+      id: user.id,
+      username: user.username,
+      passwordHash: user.passwordHash,
+      email: user.email || '',
+      bio: user.bio || '',
+    };
+  }
+
+  public updateUserPassword(id: number, passwordHash: string): void {
+    const stmt = this.db.prepare(
+      "UPDATE users SET password_hash = ? WHERE id = ?",
+    );
+    stmt.run(passwordHash, id);
+  }
+
+  // Remember Token operations
+
+  public createRememberToken(token: string, userId: number, expiresAt: string): void {
+    // Remove any existing tokens for this user first
+    this.deleteRememberTokensByUserId(userId);
+    const stmt = this.db.prepare(
+      "INSERT INTO remember_tokens (token, user_id, expires_at) VALUES (?, ?, ?)",
+    );
+    stmt.run(token, userId, expiresAt);
+  }
+
+  public getRememberToken(token: string): { token: string; userId: number; expiresAt: string } | null {
+    const stmt = this.db.prepare(
+      "SELECT token, user_id as userId, expires_at as expiresAt FROM remember_tokens WHERE token = ?",
+    );
+    const row = stmt.get(token) as any;
+    if (!row) return null;
+    return { token: row.token, userId: row.userId, expiresAt: row.expiresAt };
+  }
+
+  public deleteRememberToken(token: string): void {
+    const stmt = this.db.prepare("DELETE FROM remember_tokens WHERE token = ?");
+    stmt.run(token);
+  }
+
+  public deleteRememberTokensByUserId(userId: number): void {
+    const stmt = this.db.prepare("DELETE FROM remember_tokens WHERE user_id = ?");
+    stmt.run(userId);
   }
 
   public updateUserName(
@@ -408,6 +523,12 @@ export class dbRepository {
     stmt.run(id);
   }
 
+  public deleteAllScansByUserId(userId: number): void {
+    this.db
+      .prepare("DELETE FROM scans WHERE user_id = ?")
+      .run(userId);
+  }
+
   // Live Scanner CRUD operations
 
   public createLiveScanner(liveScannerData: {
@@ -645,5 +766,217 @@ export class dbRepository {
       "DELETE FROM live_scanners WHERE id = ?",
     );
     stmt.run(id);
+  }
+
+  // Threat CRUD operations
+
+  /**
+   * Find an active (non-Resolved) threat for a given user + file path.
+   * Used for deduplication — if one already exists we update it instead of inserting.
+   */
+  public findActiveThreatByUserAndPath(
+    userId: number,
+    filePath: string,
+  ): ThreatEntity | null {
+    const stmt = this.db.prepare(
+      `SELECT
+        id,
+        user_id   as userId,
+        scan_id   as scanId,
+        severity,
+        type,
+        description,
+        details,
+        source,
+        status,
+        file_path as filePath,
+        created_at as createdAt,
+        updated_at as updatedAt
+      FROM threats
+      WHERE user_id = ? AND file_path = ? AND status != 'Resolved'
+      ORDER BY id DESC
+      LIMIT 1`,
+    );
+    const row = stmt.get(userId, filePath) as any;
+    if (!row) return null;
+    return {
+      id: row.id,
+      userId: row.userId,
+      scanId: row.scanId,
+      severity: row.severity,
+      type: row.type,
+      description: row.description,
+      details: row.details ? JSON.parse(row.details) : null,
+      source: row.source,
+      status: row.status,
+      filePath: row.filePath,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    };
+  }
+
+  /**
+   * Update an existing threat with new scan results (severity, description,
+   * latest scanId) and reset its status to 'New' so it surfaces again.
+   */
+  public refreshThreat(
+    id: number,
+    updates: {
+      scanId: number;
+      severity: "High" | "Medium" | "Low";
+      description: string;
+      details?: string | null;
+    },
+  ): void {
+    const stmt = this.db.prepare(
+      `UPDATE threats
+       SET scan_id = ?, severity = ?, description = ?, details = ?, status = 'New',
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+    );
+    stmt.run(
+      updates.scanId,
+      updates.severity,
+      updates.description,
+      updates.details ?? null,
+      id,
+    );
+  }
+
+  public createThreat(threatData: {
+    userId: number;
+    scanId: number;
+    severity: "High" | "Medium" | "Low";
+    type: string;
+    description: string;
+    details?: string | null;
+    source: string;
+    status: "New" | "Investigating" | "Quarantined" | "Resolved";
+    filePath: string;
+  }): ThreatEntity {
+    const stmt = this.db.prepare(
+      "INSERT INTO threats (user_id, scan_id, severity, type, description, details, source, status, file_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    );
+    const info = stmt.run(
+      threatData.userId,
+      threatData.scanId,
+      threatData.severity,
+      threatData.type,
+      threatData.description,
+      threatData.details ?? null,
+      threatData.source,
+      threatData.status,
+      threatData.filePath,
+    );
+
+    return {
+      id: info.lastInsertRowid as number,
+      userId: threatData.userId,
+      scanId: threatData.scanId,
+      severity: threatData.severity,
+      type: threatData.type,
+      description: threatData.description,
+      details: threatData.details
+        ? JSON.parse(threatData.details)
+        : null,
+      source: threatData.source,
+      status: threatData.status,
+      filePath: threatData.filePath,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  public getThreatById(id: number): ThreatEntity | null {
+    const stmt = this.db.prepare(
+      `SELECT
+        id,
+        user_id as userId,
+        scan_id as scanId,
+        severity,
+        type,
+        description,
+        details,
+        source,
+        status,
+        file_path as filePath,
+        created_at as createdAt,
+        updated_at as updatedAt
+      FROM threats
+      WHERE id = ?`,
+    );
+    const threat = stmt.get(id) as any;
+    if (!threat) return null;
+    return {
+      id: threat.id,
+      userId: threat.userId,
+      scanId: threat.scanId,
+      severity: threat.severity,
+      type: threat.type,
+      description: threat.description,
+      details: threat.details ? JSON.parse(threat.details) : null,
+      source: threat.source,
+      status: threat.status,
+      filePath: threat.filePath,
+      createdAt: threat.createdAt,
+      updatedAt: threat.updatedAt,
+    };
+  }
+
+  public getAllThreatsByUserId(userId: number): ThreatEntity[] {
+    const stmt = this.db.prepare(
+      `SELECT
+        id,
+        user_id as userId,
+        scan_id as scanId,
+        severity,
+        type,
+        description,
+        details,
+        source,
+        status,
+        file_path as filePath,
+        created_at as createdAt,
+        updated_at as updatedAt
+      FROM threats
+      WHERE user_id = ?
+      ORDER BY id DESC`,
+    );
+    const threats = stmt.all(userId) as any[];
+    return threats.map((t) => ({
+      id: t.id,
+      userId: t.userId,
+      scanId: t.scanId,
+      severity: t.severity,
+      type: t.type,
+      description: t.description,
+      details: t.details ? JSON.parse(t.details) : null,
+      source: t.source,
+      status: t.status,
+      filePath: t.filePath,
+      createdAt: t.createdAt,
+      updatedAt: t.updatedAt,
+    }));
+  }
+
+  public updateThreatStatus(
+    id: number,
+    status: "New" | "Investigating" | "Quarantined" | "Resolved",
+  ): void {
+    const stmt = this.db.prepare(
+      "UPDATE threats SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+    );
+    stmt.run(status, id);
+  }
+
+  public deleteThreatById(id: number): void {
+    const stmt = this.db.prepare("DELETE FROM threats WHERE id = ?");
+    stmt.run(id);
+  }
+
+  public deleteAllThreatsByUserId(userId: number): void {
+    this.db
+      .prepare("DELETE FROM threats WHERE user_id = ?")
+      .run(userId);
   }
 }

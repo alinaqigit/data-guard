@@ -19,11 +19,7 @@ export class liveScannerController {
   constructor(liveScannerService: liveScannerService) {
     this.liveScannerService = liveScannerService;
     this.liveScannerRouter = Router();
-
-    // All live scanner routes require authentication
     this.liveScannerRouter.use(authMiddleware.verifySession);
-
-    // Map routes
     this.mapRoutes();
   }
 
@@ -32,27 +28,100 @@ export class liveScannerController {
   }
 
   private mapRoutes() {
-    // Start a new live scanner
+    // ── NEW: Toggle-based monitoring endpoints ────────────────────────────────
+
+    // POST /api/live-scanners/monitor/start — called when Real-time Monitoring toggled ON
+    this.liveScannerRouter.post(
+      "/monitor/start",
+      asyncHandler(
+        async (req: AuthenticatedRequest, res: Response) => {
+          if (!req.user) throw new UnauthorizedError();
+          const autoResponse = req.body?.autoResponse === true;
+          const result =
+            await this.liveScannerService.startMonitoring(
+              req.user.userId,
+              autoResponse,
+            );
+          res.status(201).json(result);
+        },
+      ),
+    );
+
+    // POST /api/live-scanners/monitor/stop — called when Real-time Monitoring toggled OFF
+    this.liveScannerRouter.post(
+      "/monitor/stop",
+      asyncHandler(
+        async (req: AuthenticatedRequest, res: Response) => {
+          if (!req.user) throw new UnauthorizedError();
+          await this.liveScannerService.stopMonitoringForUser(
+            req.user.userId,
+          );
+          res
+            .status(200)
+            .json({ message: "Live monitoring stopped" });
+        },
+      ),
+    );
+
+    // PATCH /api/live-scanners/monitor/auto-response — update auto-response flag
+    this.liveScannerRouter.patch(
+      "/monitor/auto-response",
+      asyncHandler(
+        async (req: AuthenticatedRequest, res: Response) => {
+          if (!req.user) throw new UnauthorizedError();
+          const { autoResponse } = req.body;
+          if (typeof autoResponse !== "boolean")
+            throw new ValidationError("autoResponse must be boolean");
+          this.liveScannerService.updateAutoResponse(
+            req.user.userId,
+            autoResponse,
+          );
+          res
+            .status(200)
+            .json({ message: "Auto-response updated", autoResponse });
+        },
+      ),
+    );
+
+    // GET /api/live-scanners/monitor/status — get monitoring status
+    this.liveScannerRouter.get(
+      "/monitor/status",
+      asyncHandler(
+        async (req: AuthenticatedRequest, res: Response) => {
+          if (!req.user) throw new UnauthorizedError();
+          const status = this.liveScannerService.getMonitoringStatus(
+            req.user.userId,
+          );
+          res.status(200).json(status);
+        },
+      ),
+    );
+
+    // GET /api/live-scanners/monitor/debug — diagnostic info for debugging
+    this.liveScannerRouter.get(
+      "/monitor/debug",
+      asyncHandler(
+        async (req: AuthenticatedRequest, res: Response) => {
+          if (!req.user) throw new UnauthorizedError();
+          const diagnostics = this.liveScannerService.getDiagnostics(
+            req.user.userId,
+          );
+          const status = this.liveScannerService.getMonitoringStatus(
+            req.user.userId,
+          );
+          res.status(200).json({ ...status, ...diagnostics });
+        },
+      ),
+    );
+
+    // ── Existing routes ───────────────────────────────────────────────────────
+
     this.liveScannerRouter.post(
       "/",
       asyncHandler(
         async (req: AuthenticatedRequest, res: Response) => {
-          if (!req.user) {
-            throw new UnauthorizedError();
-          }
-
-          // Validate request body
-          if (
-            !req.body ||
-            typeof req.body !== "object" ||
-            Array.isArray(req.body)
-          ) {
-            throw new ValidationError("Invalid request body");
-          }
-
+          if (!req.user) throw new UnauthorizedError();
           const request = req.body as StartLiveScannerRequest;
-
-          // Validate required fields
           if (
             !request.name ||
             !request.targetPath ||
@@ -63,216 +132,159 @@ export class liveScannerController {
               "Missing required fields: name, targetPath, watchMode, isRecursive",
             );
           }
-
           if (
             !["file-changes", "directory-changes", "both"].includes(
               request.watchMode,
             )
           ) {
-            throw new ValidationError(
-              "Invalid watchMode. Must be: file-changes, directory-changes, or both",
-            );
+            throw new ValidationError("Invalid watchMode");
           }
-
           const result =
             await this.liveScannerService.startLiveScanner(
               req.user.userId,
               request,
             );
-
           res.status(201).json(result);
         },
       ),
     );
 
-    // Get all live scanners for current user
     this.liveScannerRouter.get(
       "/",
       asyncHandler(
         async (req: AuthenticatedRequest, res: Response) => {
-          if (!req.user) {
-            throw new UnauthorizedError();
-          }
-
+          if (!req.user) throw new UnauthorizedError();
           const liveScanners =
             this.liveScannerService.getAllLiveScanners(
               req.user.userId,
             );
-
           res.json(liveScanners);
         },
       ),
     );
 
-    // Get live scanner by ID
     this.liveScannerRouter.get(
       "/:id",
       asyncHandler(
         async (req: AuthenticatedRequest, res: Response) => {
-          if (!req.user) {
-            throw new UnauthorizedError();
-          }
-
+          if (!req.user) throw new UnauthorizedError();
           const idParam = Array.isArray(req.params.id)
             ? req.params.id[0]
             : req.params.id;
           const scannerId = parseInt(idParam);
-
-          if (isNaN(scannerId)) {
+          if (isNaN(scannerId))
             throw new ValidationError("Invalid scanner ID");
-          }
-
-          const liveScanner =
+          res.json(
             this.liveScannerService.getLiveScannerById(
               req.user.userId,
               scannerId,
-            );
-
-          res.json(liveScanner);
+            ),
+          );
         },
       ),
     );
 
-    // Get live scanner statistics
     this.liveScannerRouter.get(
       "/:id/stats",
       asyncHandler(
         async (req: AuthenticatedRequest, res: Response) => {
-          if (!req.user) {
-            throw new UnauthorizedError();
-          }
-
+          if (!req.user) throw new UnauthorizedError();
           const idParam = Array.isArray(req.params.id)
             ? req.params.id[0]
             : req.params.id;
           const scannerId = parseInt(idParam);
-
-          if (isNaN(scannerId)) {
+          if (isNaN(scannerId))
             throw new ValidationError("Invalid scanner ID");
-          }
-
-          const stats = this.liveScannerService.getLiveScannerStats(
-            req.user.userId,
-            scannerId,
+          res.json(
+            this.liveScannerService.getLiveScannerStats(
+              req.user.userId,
+              scannerId,
+            ),
           );
-
-          res.json(stats);
         },
       ),
     );
 
-    // Stop a live scanner
     this.liveScannerRouter.post(
       "/:id/stop",
       asyncHandler(
         async (req: AuthenticatedRequest, res: Response) => {
-          if (!req.user) {
-            throw new UnauthorizedError();
-          }
-
+          if (!req.user) throw new UnauthorizedError();
           const idParam = Array.isArray(req.params.id)
             ? req.params.id[0]
             : req.params.id;
           const scannerId = parseInt(idParam);
-
-          if (isNaN(scannerId)) {
+          if (isNaN(scannerId))
             throw new ValidationError("Invalid scanner ID");
-          }
-
-          const result =
+          res.json(
             await this.liveScannerService.stopLiveScanner(
               req.user.userId,
               scannerId,
-            );
-
-          res.json(result);
+            ),
+          );
         },
       ),
     );
 
-    // Pause a live scanner
     this.liveScannerRouter.post(
       "/:id/pause",
       asyncHandler(
         async (req: AuthenticatedRequest, res: Response) => {
-          if (!req.user) {
-            throw new UnauthorizedError();
-          }
-
+          if (!req.user) throw new UnauthorizedError();
           const idParam = Array.isArray(req.params.id)
             ? req.params.id[0]
             : req.params.id;
           const scannerId = parseInt(idParam);
-
-          if (isNaN(scannerId)) {
+          if (isNaN(scannerId))
             throw new ValidationError("Invalid scanner ID");
-          }
-
-          const result =
+          res.json(
             await this.liveScannerService.pauseLiveScanner(
               req.user.userId,
               scannerId,
-            );
-
-          res.json(result);
+            ),
+          );
         },
       ),
     );
 
-    // Resume a paused live scanner
     this.liveScannerRouter.post(
       "/:id/resume",
       asyncHandler(
         async (req: AuthenticatedRequest, res: Response) => {
-          if (!req.user) {
-            throw new UnauthorizedError();
-          }
-
+          if (!req.user) throw new UnauthorizedError();
           const idParam = Array.isArray(req.params.id)
             ? req.params.id[0]
             : req.params.id;
           const scannerId = parseInt(idParam);
-
-          if (isNaN(scannerId)) {
+          if (isNaN(scannerId))
             throw new ValidationError("Invalid scanner ID");
-          }
-
-          const result =
+          res.json(
             await this.liveScannerService.resumeLiveScanner(
               req.user.userId,
               scannerId,
-            );
-
-          res.json(result);
+            ),
+          );
         },
       ),
     );
 
-    // Delete a live scanner
     this.liveScannerRouter.delete(
       "/:id",
       asyncHandler(
         async (req: AuthenticatedRequest, res: Response) => {
-          if (!req.user) {
-            throw new UnauthorizedError();
-          }
-
+          if (!req.user) throw new UnauthorizedError();
           const idParam = Array.isArray(req.params.id)
             ? req.params.id[0]
             : req.params.id;
           const scannerId = parseInt(idParam);
-
-          if (isNaN(scannerId)) {
+          if (isNaN(scannerId))
             throw new ValidationError("Invalid scanner ID");
-          }
-
-          const result =
+          res.json(
             await this.liveScannerService.deleteLiveScanner(
               req.user.userId,
               scannerId,
-            );
-
-          res.json(result);
+            ),
+          );
         },
       ),
     );

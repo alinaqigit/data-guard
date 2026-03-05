@@ -6,8 +6,8 @@ export default function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
     return (
         <header className="sticky top-0 z-30 w-full h-16 backdrop-blur-md border-b transition-colors duration-300 md:hidden"
             style={{
-                background: 'rgba(2, 6, 23, 0.8)',
-                borderColor: 'rgba(51, 65, 85, 0.3)'
+                background: 'var(--topbar-bg)',
+                borderColor: 'var(--topbar-border)'
             }}
         >
             <div className="flex items-center h-full px-4">

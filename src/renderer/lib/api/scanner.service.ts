@@ -46,12 +46,12 @@ export const scannerService = {
    * Cancel a running scan
    */
   async cancelScan(id: number): Promise<{ message: string }> {
-    return api.patch<{ message: string }>(
-      `/api/scans/${id}/cancel`,
-      undefined,
-      true,
-    );
-  },
+  return api.patch<{ message: string }>(
+    `/api/scans/${id}/cancel`,
+    {},
+    true,
+  );
+},
 
   /**
    * Delete a scan
@@ -59,4 +59,8 @@ export const scannerService = {
   async deleteScan(id: number): Promise<{ message: string }> {
     return api.delete<{ message: string }>(`/api/scans/${id}`, true);
   },
+  
+  async deleteAllScans(): Promise<void> {
+    await api.delete("/api/scans", true);
+  }
 };

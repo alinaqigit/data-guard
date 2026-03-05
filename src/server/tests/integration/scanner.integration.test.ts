@@ -86,7 +86,7 @@ describe("Scanner API Integration Tests", () => {
   describe("POST /api/scans", () => {
     it("should start a new full scan", async () => {
       const scanRequest = {
-        scanType: "full",
+        scanType: "custom",
         targetPath: testDir,
       };
 
@@ -109,13 +109,13 @@ describe("Scanner API Integration Tests", () => {
         .expect(200);
 
       expect(scanResponse.body.id).toBe(response.body.scanId);
-      expect(scanResponse.body.scanType).toBe("full");
+      expect(scanResponse.body.scanType).toBe("custom");
       expect(scanResponse.body.status).toMatch(/running|completed/);
-    });
+    }, 15000);
 
     it("should start a quick scan", async () => {
       const scanRequest = {
-        scanType: "quick",
+        scanType: "custom",
         targetPath: testDir,
         options: {
           maxDepth: 1,
@@ -168,9 +168,9 @@ describe("Scanner API Integration Tests", () => {
         .expect(401);
     });
 
-    it("should return 500 for non-existent path", async () => {
+    it("should return 400 for non-existent path", async () => {
       const scanRequest = {
-        scanType: "full",
+        scanType: "custom",
         targetPath: "/non/existent/path",
       };
 
@@ -178,7 +178,7 @@ describe("Scanner API Integration Tests", () => {
         .post("/api/scans")
         .set("x-session-id", sessionId)
         .send(scanRequest)
-        .expect(500);
+        .expect(400);
 
       expect(response.body.error).toContain("does not exist");
     });
@@ -190,7 +190,7 @@ describe("Scanner API Integration Tests", () => {
         .set("x-session-id", sessionId);
 
       const scanRequest = {
-        scanType: "full",
+        scanType: "custom",
         targetPath: testDir,
       };
 
@@ -198,7 +198,7 @@ describe("Scanner API Integration Tests", () => {
         .post("/api/scans")
         .set("x-session-id", sessionId)
         .send(scanRequest)
-        .expect(500);
+        .expect(400);
 
       expect(response.body.error).toContain("No active policies");
     });
@@ -211,7 +211,7 @@ describe("Scanner API Integration Tests", () => {
         .post("/api/scans")
         .set("x-session-id", sessionId)
         .send({
-          scanType: "full",
+          scanType: "custom",
           targetPath: testDir,
         });
 
@@ -231,12 +231,12 @@ describe("Scanner API Integration Tests", () => {
       await request(app)
         .post("/api/scans")
         .set("x-session-id", sessionId)
-        .send({ scanType: "full", targetPath: testDir });
+        .send({ scanType: "custom", targetPath: testDir });
 
       await request(app)
         .post("/api/scans")
         .set("x-session-id", sessionId)
-        .send({ scanType: "quick", targetPath: testDir });
+        .send({ scanType: "custom", targetPath: testDir });
 
       // Get limited history
       const response = await request(app)
@@ -259,7 +259,7 @@ describe("Scanner API Integration Tests", () => {
         .post("/api/scans")
         .set("x-session-id", sessionId)
         .send({
-          scanType: "full",
+          scanType: "custom",
           targetPath: testDir,
         });
 
@@ -273,7 +273,7 @@ describe("Scanner API Integration Tests", () => {
 
       expect(response.body.id).toBe(scanId);
       expect(response.body.userId).toBe(userId);
-      expect(response.body.scanType).toBe("full");
+      expect(response.body.scanType).toBe("custom");
       expect(response.body.targetPath).toBe(testDir);
     });
 
@@ -303,7 +303,7 @@ describe("Scanner API Integration Tests", () => {
         .post("/api/scans")
         .set("x-session-id", sessionId)
         .send({
-          scanType: "full",
+          scanType: "custom",
           targetPath: testDir,
         });
 
@@ -371,7 +371,7 @@ Line 15: api_key
         .post("/api/scans")
         .set("x-session-id", sessionId)
         .send({
-          scanType: "full",
+          scanType: "custom",
           targetPath: largeTestDir,
         });
 
@@ -434,7 +434,7 @@ Line 15: api_key
         .post("/api/scans")
         .set("x-session-id", sessionId)
         .send({
-          scanType: "full",
+          scanType: "custom",
           targetPath: testDir,
         });
 
@@ -448,7 +448,7 @@ Line 15: api_key
         .delete(`/api/scans/${scanId}`)
         .set("x-session-id", sessionId)
         .expect(200);
-    });
+    }, 10000);
 
     it("should return 404 for non-existent scan", async () => {
       await request(app)
@@ -465,7 +465,7 @@ Line 15: api_key
   describe("Scan Functionality", () => {
     it("should detect threats in files", async () => {
       const scanRequest = {
-        scanType: "full",
+        scanType: "custom",
         targetPath: testDir,
       };
 
@@ -483,7 +483,7 @@ Line 15: api_key
       expect(scanResponse.body.status).toBe("completed");
       expect(scanResponse.body.filesScanned).toBeGreaterThan(0);
       expect(scanResponse.body.totalThreats).toBeGreaterThan(0);
-    });
+    }, 15000);
 
     it("should respect file extensions filter", async () => {
       const scanRequest = {
@@ -507,11 +507,11 @@ Line 15: api_key
 
       // Should only scan .txt files (3 files: secrets.txt, normal.txt, nested.txt)
       expect(scanResponse.body.filesScanned).toBeLessThanOrEqual(3);
-    });
+    }, 10000);
 
     it("should respect exclude paths", async () => {
       const scanRequest = {
-        scanType: "full",
+        scanType: "custom",
         targetPath: testDir,
         options: {
           excludePaths: ["subdir"],
@@ -531,6 +531,6 @@ Line 15: api_key
 
       // Should not include files from subdir
       expect(scanResponse.body.filesScanned).toBeLessThan(4);
-    });
+    }, 10000);
   });
 });

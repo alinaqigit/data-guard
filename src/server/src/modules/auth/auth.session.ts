@@ -55,6 +55,17 @@ export class SessionManager {
   }
 
   /**
+   * Update username in all sessions for a given userId
+   */
+  public static updateSessionUsername(userId: number, newUsername: string): void {
+    for (const [, session] of this.sessions) {
+      if (session.userId === userId) {
+        session.username = newUsername;
+      }
+    }
+  }
+
+  /**
    * Clear all sessions (app restart/cleanup)
    */
   public static clearAllSessions(): void {

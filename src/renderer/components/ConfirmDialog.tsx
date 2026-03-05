@@ -1,5 +1,7 @@
-import React from 'react';
-import { AlertTriangle, X } from 'lucide-react';
+"use client";
+
+import React, { useEffect, useState } from 'react';
+import { AlertTriangle } from 'lucide-react';
 
 interface ConfirmDialogProps {
     isOpen: boolean;
@@ -13,44 +15,98 @@ interface ConfirmDialogProps {
 }
 
 const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
-    isOpen,
-    title,
-    message,
-    confirmText = 'Confirm',
-    cancelText = 'Cancel',
-    onConfirm,
-    onCancel,
-    isDestructive = false
+    isOpen, title, message,
+    confirmText = 'Confirm', cancelText = 'Cancel',
+    onConfirm, onCancel, isDestructive = false,
 }) => {
-    if (!isOpen) return null;
+    const [visible, setVisible]     = useState(false);
+    const [animating, setAnimating] = useState(false);
+
+    useEffect(() => {
+        if (isOpen) {
+            setVisible(true);
+            requestAnimationFrame(() => requestAnimationFrame(() => setAnimating(true)));
+        } else {
+            setAnimating(false);
+            const t = setTimeout(() => setVisible(false), 250);
+            return () => clearTimeout(t);
+        }
+    }, [isOpen]);
+
+    if (!visible) return null;
+
+    const iconColor  = isDestructive ? 'var(--danger)' : 'var(--brand-light)';
+    const iconBg     = isDestructive ? 'var(--danger-a10)' : 'var(--brand-a10)';
+    const confirmBg  = isDestructive ? 'var(--danger)' : 'var(--brand-light)';
+    const confirmHov = isDestructive ? 'var(--danger-alt)' : 'var(--brand-main)';
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+        <div
+            onClick={onCancel}
+            style={{
+                position: 'fixed', inset: 0, zIndex: 60,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px',
+                backgroundColor: animating ? 'var(--overlay-medium)' : 'transparent',
+                backdropFilter: `blur(${animating ? 6 : 0}px)`,
+                transition: 'background-color 250ms ease, backdrop-filter 250ms ease',
+            }}
+        >
             <div
-                className="bg-black/90 border border-white/10 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200"
+                onClick={e => e.stopPropagation()}
                 style={{
-                    background: 'linear-gradient(135deg, #0f172a 0%, #020617 100%)',
-                    boxShadow: '0 0 50px -12px rgba(0, 0, 0, 0.5)'
+                    background: 'var(--background-card)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '16px',
+                    width: '100%',
+                    maxWidth: '380px',
+                    boxShadow: '0 24px 64px var(--overlay-light)',
+                    opacity: animating ? 1 : 0,
+                    transform: animating ? 'scale(1) translateY(0)' : 'scale(0.94) translateY(8px)',
+                    transition: 'opacity 250ms cubic-bezier(0.16,1,0.3,1), transform 250ms cubic-bezier(0.16,1,0.3,1)',
                 }}
             >
-                <div className="p-6 text-center">
-                    <div className={`mx-auto w-12 h-12 rounded-full flex items-center justify-center mb-4 ${isDestructive ? 'bg-rose-500/10 text-rose-500' : 'bg-indigo-500/10 text-indigo-500'}`}>
-                        <AlertTriangle size={24} />
+                <div style={{ padding: '28px 24px 24px', textAlign: 'center' }}>
+                    {/* Icon */}
+                    <div style={{
+                        width: '48px', height: '48px', borderRadius: '12px',
+                        background: iconBg, border: `1px solid ${iconColor}30`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        margin: '0 auto 16px',
+                    }}>
+                        <AlertTriangle size={22} style={{ color: iconColor }} />
                     </div>
-                    <h3 className="text-xl font-bold text-white mb-2">{title}</h3>
-                    <p className="text-neutral-400 text-sm leading-relaxed mb-6">
+
+                    <p style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
+                        {title}
+                    </p>
+                    <p style={{ fontSize: '13px', fontWeight: 400, color: 'var(--text-tertiary)', lineHeight: 1.6, marginBottom: '24px' }}>
                         {message}
                     </p>
-                    <div className="flex gap-3 justify-center">
+
+                    <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
                         <button
                             onClick={onCancel}
-                            className="px-4 py-2 rounded-lg font-bold text-neutral-400 hover:text-white hover:bg-white/5 transition-all text-sm"
+                            style={{
+                                padding: '9px 20px', borderRadius: '10px',
+                                background: 'var(--background-subtle)', border: '1px solid var(--border)',
+                                color: 'var(--text-tertiary)', fontSize: '13px', fontWeight: 500,
+                                cursor: 'pointer', transition: 'all 0.15s ease',
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.color = 'var(--text-primary)'; e.currentTarget.style.borderColor = 'var(--text-disabled)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-tertiary)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
                         >
                             {cancelText}
                         </button>
                         <button
                             onClick={onConfirm}
-                            className={`px-6 py-2 rounded-lg font-bold text-white transition-all shadow-lg active:scale-95 text-sm ${isDestructive ? 'bg-rose-600 hover:bg-rose-500 shadow-rose-600/20' : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/20'}`}
+                            style={{
+                                padding: '9px 20px', borderRadius: '10px',
+                                background: confirmBg, border: 'none',
+                                color: 'var(--text-on-brand)', fontSize: '13px', fontWeight: 600,
+                                cursor: 'pointer', transition: 'background 0.15s ease',
+                            }}
+                            onMouseEnter={e => (e.currentTarget.style.background = confirmHov)}
+                            onMouseLeave={e => (e.currentTarget.style.background = confirmBg)}
                         >
                             {confirmText}
                         </button>
