@@ -36,14 +36,21 @@ export class SocketService {
   private getSystemMetrics(): SystemMetrics {
     const os = require("os");
     const cpus: any[] = os.cpus();
-    const cpuLoad = cpus.reduce((acc: number, cpu: any) => {
-      const times: Record<string, number> = cpu.times;
-      const total = Object.values(times).reduce((t: number, v: number) => t + v, 0);
-      return acc + ((total - times.idle) / total) * 100;
-    }, 0) / cpus.length;
+    const cpuLoad =
+      cpus.reduce((acc: number, cpu: any) => {
+        const times: Record<string, number> = cpu.times;
+        const total = Object.values(times).reduce(
+          (t: number, v: number) => t + v,
+          0,
+        );
+        return acc + ((total - times.idle) / total) * 100;
+      }, 0) / cpus.length;
     const totalMem = os.totalmem();
     const freeMem = os.freemem();
-    const networkLoad = Math.min(100, Math.abs(Math.sin(Date.now() / 10000) * 40 + 15));
+    const networkLoad = Math.min(
+      100,
+      Math.abs(Math.sin(Date.now() / 10000) * 40 + 15),
+    );
     return {
       cpu: Math.round(cpuLoad),
       memory: Math.round(((totalMem - freeMem) / totalMem) * 100),
@@ -113,11 +120,14 @@ export class SocketService {
     changeType: string;
     threatsFound: number;
     timestamp: string;
+    watcherReady?: boolean;
   }) {
     this.io.emit("liveScanner:activity", activity);
   }
 
-  public getIO(): SocketIOServer { return this.io; }
+  public getIO(): SocketIOServer {
+    return this.io;
+  }
 
   public destroy() {
     if (this.metricsInterval) clearInterval(this.metricsInterval);
@@ -127,7 +137,10 @@ export class SocketService {
 
 let socketServiceInstance: SocketService | null = null;
 
-export function initSocketService(httpServer: HttpServer, isProduction: boolean): SocketService {
+export function initSocketService(
+  httpServer: HttpServer,
+  isProduction: boolean,
+): SocketService {
   socketServiceInstance = new SocketService(httpServer, isProduction);
   return socketServiceInstance;
 }

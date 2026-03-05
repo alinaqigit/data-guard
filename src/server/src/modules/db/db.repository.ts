@@ -1,11 +1,15 @@
 import Database from "better-sqlite3-multiple-ciphers";
-import { initializeDatabaseQuery } from "./db.queries";
+import {
+  initializeDatabaseQuery,
+  migrationQueries,
+} from "./db.queries";
 import fs from "fs";
 import {
   UserEntity,
   PolicyEntity,
   ScanEntity,
   LiveScannerEntity,
+  ThreatEntity,
 } from "../../entities";
 
 export class dbRepository {
@@ -20,6 +24,15 @@ export class dbRepository {
       fileMustExist: false,
     });
     this.db.exec(initializeDatabaseQuery);
+
+    // Run schema migrations (silently skip already-applied ones)
+    for (const sql of migrationQueries) {
+      try {
+        this.db.exec(sql);
+      } catch {
+        // Column/table already exists — ignore
+      }
+    }
   }
 
   public createUser(userData: {
@@ -407,9 +420,11 @@ export class dbRepository {
     const stmt = this.db.prepare("DELETE FROM scans WHERE id = ?");
     stmt.run(id);
   }
-  
+
   public deleteAllScansByUserId(userId: number): void {
-    this.db.prepare("DELETE FROM scans WHERE user_id = ?").run(userId);
+    this.db
+      .prepare("DELETE FROM scans WHERE user_id = ?")
+      .run(userId);
   }
 
   // Live Scanner CRUD operations
@@ -651,5 +666,215 @@ export class dbRepository {
     stmt.run(id);
   }
 
-  
+  // Threat CRUD operations
+
+  /**
+   * Find an active (non-Resolved) threat for a given user + file path.
+   * Used for deduplication — if one already exists we update it instead of inserting.
+   */
+  public findActiveThreatByUserAndPath(
+    userId: number,
+    filePath: string,
+  ): ThreatEntity | null {
+    const stmt = this.db.prepare(
+      `SELECT
+        id,
+        user_id   as userId,
+        scan_id   as scanId,
+        severity,
+        type,
+        description,
+        details,
+        source,
+        status,
+        file_path as filePath,
+        created_at as createdAt,
+        updated_at as updatedAt
+      FROM threats
+      WHERE user_id = ? AND file_path = ? AND status != 'Resolved'
+      ORDER BY id DESC
+      LIMIT 1`,
+    );
+    const row = stmt.get(userId, filePath) as any;
+    if (!row) return null;
+    return {
+      id: row.id,
+      userId: row.userId,
+      scanId: row.scanId,
+      severity: row.severity,
+      type: row.type,
+      description: row.description,
+      details: row.details ? JSON.parse(row.details) : null,
+      source: row.source,
+      status: row.status,
+      filePath: row.filePath,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    };
+  }
+
+  /**
+   * Update an existing threat with new scan results (severity, description,
+   * latest scanId) and reset its status to 'New' so it surfaces again.
+   */
+  public refreshThreat(
+    id: number,
+    updates: {
+      scanId: number;
+      severity: "High" | "Medium" | "Low";
+      description: string;
+      details?: string | null;
+    },
+  ): void {
+    const stmt = this.db.prepare(
+      `UPDATE threats
+       SET scan_id = ?, severity = ?, description = ?, details = ?, status = 'New',
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+    );
+    stmt.run(
+      updates.scanId,
+      updates.severity,
+      updates.description,
+      updates.details ?? null,
+      id,
+    );
+  }
+
+  public createThreat(threatData: {
+    userId: number;
+    scanId: number;
+    severity: "High" | "Medium" | "Low";
+    type: string;
+    description: string;
+    details?: string | null;
+    source: string;
+    status: "New" | "Investigating" | "Quarantined" | "Resolved";
+    filePath: string;
+  }): ThreatEntity {
+    const stmt = this.db.prepare(
+      "INSERT INTO threats (user_id, scan_id, severity, type, description, details, source, status, file_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    );
+    const info = stmt.run(
+      threatData.userId,
+      threatData.scanId,
+      threatData.severity,
+      threatData.type,
+      threatData.description,
+      threatData.details ?? null,
+      threatData.source,
+      threatData.status,
+      threatData.filePath,
+    );
+
+    return {
+      id: info.lastInsertRowid as number,
+      userId: threatData.userId,
+      scanId: threatData.scanId,
+      severity: threatData.severity,
+      type: threatData.type,
+      description: threatData.description,
+      details: threatData.details
+        ? JSON.parse(threatData.details)
+        : null,
+      source: threatData.source,
+      status: threatData.status,
+      filePath: threatData.filePath,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  public getThreatById(id: number): ThreatEntity | null {
+    const stmt = this.db.prepare(
+      `SELECT
+        id,
+        user_id as userId,
+        scan_id as scanId,
+        severity,
+        type,
+        description,
+        details,
+        source,
+        status,
+        file_path as filePath,
+        created_at as createdAt,
+        updated_at as updatedAt
+      FROM threats
+      WHERE id = ?`,
+    );
+    const threat = stmt.get(id) as any;
+    if (!threat) return null;
+    return {
+      id: threat.id,
+      userId: threat.userId,
+      scanId: threat.scanId,
+      severity: threat.severity,
+      type: threat.type,
+      description: threat.description,
+      details: threat.details ? JSON.parse(threat.details) : null,
+      source: threat.source,
+      status: threat.status,
+      filePath: threat.filePath,
+      createdAt: threat.createdAt,
+      updatedAt: threat.updatedAt,
+    };
+  }
+
+  public getAllThreatsByUserId(userId: number): ThreatEntity[] {
+    const stmt = this.db.prepare(
+      `SELECT
+        id,
+        user_id as userId,
+        scan_id as scanId,
+        severity,
+        type,
+        description,
+        details,
+        source,
+        status,
+        file_path as filePath,
+        created_at as createdAt,
+        updated_at as updatedAt
+      FROM threats
+      WHERE user_id = ?
+      ORDER BY id DESC`,
+    );
+    const threats = stmt.all(userId) as any[];
+    return threats.map((t) => ({
+      id: t.id,
+      userId: t.userId,
+      scanId: t.scanId,
+      severity: t.severity,
+      type: t.type,
+      description: t.description,
+      details: t.details ? JSON.parse(t.details) : null,
+      source: t.source,
+      status: t.status,
+      filePath: t.filePath,
+      createdAt: t.createdAt,
+      updatedAt: t.updatedAt,
+    }));
+  }
+
+  public updateThreatStatus(
+    id: number,
+    status: "New" | "Investigating" | "Quarantined" | "Resolved",
+  ): void {
+    const stmt = this.db.prepare(
+      "UPDATE threats SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+    );
+    stmt.run(status, id);
+  }
+
+  public deleteThreatById(id: number): void {
+    const stmt = this.db.prepare("DELETE FROM threats WHERE id = ?");
+    stmt.run(id);
+  }
+
+  public deleteAllThreatsByUserId(userId: number): void {
+    this.db
+      .prepare("DELETE FROM threats WHERE user_id = ?")
+      .run(userId);
+  }
 }

@@ -32,6 +32,18 @@ export interface ReportSummary {
   systemStatus: "SECURE" | "THREATS DETECTED";
 }
 
+export interface ReportThreatItem {
+  id: number;
+  filePath: string;
+  severity: string;
+  type: string;
+  description: string;
+  status: string;
+  policiesViolated: string[];
+  matchCount: number;
+  detectedAt: string;
+}
+
 export interface ReportData {
   meta: {
     reportType: ReportType;
@@ -50,12 +62,13 @@ export interface ReportData {
     totalThreats: number;
     status: string;
   }>;
+  threats?: ReportThreatItem[];
   alerts?: Array<{
     id: number;
     severity: string;
     type: string;
     description: string;
-    source: string;
+    filePath: string;
     status: string;
     time: string;
   }>;

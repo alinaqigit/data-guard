@@ -30,6 +30,18 @@ export function errorHandler(
     return;
   }
 
+  // Handle body-parser / http-errors (e.g. malformed JSON → 400)
+  if ("status" in err && typeof (err as any).status === "number") {
+    const status = (err as any).status;
+    res.status(status).json({
+      error: err.message,
+      ...(process.env.NODE_ENV === "development" && {
+        stack: err.stack,
+      }),
+    });
+    return;
+  }
+
   // Handle unexpected errors
   res.status(500).json({
     error: "An unexpected error occurred",

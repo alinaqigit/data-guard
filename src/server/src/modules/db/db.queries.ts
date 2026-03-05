@@ -62,4 +62,31 @@ CREATE TABLE IF NOT EXISTS live_scanners (
 );
 `;
 
-export const initializeDatabaseQuery = `${createUserTableQuery} ${createPolicyTableQuery} ${createScanTableQuery} ${createLiveScannerTableQuery}`;
+const createThreatTableQuery = `
+CREATE TABLE IF NOT EXISTS threats (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  scan_id INTEGER NOT NULL,
+  severity TEXT NOT NULL CHECK(severity IN ('High', 'Medium', 'Low')),
+  type TEXT NOT NULL,
+  description TEXT NOT NULL,
+  details TEXT,
+  source TEXT NOT NULL,
+  status TEXT NOT NULL CHECK(status IN ('New', 'Investigating', 'Quarantined', 'Resolved')),
+  file_path TEXT NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (scan_id) REFERENCES scans(id) ON DELETE CASCADE
+);
+`;
+
+export const initializeDatabaseQuery = `${createUserTableQuery} ${createPolicyTableQuery} ${createScanTableQuery} ${createLiveScannerTableQuery} ${createThreatTableQuery}`;
+
+/**
+ * Migrations for existing databases — each is run inside a try/catch so
+ * "duplicate column" errors are silently ignored.
+ */
+export const migrationQueries: string[] = [
+  `ALTER TABLE threats ADD COLUMN details TEXT`,
+];

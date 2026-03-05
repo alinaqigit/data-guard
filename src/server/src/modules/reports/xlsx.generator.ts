@@ -12,7 +12,11 @@ const BORDER_COLOR = "FFE5E7EB";
 
 function headerStyle(color = INDIGO): Partial<ExcelJS.Style> {
   return {
-    fill: { type: "pattern", pattern: "solid", fgColor: { argb: color } },
+    fill: {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: color },
+    },
     font: { bold: true, color: { argb: WHITE }, size: 10 },
     alignment: { vertical: "middle", horizontal: "center" },
     border: {
@@ -31,7 +35,10 @@ function cellStyle(bold = false): Partial<ExcelJS.Style> {
   };
 }
 
-export async function generateXLSX(data: ReportData, outputPath: string): Promise<void> {
+export async function generateXLSX(
+  data: ReportData,
+  outputPath: string,
+): Promise<void> {
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "DataGuard";
   workbook.created = new Date();
@@ -41,9 +48,7 @@ export async function generateXLSX(data: ReportData, outputPath: string): Promis
     pageSetup: { paperSize: 9, orientation: "portrait" },
   });
 
-  summarySheet.columns = [
-    { width: 30 }, { width: 30 },
-  ];
+  summarySheet.columns = [{ width: 30 }, { width: 30 }];
 
   // Title block
   summarySheet.mergeCells("A1:B1");
@@ -51,7 +56,11 @@ export async function generateXLSX(data: ReportData, outputPath: string): Promis
   titleCell.value = "DataGuard — " + data.meta.reportName;
   titleCell.style = {
     font: { bold: true, size: 16, color: { argb: INDIGO } },
-    fill: { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F172A" } },
+    fill: {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FF0F172A" },
+    },
     alignment: { vertical: "middle", horizontal: "left" },
   };
   summarySheet.getRow(1).height = 36;
@@ -61,7 +70,11 @@ export async function generateXLSX(data: ReportData, outputPath: string): Promis
   subtitleCell.value = `${data.meta.reportType.toUpperCase()} REPORT  ·  ${data.meta.dateRange.toUpperCase()}  ·  Generated: ${new Date(data.meta.generatedAt).toLocaleString()}`;
   subtitleCell.style = {
     font: { size: 9, color: { argb: "FF94A3B8" } },
-    fill: { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F172A" } },
+    fill: {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FF0F172A" },
+    },
     alignment: { vertical: "middle" },
   };
   summarySheet.getRow(2).height = 20;
@@ -79,7 +92,9 @@ export async function generateXLSX(data: ReportData, outputPath: string): Promis
   ];
 
   const headerRow = summarySheet.addRow(["Metric", "Value"]);
-  headerRow.eachCell(cell => { cell.style = headerStyle(); });
+  headerRow.eachCell((cell) => {
+    cell.style = headerStyle();
+  });
   headerRow.height = 24;
 
   stats.forEach(([label, value]) => {
@@ -90,9 +105,16 @@ export async function generateXLSX(data: ReportData, outputPath: string): Promis
     valueCell.style = cellStyle();
     // Color code threats and status
     if (label === "System Status") {
-      valueCell.font = { bold: true, color: { argb: value === "SECURE" ? SUCCESS : DANGER } };
+      valueCell.font = {
+        bold: true,
+        color: { argb: value === "SECURE" ? SUCCESS : DANGER },
+      };
     }
-    if ((label === "Total Threats Found" || label === "Critical Alerts") && Number(value) > 0) {
+    if (
+      (label === "Total Threats Found" ||
+        label === "Critical Alerts") &&
+      Number(value) > 0
+    ) {
       valueCell.font = { bold: true, color: { argb: DANGER } };
     }
   });
@@ -105,19 +127,27 @@ export async function generateXLSX(data: ReportData, outputPath: string): Promis
       { header: "Type", key: "type", width: 15 },
       { header: "Time", key: "time", width: 20 },
       { header: "Files Scanned", key: "filesScanned", width: 16 },
-      { header: "Files w/ Threats", key: "filesWithThreats", width: 18 },
+      {
+        header: "Files w/ Threats",
+        key: "filesWithThreats",
+        width: 18,
+      },
       { header: "Total Threats", key: "totalThreats", width: 15 },
       { header: "Status", key: "status", width: 14 },
     ];
 
     const scanHeader = scansSheet.getRow(1);
-    scanHeader.eachCell(cell => { cell.style = headerStyle(); });
+    scanHeader.eachCell((cell) => {
+      cell.style = headerStyle();
+    });
     scanHeader.height = 24;
 
-    data.scans.forEach(s => {
+    data.scans.forEach((s) => {
       const row = scansSheet.addRow(s);
       row.height = 20;
-      row.eachCell(cell => { cell.style = cellStyle(); });
+      row.eachCell((cell) => {
+        cell.style = cellStyle();
+      });
       const threatCell = row.getCell(6);
       if (s.totalThreats > 0) {
         threatCell.font = { bold: true, color: { argb: DANGER } };
@@ -125,36 +155,109 @@ export async function generateXLSX(data: ReportData, outputPath: string): Promis
     });
   }
 
-  // ── Sheet 3: Alerts ───────────────────────────────────────
-  if (data.alerts && data.alerts.length > 0) {
-    const alertsSheet = workbook.addWorksheet("Alerts");
-    alertsSheet.columns = [
-      { header: "ID", key: "id", width: 10 },
+  // ── Sheet 3: Threats ──────────────────────────────────────
+  if (data.threats && data.threats.length > 0) {
+    const threatsSheet = workbook.addWorksheet("Threats");
+    threatsSheet.columns = [
+      { header: "ID", key: "id", width: 8 },
       { header: "Severity", key: "severity", width: 12 },
-      { header: "Type", key: "type", width: 30 },
-      { header: "Description", key: "description", width: 40 },
-      { header: "Source", key: "source", width: 20 },
-      { header: "Status", key: "status", width: 15 },
-      { header: "Time", key: "time", width: 22 },
+      { header: "File Path", key: "filePath", width: 45 },
+      { header: "Type", key: "type", width: 18 },
+      { header: "Policies Violated", key: "policies", width: 30 },
+      { header: "Matches", key: "matchCount", width: 10 },
+      { header: "Status", key: "status", width: 14 },
+      { header: "Detected At", key: "detectedAt", width: 22 },
     ];
 
-    const alertHeader = alertsSheet.getRow(1);
-    alertHeader.eachCell(cell => { cell.style = headerStyle(DANGER.replace("FF", "")); });
-    alertHeader.height = 24;
+    const threatHeader = threatsSheet.getRow(1);
+    threatHeader.eachCell((cell) => {
+      cell.style = headerStyle(DANGER.replace("FF", ""));
+    });
+    threatHeader.height = 24;
 
-    data.alerts.forEach(a => {
-      const row = alertsSheet.addRow(a);
+    data.threats.forEach((t) => {
+      const row = threatsSheet.addRow({
+        id: t.id,
+        severity: t.severity,
+        filePath: t.filePath,
+        type: t.type,
+        policies: t.policiesViolated.join(", ") || "—",
+        matchCount: t.matchCount,
+        status: t.status,
+        detectedAt: t.detectedAt,
+      });
       row.height = 20;
-      row.eachCell(cell => { cell.style = cellStyle(); });
+      row.eachCell((cell) => {
+        cell.style = cellStyle();
+      });
       const sevCell = row.getCell(2);
       sevCell.font = {
         bold: true,
-        color: { argb: a.severity === "High" ? DANGER : a.severity === "Medium" ? WARNING : MUTED },
+        color: {
+          argb:
+            t.severity === "High"
+              ? DANGER
+              : t.severity === "Medium"
+                ? WARNING
+                : MUTED,
+        },
+      };
+      const statusCell = row.getCell(7);
+      statusCell.font = {
+        bold: true,
+        color: {
+          argb:
+            t.status === "New"
+              ? DANGER
+              : t.status === "Resolved"
+                ? SUCCESS
+                : WARNING,
+        },
       };
     });
   }
 
-  // ── Sheet 4: Policies ─────────────────────────────────────
+  // ── Sheet 4: Alerts ───────────────────────────────────────
+  if (data.alerts && data.alerts.length > 0) {
+    const alertsSheet = workbook.addWorksheet("Alerts");
+    alertsSheet.columns = [
+      { header: "ID", key: "id", width: 8 },
+      { header: "Severity", key: "severity", width: 12 },
+      { header: "Type", key: "type", width: 24 },
+      { header: "Description", key: "description", width: 40 },
+      { header: "File Path", key: "filePath", width: 40 },
+      { header: "Status", key: "status", width: 14 },
+      { header: "Time", key: "time", width: 22 },
+    ];
+
+    const alertHeader = alertsSheet.getRow(1);
+    alertHeader.eachCell((cell) => {
+      cell.style = headerStyle(WARNING.replace("FF", ""));
+    });
+    alertHeader.height = 24;
+
+    data.alerts.forEach((a) => {
+      const row = alertsSheet.addRow(a);
+      row.height = 20;
+      row.eachCell((cell) => {
+        cell.style = cellStyle();
+      });
+      const sevCell = row.getCell(2);
+      sevCell.font = {
+        bold: true,
+        color: {
+          argb:
+            a.severity === "High"
+              ? DANGER
+              : a.severity === "Medium"
+                ? WARNING
+                : MUTED,
+        },
+      };
+    });
+  }
+
+  // ── Sheet 5: Policies ─────────────────────────────────────
   if (data.policies && data.policies.length > 0) {
     const policiesSheet = workbook.addWorksheet("Policies");
     policiesSheet.columns = [
@@ -165,13 +268,17 @@ export async function generateXLSX(data: ReportData, outputPath: string): Promis
     ];
 
     const policyHeader = policiesSheet.getRow(1);
-    policyHeader.eachCell(cell => { cell.style = headerStyle("FF059669"); });
+    policyHeader.eachCell((cell) => {
+      cell.style = headerStyle("FF059669");
+    });
     policyHeader.height = 24;
 
-    data.policies.forEach(p => {
+    data.policies.forEach((p) => {
       const row = policiesSheet.addRow(p);
       row.height = 20;
-      row.eachCell(cell => { cell.style = cellStyle(); });
+      row.eachCell((cell) => {
+        cell.style = cellStyle();
+      });
       const statusCell = row.getCell(4);
       statusCell.font = {
         bold: true,
@@ -180,7 +287,7 @@ export async function generateXLSX(data: ReportData, outputPath: string): Promis
     });
   }
 
-  // ── Sheet 5: Recommendations (Deep only) ──────────────────
+  // ── Sheet 6: Recommendations (Deep only) ──────────────────
   if (data.recommendations && data.recommendations.length > 0) {
     const recSheet = workbook.addWorksheet("Recommendations");
     recSheet.columns = [
@@ -189,14 +296,19 @@ export async function generateXLSX(data: ReportData, outputPath: string): Promis
     ];
 
     const recHeader = recSheet.getRow(1);
-    recHeader.eachCell(cell => { cell.style = headerStyle("FF7C3AED"); });
+    recHeader.eachCell((cell) => {
+      cell.style = headerStyle("FF7C3AED");
+    });
     recHeader.height = 24;
 
     data.recommendations.forEach((rec, i) => {
       const row = recSheet.addRow({ num: i + 1, rec });
       row.height = 20;
       row.getCell(1).style = cellStyle(true);
-      row.getCell(2).style = { ...cellStyle(), alignment: { wrapText: true, vertical: "middle" } };
+      row.getCell(2).style = {
+        ...cellStyle(),
+        alignment: { wrapText: true, vertical: "middle" },
+      };
     });
   }
 

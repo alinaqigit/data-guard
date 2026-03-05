@@ -2,9 +2,17 @@ import fs from "fs";
 import path from "path";
 import os from "os";
 import crypto from "crypto";
+import { exec } from "child_process";
 import { fileActionsRepository } from "./fileActions.repository";
-import { FileActionResult, DecryptRequest } from "./fileActions.types";
-import { ValidationError, NotFoundError, ForbiddenError } from "../../utils/errors";
+import {
+  FileActionResult,
+  DecryptRequest,
+} from "./fileActions.types";
+import {
+  ValidationError,
+  NotFoundError,
+  ForbiddenError,
+} from "../../utils/errors";
 
 // Safe quarantine location: %APPDATA%/DataGuard/quarantine on Windows, ~/.dataguard/quarantine elsewhere
 function getQuarantineDir(): string {
@@ -34,7 +42,9 @@ const SYSTEM_PATH_PREFIXES = [
 
 function isSafeToActOn(filePath: string): boolean {
   const normalized = path.normalize(filePath).toLowerCase();
-  return !SYSTEM_PATH_PREFIXES.some((p) => normalized.startsWith(p.toLowerCase()));
+  return !SYSTEM_PATH_PREFIXES.some((p) =>
+    normalized.startsWith(p.toLowerCase()),
+  );
 }
 
 export class fileActionsService {
@@ -45,7 +55,10 @@ export class fileActionsService {
   }
 
   // ── Quarantine ──────────────────────────────────────────
-  public quarantineFile(userId: number, filePath: string): FileActionResult {
+  public quarantineFile(
+    userId: number,
+    filePath: string,
+  ): FileActionResult {
     this.validatePath(filePath);
 
     if (!fs.existsSync(filePath)) {
@@ -54,8 +67,13 @@ export class fileActionsService {
 
     const quarantineDir = getQuarantineDir();
     const timestamp = Date.now();
-    const safeName = path.basename(filePath).replace(/[^a-zA-Z0-9._-]/g, "_");
-    const destPath = path.join(quarantineDir, `${timestamp}_${safeName}`);
+    const safeName = path
+      .basename(filePath)
+      .replace(/[^a-zA-Z0-9._-]/g, "_");
+    const destPath = path.join(
+      quarantineDir,
+      `${timestamp}_${safeName}`,
+    );
 
     try {
       fs.copyFileSync(filePath, destPath);
@@ -74,7 +92,10 @@ export class fileActionsService {
   }
 
   // ── Encrypt ─────────────────────────────────────────────
-  public encryptFile(userId: number, filePath: string): FileActionResult {
+  public encryptFile(
+    userId: number,
+    filePath: string,
+  ): FileActionResult {
     this.validatePath(filePath);
 
     if (!fs.existsSync(filePath)) {
@@ -82,11 +103,14 @@ export class fileActionsService {
     }
 
     const key = crypto.randomBytes(32); // AES-256 key
-    const iv = crypto.randomBytes(16);  // AES block size
+    const iv = crypto.randomBytes(16); // AES block size
 
     const fileData = fs.readFileSync(filePath);
     const cipher = crypto.createCipheriv("aes-256-cbc", key, iv);
-    const encrypted = Buffer.concat([cipher.update(fileData), cipher.final()]);
+    const encrypted = Buffer.concat([
+      cipher.update(fileData),
+      cipher.final(),
+    ]);
 
     const encryptedPath = filePath + ".enc";
 
@@ -116,14 +140,24 @@ export class fileActionsService {
   }
 
   // ── Decrypt ─────────────────────────────────────────────
-  public decryptFile(userId: number, encryptedPath: string): FileActionResult {
+  public decryptFile(
+    userId: number,
+    encryptedPath: string,
+  ): FileActionResult {
     if (!fs.existsSync(encryptedPath)) {
-      throw new NotFoundError(`Encrypted file not found: ${encryptedPath}`);
+      throw new NotFoundError(
+        `Encrypted file not found: ${encryptedPath}`,
+      );
     }
 
-    const record = this.repo.getByEncryptedPath(encryptedPath, userId);
+    const record = this.repo.getByEncryptedPath(
+      encryptedPath,
+      userId,
+    );
     if (!record) {
-      throw new NotFoundError("No decryption key found for this file. It may not have been encrypted by DataGuard.");
+      throw new NotFoundError(
+        "No decryption key found for this file. It may not have been encrypted by DataGuard.",
+      );
     }
 
     const key = Buffer.from(record.encryptionKey, "hex");
@@ -133,17 +167,28 @@ export class fileActionsService {
 
     let decrypted: Buffer;
     try {
-      const decipher = crypto.createDecipheriv("aes-256-cbc", key, iv);
-      decrypted = Buffer.concat([decipher.update(encryptedData), decipher.final()]);
+      const decipher = crypto.createDecipheriv(
+        "aes-256-cbc",
+        key,
+        iv,
+      );
+      decrypted = Buffer.concat([
+        decipher.update(encryptedData),
+        decipher.final(),
+      ]);
     } catch (err: any) {
-      throw new Error(`Decryption failed — file may be corrupted: ${err.message}`);
+      throw new Error(
+        `Decryption failed — file may be corrupted: ${err.message}`,
+      );
     }
 
     try {
       fs.writeFileSync(record.originalPath, decrypted);
       fs.unlinkSync(encryptedPath);
     } catch (err: any) {
-      throw new Error(`Failed to restore decrypted file: ${err.message}`);
+      throw new Error(
+        `Failed to restore decrypted file: ${err.message}`,
+      );
     }
 
     // Remove key record from DB
@@ -159,7 +204,10 @@ export class fileActionsService {
   }
 
   // ── Delete ──────────────────────────────────────────────
-  public deleteFile(userId: number, filePath: string): FileActionResult {
+  public deleteFile(
+    userId: number,
+    filePath: string,
+  ): FileActionResult {
     this.validatePath(filePath);
 
     if (!fs.existsSync(filePath)) {
@@ -185,12 +233,75 @@ export class fileActionsService {
     return this.repo.getByUserId(userId);
   }
 
+  // ── Open file with default system application ──────────
+  public async openFile(filePath: string): Promise<FileActionResult> {
+    this.validatePath(filePath);
+    if (!fs.existsSync(filePath)) {
+      throw new NotFoundError(`File not found: ${filePath}`);
+    }
+
+    const platform = process.platform;
+    const cmd =
+      platform === "win32"
+        ? `start "" "${filePath}"`
+        : platform === "darwin"
+          ? `open "${filePath}"`
+          : `xdg-open "${filePath}"`;
+
+    return new Promise((resolve, reject) => {
+      exec(cmd, (err) => {
+        if (err) {
+          reject(new Error(`Failed to open file: ${err.message}`));
+        } else {
+          resolve({
+            success: true,
+            action: "open",
+            originalPath: filePath,
+            message: `File opened successfully`,
+          });
+        }
+      });
+    });
+  }
+
+  // ── Show file in system file explorer ──────────────────
+  public async showInFolder(
+    filePath: string,
+  ): Promise<FileActionResult> {
+    this.validatePath(filePath);
+    if (!fs.existsSync(filePath)) {
+      throw new NotFoundError(`File not found: ${filePath}`);
+    }
+
+    const platform = process.platform;
+    const cmd =
+      platform === "win32"
+        ? `explorer /select,"${filePath}"`
+        : platform === "darwin"
+          ? `open -R "${filePath}"`
+          : `xdg-open "${path.dirname(filePath)}"`;
+
+    return new Promise((resolve) => {
+      exec(cmd, () => {
+        // explorer /select can return exit code 1 even on success
+        resolve({
+          success: true,
+          action: "show-in-folder",
+          originalPath: filePath,
+          message: `File location opened in file explorer`,
+        });
+      });
+    });
+  }
+
   private validatePath(filePath: string): void {
     if (!filePath || typeof filePath !== "string") {
       throw new ValidationError("Invalid file path");
     }
     if (!isSafeToActOn(filePath)) {
-      throw new ForbiddenError("Cannot perform actions on system paths");
+      throw new ForbiddenError(
+        "Cannot perform actions on system paths",
+      );
     }
   }
 }

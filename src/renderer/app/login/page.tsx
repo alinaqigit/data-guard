@@ -14,6 +14,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -27,7 +28,7 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      await login(username, password);
+      await login(username, password, rememberMe);
     } catch (err) {
       setError(
         err instanceof Error
@@ -116,6 +117,8 @@ export default function LoginPage() {
               <label className="flex items-center gap-2 text-neutral-400 cursor-pointer hover:text-neutral-300">
                 <input
                   type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
                   className="rounded border-neutral-800 bg-neutral-950 text-blue-600 focus:ring-blue-500"
                 />
                 Remember me

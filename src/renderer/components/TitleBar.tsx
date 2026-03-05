@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Minus, Square, X } from "lucide-react";
+import { Minus, Square, Copy, X } from "lucide-react";
 
 // Extend window interface to include our Electron APIs
 declare global {
@@ -11,6 +11,9 @@ declare global {
       maximize: () => void;
       close: () => void;
       isMaximized: () => Promise<boolean>;
+      onMaximizeChange: (
+        callback: (maximized: boolean) => void,
+      ) => () => void;
     };
   }
 }
@@ -24,6 +27,14 @@ export default function TitleBar() {
     if (isElectron) {
       // Check initial maximized state
       window.electronWindow?.isMaximized().then(setIsMaximized);
+
+      // Listen for maximize/unmaximize events from the main process
+      const cleanup = window.electronWindow?.onMaximizeChange(
+        (maximized) => {
+          setIsMaximized(maximized);
+        },
+      );
+      return () => cleanup?.();
     }
   }, [isElectron]);
 
@@ -36,8 +47,6 @@ export default function TitleBar() {
   const handleMaximize = () => {
     if (isElectron) {
       window.electronWindow?.maximize();
-      // Toggle the state optimistically
-      setIsMaximized(!isMaximized);
     }
   };
 
@@ -74,7 +83,7 @@ export default function TitleBar() {
           className="titlebar-button hover:bg-white/10"
           aria-label={isMaximized ? "Restore" : "Maximize"}
         >
-          <Square size={14} />
+          {isMaximized ? <Copy size={14} /> : <Square size={14} />}
         </button>
         <button
           onClick={handleClose}

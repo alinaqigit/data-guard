@@ -14,7 +14,8 @@
     "dev:next": "cd src/renderer && npm run dev -- -p 8000",
     "build:server": "cd src/server && npm run build",
     "build:next": "cd src/renderer && npm run build",
-    "make": "npm run build:server && npm run build:next && electron-forge make"
+    "make": "npm run build:server && npm run build:next && electron-forge make",
+    "install:all": "npm install && npm install --prefix src/server && npm install --prefix src/renderer && electron-rebuild -f -w better-sqlite3-multiple-ciphers --module-dir ./src/server"
   },
   "keywords": [],
   "author": {

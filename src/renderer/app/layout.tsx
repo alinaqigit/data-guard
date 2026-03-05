@@ -17,11 +17,11 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <body
-        className="bg-black text-gray-200 antialiased min-h-screen flex flex-col"
+        className="bg-black text-gray-200 antialiased h-screen flex flex-col overflow-hidden"
         suppressHydrationWarning
       >
         <TitleBar />
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 overflow-auto">
           <SecurityProvider>
             <AppContent>{children}</AppContent>
           </SecurityProvider>

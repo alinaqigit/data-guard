@@ -6,6 +6,7 @@ import { useSecurity } from "@/context/SecurityContext";
 import PolicyModal from "@/components/PolicyModal";
 import Toast from "@/components/Toast";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import CopyableText from "@/components/CopyableText";
 
 interface Policy {
   id: string;
@@ -17,22 +18,42 @@ interface Policy {
 }
 
 export default function PolicyManagementPage() {
-  const { policies, deletePolicy, togglePolicyStatus, addPolicy, updatePolicy, alerts } = useSecurity();
+  const {
+    policies,
+    deletePolicy,
+    togglePolicyStatus,
+    addPolicy,
+    updatePolicy,
+    alerts,
+  } = useSecurity();
 
-  const [editingPolicy, setEditingPolicy] = useState<Policy | null>(null);
+  const [editingPolicy, setEditingPolicy] = useState<Policy | null>(
+    null,
+  );
   const [isNewPolicyOpen, setIsNewPolicyOpen] = useState(false);
-  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
-  const [confirmState, setConfirmState] = useState<{ isOpen: boolean; policyId: string | null }>({
+  const [toast, setToast] = useState<{
+    message: string;
+    type: "success" | "error";
+  } | null>(null);
+  const [confirmState, setConfirmState] = useState<{
+    isOpen: boolean;
+    policyId: string | null;
+  }>({
     isOpen: false,
     policyId: null,
   });
 
   // --- Policy Statistics (real calculated values) ---
   const totalPolicies = policies.length;
-  const activePolicies = policies.filter((p) => p.status === "Active").length;
+  const activePolicies = policies.filter(
+    (p) => p.status === "Active",
+  ).length;
 
   // Implementation %: percentage of policies that are enforced (Active)
-  const implementationPct = totalPolicies === 0 ? 0 : Math.round((activePolicies / totalPolicies) * 100);
+  const implementationPct =
+    totalPolicies === 0
+      ? 0
+      : Math.round((activePolicies / totalPolicies) * 100);
 
   // Violations today: alerts generated today that aren't resolved
   const todayStr = new Date().toISOString().split("T")[0];
@@ -43,16 +64,28 @@ export default function PolicyManagementPage() {
 
   // Policy coverage: % of active policies that have actually triggered at least one alert
   // (proxy for "coverage" — policies that are doing work)
-  const activePolicyNames = policies.filter((p) => p.status === "Active").map((p) => p.name);
-  const coveragePct = activePolicies === 0 ? 0 : Math.min(
-    100,
-    Math.round(
-      (alerts.filter((a) => activePolicyNames.some((name) => a.description?.includes(name) || a.type?.includes(name))).length > 0
-        ? activePolicies
-        : Math.max(0, activePolicies - 1)) /
-        Math.max(1, activePolicies) * 100
-    )
-  );
+  const activePolicyNames = policies
+    .filter((p) => p.status === "Active")
+    .map((p) => p.name);
+  const coveragePct =
+    activePolicies === 0
+      ? 0
+      : Math.min(
+          100,
+          Math.round(
+            ((alerts.filter((a) =>
+              activePolicyNames.some(
+                (name) =>
+                  a.description?.includes(name) ||
+                  a.type?.includes(name),
+              ),
+            ).length > 0
+              ? activePolicies
+              : Math.max(0, activePolicies - 1)) /
+              Math.max(1, activePolicies)) *
+              100,
+          ),
+        );
 
   // Max violations for bar width scaling
   const maxViolations = Math.max(violationsToday, 1);
@@ -68,9 +101,18 @@ export default function PolicyManagementPage() {
         status: policy.status,
       });
       setIsNewPolicyOpen(false);
-      setToast({ message: "Policy created successfully.", type: "success" });
+      setToast({
+        message: "Policy created successfully.",
+        type: "success",
+      });
     } catch (error) {
-      setToast({ message: error instanceof Error ? error.message : "Failed to create policy", type: "error" });
+      setToast({
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to create policy",
+        type: "error",
+      });
     }
   };
 
@@ -78,9 +120,18 @@ export default function PolicyManagementPage() {
     try {
       await updatePolicy(updatedPolicy);
       setEditingPolicy(null);
-      setToast({ message: "Policy updated successfully.", type: "success" });
+      setToast({
+        message: "Policy updated successfully.",
+        type: "success",
+      });
     } catch (error) {
-      setToast({ message: error instanceof Error ? error.message : "Failed to update policy", type: "error" });
+      setToast({
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to update policy",
+        type: "error",
+      });
     }
   };
 
@@ -91,7 +142,13 @@ export default function PolicyManagementPage() {
         setToast({ message: "Policy deleted.", type: "success" });
         setConfirmState({ isOpen: false, policyId: null });
       } catch (error) {
-        setToast({ message: error instanceof Error ? error.message : "Failed to delete policy", type: "error" });
+        setToast({
+          message:
+            error instanceof Error
+              ? error.message
+              : "Failed to delete policy",
+          type: "error",
+        });
       }
     }
   };
@@ -112,13 +169,18 @@ export default function PolicyManagementPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Active Policies */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="border rounded-2xl shadow-xl overflow-hidden" style={cardStyle}>
+          <div
+            className="border rounded-2xl shadow-xl overflow-hidden"
+            style={cardStyle}
+          >
             <div className="p-4 md:p-6 border-b border-white/5 flex items-center justify-between">
               <h2 className="text-xl font-black text-white flex items-center gap-3 tracking-tight">
                 <Shield className="text-emerald-500" size={28} />
                 Active Policies
                 {totalPolicies > 0 && (
-                  <span className="text-sm font-bold text-neutral-500">({totalPolicies})</span>
+                  <span className="text-sm font-bold text-neutral-500">
+                    ({totalPolicies})
+                  </span>
                 )}
               </h2>
               <button
@@ -137,13 +199,20 @@ export default function PolicyManagementPage() {
                     <div className="p-6 bg-white/5 rounded-full text-neutral-500">
                       <Shield size={48} />
                     </div>
-                    <p className="text-neutral-400 font-black text-xl">No policies yet</p>
-                    <p className="text-neutral-600 font-medium">Click "New Policy" to create your first policy.</p>
+                    <p className="text-neutral-400 font-black text-xl">
+                      No policies yet
+                    </p>
+                    <p className="text-neutral-600 font-medium">
+                      Click "New Policy" to create your first policy.
+                    </p>
                   </div>
                 </div>
               ) : (
                 policies.map((policy: any) => (
-                  <div key={policy.id} className="p-4 md:p-5 hover:bg-white/5 transition-colors group">
+                  <div
+                    key={policy.id}
+                    className="p-4 md:p-5 hover:bg-white/5 transition-colors group"
+                  >
                     <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                       <div className="space-y-3">
                         <h3 className="text-lg font-black text-white group-hover:text-indigo-400 transition-colors capitalize tracking-tight">
@@ -156,17 +225,23 @@ export default function PolicyManagementPage() {
                           <span className="bg-white/5 text-neutral-300 px-3 py-1 rounded text-xs font-black border border-white/10 uppercase tracking-widest">
                             {policy.type}
                           </span>
-                          <code className="text-xs text-indigo-300 bg-indigo-500/10 px-2 py-1 rounded border border-indigo-500/20 max-w-[200px] truncate">
-                            {policy.pattern}
-                          </code>
+                          <CopyableText
+                            text={policy.pattern}
+                            className="text-xs text-indigo-300 bg-indigo-500/10 px-2 py-1 rounded border border-indigo-500/20 max-w-[300px]"
+                            iconSize={11}
+                          />
                         </div>
                       </div>
-                      <span className={`flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-black uppercase border flex items-center gap-2 shadow-sm ${
-                        policy.status === "Active"
-                          ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
-                          : "bg-neutral-500/10 text-neutral-400 border-neutral-500/20"
-                      }`}>
-                        <div className={`w-2 h-2 rounded-full ${policy.status === "Active" ? "bg-emerald-500 animate-pulse" : "bg-neutral-500"}`} />
+                      <span
+                        className={`flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-black uppercase border flex items-center gap-2 shadow-sm ${
+                          policy.status === "Active"
+                            ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+                            : "bg-neutral-500/10 text-neutral-400 border-neutral-500/20"
+                        }`}
+                      >
+                        <div
+                          className={`w-2 h-2 rounded-full ${policy.status === "Active" ? "bg-emerald-500 animate-pulse" : "bg-neutral-500"}`}
+                        />
                         {policy.status}
                       </span>
                     </div>
@@ -188,10 +263,17 @@ export default function PolicyManagementPage() {
                         }`}
                       >
                         <Slash size={16} />
-                        {policy.status === "Active" ? "Disable" : "Enable"}
+                        {policy.status === "Active"
+                          ? "Disable"
+                          : "Enable"}
                       </button>
                       <button
-                        onClick={() => setConfirmState({ isOpen: true, policyId: policy.id })}
+                        onClick={() =>
+                          setConfirmState({
+                            isOpen: true,
+                            policyId: policy.id,
+                          })
+                        }
                         className="flex items-center gap-2 text-sm font-black text-neutral-500 hover:text-red-500 transition-all ml-auto p-2 hover:bg-red-500/10 rounded-xl"
                       >
                         <Trash2 size={18} />
@@ -206,37 +288,60 @@ export default function PolicyManagementPage() {
 
         {/* Policy Statistics */}
         <div className="space-y-6">
-          <div className="border rounded-2xl p-4 md:p-5 shadow-xl" style={cardStyle}>
-            <h3 className="text-xl font-black text-white mb-8 tracking-tight">Policy Statistics</h3>
+          <div
+            className="border rounded-2xl p-4 md:p-5 shadow-xl"
+            style={cardStyle}
+          >
+            <h3 className="text-xl font-black text-white mb-8 tracking-tight">
+              Policy Statistics
+            </h3>
 
             {/* Implementation % */}
             <div className="text-center pb-8 border-b border-white/5 mb-8">
-              <p className="text-6xl font-black text-white mb-2 tracking-tighter">{implementationPct}%</p>
-              <p className="text-neutral-500 text-sm font-black uppercase tracking-[0.2em]">Policy Implementation</p>
-              <p className="text-neutral-600 text-xs mt-1">{activePolicies} of {totalPolicies} policies enforced</p>
+              <p className="text-6xl font-black text-white mb-2 tracking-tighter">
+                {implementationPct}%
+              </p>
+              <p className="text-neutral-500 text-sm font-black uppercase tracking-[0.2em]">
+                Policy Implementation
+              </p>
+              <p className="text-neutral-600 text-xs mt-1">
+                {activePolicies} of {totalPolicies} policies enforced
+              </p>
             </div>
 
             <div className="space-y-8">
               {/* Violations Today */}
               <div className="space-y-4">
                 <div className="flex justify-between items-center text-sm font-black uppercase tracking-wider">
-                  <span className="text-neutral-400">Violations Today</span>
-                  <span className="text-rose-500">{violationsToday}</span>
+                  <span className="text-neutral-400">
+                    Violations Today
+                  </span>
+                  <span className="text-rose-500">
+                    {violationsToday}
+                  </span>
                 </div>
                 <div className="h-3 bg-black/40 rounded-full overflow-hidden border border-white/5 p-0.5">
                   <div
                     className="h-full bg-rose-500 rounded-full shadow-[0_0_15px_rgba(244,63,94,0.4)] transition-all duration-700"
-                    style={{ width: `${Math.min(100, (violationsToday / Math.max(maxViolations, 10)) * 100)}%` }}
+                    style={{
+                      width: `${Math.min(100, (violationsToday / Math.max(maxViolations, 10)) * 100)}%`,
+                    }}
                   />
                 </div>
-                <p className="text-xs text-neutral-600">Active alerts generated today</p>
+                <p className="text-xs text-neutral-600">
+                  Active alerts generated today
+                </p>
               </div>
 
               {/* Policy Coverage */}
               <div className="space-y-4">
                 <div className="flex justify-between items-center text-sm font-black uppercase tracking-wider">
-                  <span className="text-neutral-400">Policy Coverage</span>
-                  <span className="text-emerald-500">{implementationPct}%</span>
+                  <span className="text-neutral-400">
+                    Policy Coverage
+                  </span>
+                  <span className="text-emerald-500">
+                    {implementationPct}%
+                  </span>
                 </div>
                 <div className="h-3 bg-black/40 rounded-full overflow-hidden border border-white/5 p-0.5">
                   <div
@@ -244,7 +349,9 @@ export default function PolicyManagementPage() {
                     style={{ width: `${implementationPct}%` }}
                   />
                 </div>
-                <p className="text-xs text-neutral-600">Percentage of active policies in enforcement</p>
+                <p className="text-xs text-neutral-600">
+                  Percentage of active policies in enforcement
+                </p>
               </div>
             </div>
           </div>
@@ -276,10 +383,18 @@ export default function PolicyManagementPage() {
         confirmText="Delete Policy"
         isDestructive={true}
         onConfirm={handleConfirmDelete}
-        onCancel={() => setConfirmState({ isOpen: false, policyId: null })}
+        onCancel={() =>
+          setConfirmState({ isOpen: false, policyId: null })
+        }
       />
 
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   );
 }

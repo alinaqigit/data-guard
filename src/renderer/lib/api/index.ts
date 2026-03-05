@@ -6,3 +6,4 @@ export * from "./auth.service";
 export * from "./policy.service";
 export * from "./scanner.service";
 export * from "./liveScanner.service";
+export * from "./threats.service";

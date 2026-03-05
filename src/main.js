@@ -56,6 +56,14 @@ const createWindow = () => {
   // Create the browser window.
   const mainWindow = new BrowserWindow(BrowserWindowConfig);
 
+  // Forward maximize / unmaximize events so the renderer can update the icon
+  mainWindow.on("maximize", () => {
+    mainWindow.webContents.send("window-maximized-change", true);
+  });
+  mainWindow.on("unmaximize", () => {
+    mainWindow.webContents.send("window-maximized-change", false);
+  });
+
   const url = app.isPackaged
     ? `file://${path.join(__dirname, "../renderer/out/index.html")}`
     : "http://localhost:8000";

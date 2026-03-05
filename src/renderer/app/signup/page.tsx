@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { authService } from "@/lib/api";
+import { useSecurity } from "@/context/SecurityContext";
 import {
   Shield,
   Lock,
@@ -18,9 +19,11 @@ import Toast from "@/components/Toast";
 
 export default function SignupPage() {
   const router = useRouter();
+  const { login } = useSecurity();
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [toast, setToast] = useState<{
     message: string;
     type: "success" | "error";
@@ -33,6 +36,8 @@ export default function SignupPage() {
 
     try {
       await authService.register({ username, password });
+      // Auto-login after successful registration
+      await login(username, password, rememberMe);
       setToast({
         message:
           "Account created successfully! Redirecting to dashboard...",
@@ -150,6 +155,18 @@ export default function SignupPage() {
                   onChange={(e) => setPassword(e.target.value)}
                 />
               </div>
+            </div>
+
+            <div className="flex items-center text-sm">
+              <label className="flex items-center gap-2 text-neutral-400 cursor-pointer hover:text-neutral-300">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="rounded border-neutral-800 bg-neutral-950 text-emerald-600 focus:ring-emerald-500"
+                />
+                Remember me
+              </label>
             </div>
 
             <button

@@ -29,6 +29,37 @@ export function clearSession() {
   setSessionId(null);
 }
 
+// "Remember Me" credential persistence
+const REMEMBER_KEY = "dlp_remember_me";
+
+export function setRememberedCredentials(
+  username: string,
+  password: string,
+) {
+  localStorage.setItem(
+    REMEMBER_KEY,
+    btoa(JSON.stringify({ username, password })),
+  );
+}
+
+export function getRememberedCredentials(): {
+  username: string;
+  password: string;
+} | null {
+  if (typeof window === "undefined") return null;
+  const stored = localStorage.getItem(REMEMBER_KEY);
+  if (!stored) return null;
+  try {
+    return JSON.parse(atob(stored));
+  } catch {
+    return null;
+  }
+}
+
+export function clearRememberedCredentials() {
+  localStorage.removeItem(REMEMBER_KEY);
+}
+
 // Generic API request handler
 interface RequestOptions extends RequestInit {
   requiresAuth?: boolean;
