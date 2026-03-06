@@ -3,6 +3,7 @@ import { policyRepository } from "../policy/policy.repository";
 import { PolicyEngineService } from "../policyEngine/policyEngine.service";
 import { fileActionsService } from "../fileActions/fileActions.service";
 import { threatRepository } from "../threats/threats.repository";
+import { scanRepository } from "../scanner/scanner.repository";
 import {
   getQuickScanPaths,
   getFullScanPaths,
@@ -128,6 +129,7 @@ function isSafeToScan(filePath: string): boolean {
 interface ActiveWatcher {
   scannerId: number;
   userId: number;
+  linkedScanId: number;
   watcher: chokidar.FSWatcher;
   options: Required<LiveScannerOptions>;
   policies: PolicyEntity[];
@@ -143,6 +145,7 @@ export class liveScannerService {
   private policyEngine: PolicyEngineService;
   private fileActions: fileActionsService;
   private threatRepo: threatRepository;
+  private scanRepo: scanRepository;
   private activeWatchers: Map<number, ActiveWatcher> = new Map();
 
   constructor(DB_PATH: string) {
@@ -151,6 +154,7 @@ export class liveScannerService {
     this.policyEngine = new PolicyEngineService();
     this.fileActions = new fileActionsService(DB_PATH);
     this.threatRepo = new threatRepository(DB_PATH);
+    this.scanRepo = new scanRepository(DB_PATH);
   }
 
   // ── Start live monitoring for a user ─────────────────────────────────────────
@@ -458,6 +462,17 @@ export class liveScannerService {
       watchPaths,
     );
 
+    // Create a linked scan record so threats can reference a valid scans.id
+    const linkedScan = this.scanRepo.createScan({
+      userId,
+      scanType: "custom",
+      targetPath: scanner.targetPath,
+      status: "running",
+    });
+    debugLog(
+      `Created linked scan record: id=${linkedScan.id} for scanner ${scanner.id}`,
+    );
+
     // Use polling on Windows for reliability (OneDrive, cloud-sync dirs)
     const usePolling = process.platform === "win32";
 
@@ -492,6 +507,7 @@ export class liveScannerService {
     const activeWatcher: ActiveWatcher = {
       scannerId: scanner.id,
       userId,
+      linkedScanId: linkedScan.id,
       watcher,
       options,
       policies,
@@ -502,16 +518,31 @@ export class liveScannerService {
     };
 
     watcher.on("add", (fp) => {
+      debugLog(`[event] add: ${fp} (ready=${activeWatcher.isReady})`);
       if (activeWatcher.isReady)
-        this.handleFileChange(activeWatcher, fp, "add");
+        this.handleFileChange(activeWatcher, fp, "add").catch((e) =>
+          debugLog(`handleFileChange ERROR (add): ${e.message}`),
+        );
     });
     watcher.on("change", (fp) => {
+      debugLog(
+        `[event] change: ${fp} (ready=${activeWatcher.isReady})`,
+      );
       if (activeWatcher.isReady)
-        this.handleFileChange(activeWatcher, fp, "change");
+        this.handleFileChange(activeWatcher, fp, "change").catch(
+          (e) =>
+            debugLog(`handleFileChange ERROR (change): ${e.message}`),
+        );
     });
     watcher.on("unlink", (fp) => {
+      debugLog(
+        `[event] unlink: ${fp} (ready=${activeWatcher.isReady})`,
+      );
       if (activeWatcher.isReady)
-        this.handleFileChange(activeWatcher, fp, "unlink");
+        this.handleFileChange(activeWatcher, fp, "unlink").catch(
+          (e) =>
+            debugLog(`handleFileChange ERROR (unlink): ${e.message}`),
+        );
     });
     watcher.on("addDir", (dp) => {
       if (activeWatcher.isReady)
@@ -522,7 +553,8 @@ export class liveScannerService {
         this.logActivity(activeWatcher, dp, "unlink", 0);
     });
     watcher.on("error", (error: any) => {
-      if (error.code === "EPERM" || error.code === "EACCES") return; // silently skip protected paths
+      debugLog(`[event] error: ${error.code || error.message}`);
+      if (error.code === "EPERM" || error.code === "EACCES") return;
       console.error(`[LiveScanner ${scanner.id}] Error:`, error);
     });
     watcher.on("ready", () => {
@@ -569,32 +601,54 @@ export class liveScannerService {
     filePath: string,
     changeType: FileChangeType,
   ): Promise<void> {
-    console.log(
-      `[LiveScanner] File change detected: ${filePath} (${changeType})`,
+    debugLog(
+      `handleFileChange: ${filePath} (${changeType}) scanner=${aw.scannerId}`,
     );
     const scanner = this.liveScannerRepo.getLiveScannerById(
       aw.scannerId,
     );
     if (!scanner || scanner.status !== "active") {
-      console.log(`[LiveScanner] Scanner not active, skipping`);
+      debugLog(
+        `Scanner ${aw.scannerId} not active (status=${scanner?.status}), skipping`,
+      );
       return;
     }
     if (!isSafeToScan(filePath)) {
-      console.log(`[LiveScanner] Path not safe, skipping`);
+      debugLog(`Path not safe: ${filePath}`);
       return;
     }
 
     if (changeType === "unlink") {
       this.logActivity(aw, filePath, changeType, 0);
       this.updateScannerStats(aw.scannerId, aw.userId, 0);
+      const socketService = getSocketService();
+      if (socketService) {
+        socketService.emitLiveScannerActivity({
+          scannerId: aw.scannerId,
+          filePath,
+          changeType,
+          threatsFound: 0,
+          timestamp: new Date().toISOString(),
+        });
+      }
       return;
     }
 
     try {
       const stats = fs.statSync(filePath);
-      if (stats.size > aw.options.maxFileSize) return;
-      if (stats.size === 0) return;
-    } catch {
+      if (stats.size > aw.options.maxFileSize) {
+        debugLog(
+          `File too large: ${filePath} (${stats.size} > ${aw.options.maxFileSize})`,
+        );
+        return;
+      }
+      if (stats.size === 0) {
+        debugLog(`File empty: ${filePath}`);
+        return;
+      }
+      debugLog(`File stats OK: ${filePath} size=${stats.size}`);
+    } catch (err: any) {
+      debugLog(`statSync error for ${filePath}: ${err.message}`);
       return;
     }
 
@@ -606,6 +660,7 @@ export class liveScannerService {
     } = require("../documentExtractor/documentExtractor.service");
 
     if (isExtractable(filePath)) {
+      debugLog(`Extractable file: ${filePath}`);
       fileContent = await extractText(filePath);
     } else {
       // Plain text — skip binaries using null byte heuristic
@@ -613,15 +668,27 @@ export class liveScannerService {
         const buffer = fs.readFileSync(filePath);
         const sample = buffer.slice(0, 8000);
         for (let i = 0; i < sample.length; i++) {
-          if (sample[i] === 0) return; // binary file, skip
+          if (sample[i] === 0) {
+            debugLog(`Binary file (null byte at ${i}): ${filePath}`);
+            return;
+          }
         }
         fileContent = buffer.toString("utf-8");
-      } catch {
+        debugLog(
+          `Read plain text: ${filePath} (${fileContent.length} chars)`,
+        );
+      } catch (err: any) {
+        debugLog(
+          `readFileSync error for ${filePath}: ${err.message}`,
+        );
         return;
       }
     }
 
-    if (!fileContent) return;
+    if (!fileContent) {
+      debugLog(`fileContent is null after extraction: ${filePath}`);
+      return;
+    }
 
     // Re-fetch policies from DB so newly added / toggled policies take effect
     // without requiring a monitor restart
@@ -630,9 +697,19 @@ export class liveScannerService {
       .filter((p) => p.isEnabled);
 
     if (currentPolicies.length === 0) {
-      // No policies to evaluate against — skip silently
+      // No policies to evaluate — still notify frontend of the file change
       this.logActivity(aw, filePath, changeType, 0);
       this.updateScannerStats(aw.scannerId, aw.userId, 0);
+      const socketService = getSocketService();
+      if (socketService) {
+        socketService.emitLiveScannerActivity({
+          scannerId: aw.scannerId,
+          filePath,
+          changeType,
+          threatsFound: 0,
+          timestamp: new Date().toISOString(),
+        });
+      }
       return;
     }
 
@@ -650,8 +727,23 @@ export class liveScannerService {
     this.logActivity(aw, filePath, changeType, threatsFound);
     this.updateScannerStats(aw.scannerId, aw.userId, threatsFound);
 
+    const socketService = getSocketService();
+
+    // For clean files (no threats), notify immediately
+    if (threatsFound === 0) {
+      if (socketService) {
+        socketService.emitLiveScannerActivity({
+          scannerId: aw.scannerId,
+          filePath,
+          changeType,
+          threatsFound: 0,
+          timestamp: new Date().toISOString(),
+        });
+      }
+      return;
+    }
+
     if (threatsFound > 0) {
-      const socketService = getSocketService();
       const timestamp = new Date()
         .toISOString()
         .replace("T", " ")
@@ -712,7 +804,7 @@ export class liveScannerService {
       const { threat: savedThreat, isNew } =
         this.threatRepo.upsertThreat({
           userId: aw.userId,
-          scanId: aw.scannerId,
+          scanId: aw.linkedScanId,
           severity,
           type: "Live Monitor: Policy Violation",
           description,
@@ -727,6 +819,7 @@ export class liveScannerService {
       );
 
       if (socketService) {
+        // Emit alert first (threat is already in DB at this point)
         socketService.emitAlert({
           id: savedThreat.id,
           severity,
@@ -742,12 +835,13 @@ export class liveScannerService {
           filePath,
         });
 
+        // Emit activity AFTER DB write + alert, so frontend refreshThreats() sees the new data
         socketService.emitLiveScannerActivity({
           scannerId: aw.scannerId,
           filePath,
           changeType,
           threatsFound,
-          timestamp,
+          timestamp: new Date().toISOString(),
         });
       }
 
@@ -807,15 +901,21 @@ export class liveScannerService {
     userId: number,
     threatsFound: number,
   ): void {
-    const scanner =
-      this.liveScannerRepo.getLiveScannerById(scannerId);
-    if (scanner) {
-      this.liveScannerRepo.updateLiveScanner(scannerId, userId, {
-        filesMonitored: scanner.filesMonitored + 1,
-        filesScanned: scanner.filesScanned + 1,
-        threatsDetected: scanner.threatsDetected + threatsFound,
-        lastActivityAt: new Date().toISOString(),
-      });
+    try {
+      const scanner =
+        this.liveScannerRepo.getLiveScannerById(scannerId);
+      if (scanner) {
+        this.liveScannerRepo.updateLiveScanner(scannerId, userId, {
+          filesMonitored: scanner.filesMonitored + 1,
+          filesScanned: scanner.filesScanned + 1,
+          threatsDetected: scanner.threatsDetected + threatsFound,
+          lastActivityAt: new Date().toISOString(),
+        });
+      }
+    } catch (err: any) {
+      debugLog(
+        `updateScannerStats error (non-fatal): ${err.message}`,
+      );
     }
   }
 

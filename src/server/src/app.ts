@@ -44,9 +44,7 @@ export function createDataGuardApp(config: Config): Application {
   app.get("/api/debug/live-monitor", (_req, res) => {
     try {
       const svc = liveScanner.liveScannerService;
-      // Gather diagnostics for ALL users (debug only)
       const allWatchers: any[] = [];
-      // Access private field via cast
       const watchers = (svc as any).activeWatchers as Map<
         number,
         any
@@ -60,19 +58,48 @@ export function createDataGuardApp(config: Config): Application {
           policiesCount: aw.policies.length,
           autoResponse: aw.autoResponse,
           activityLogSize: aw.activityLog.length,
+          recentActivity: aw.activityLog.slice(-5),
         });
       }
+      const {
+        getSocketService: getSS,
+      } = require("./modules/socket/socket.service");
+      const ss = getSS();
       res.json({
         status: "OK",
-        codeVersion: "v7-debug",
+        codeVersion: "v8-debug",
         totalActiveWatchers: watchers.size,
         watchers: allWatchers,
+        socketServiceActive: !!ss,
+        connectedSockets: ss ? ss.getIO().engine.clientsCount : 0,
         serverUptime: process.uptime(),
         pid: process.pid,
       });
     } catch (err: any) {
       res.json({ status: "ERROR", error: err.message });
     }
+  });
+
+  // ── Force-emit a test liveScanner:activity event ────────────────────────────
+  app.get("/api/debug/test-emit", (_req, res) => {
+    const {
+      getSocketService: getSS,
+    } = require("./modules/socket/socket.service");
+    const ss = getSS();
+    if (!ss) return res.json({ error: "no socket service" });
+    const testActivity = {
+      scannerId: 0,
+      filePath: "C:\\test\\debug-test-file.txt",
+      changeType: "change",
+      threatsFound: 0,
+      timestamp: new Date().toISOString(),
+    };
+    ss.emitLiveScannerActivity(testActivity);
+    res.json({
+      emitted: true,
+      activity: testActivity,
+      clients: ss.getIO().engine.clientsCount,
+    });
   });
 
   app.use("/api/auth", auth.authController.getRouter());

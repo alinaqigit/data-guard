@@ -21,11 +21,6 @@ import {
   ValidationError,
 } from "../../utils/errors";
 import { getSocketService } from "../socket/socket.service";
-import {
-  classifyMatches,
-  sensitivityToTier,
-  ModelTier,
-} from "../mlModel/mlModel.service";
 import { threatRepository } from "../threats/threats.repository";
 import fs from "fs";
 import path from "path";
@@ -508,7 +503,7 @@ export class scannerService {
         content = buffer.toString("utf-8");
       }
 
-      const result = this.policyEngine.evaluate(content, policies, {
+      let result = this.policyEngine.evaluate(content, policies, {
         maxMatchesPerPolicy: options.maxMatchesPerFile,
         contextLinesBefore: 2,
         contextLinesAfter: 2,
@@ -516,7 +511,41 @@ export class scannerService {
         includeDisabled: false,
       });
 
-      return { filePath, success: true, threatsFound: result.policiesMatched, policyEngineResult: result };
+      // Filter out matches that contain any excluded keyword
+      if (
+        options.excludedKeywords.length > 0 &&
+        result.totalMatches > 0
+      ) {
+        const lowerKws = options.excludedKeywords.map((k) =>
+          k.toLowerCase(),
+        );
+        for (const pr of result.results) {
+          pr.matches = pr.matches.filter(
+            (m) =>
+              !lowerKws.some((kw) =>
+                m.matchedText.toLowerCase().includes(kw),
+              ),
+          );
+          pr.matchCount = pr.matches.length;
+          pr.hasMatches = pr.matches.length > 0;
+        }
+        result = {
+          ...result,
+          totalMatches: result.results.reduce(
+            (sum, r) => sum + r.matchCount,
+            0,
+          ),
+          policiesMatched: result.results.filter((r) => r.hasMatches)
+            .length,
+        };
+      }
+
+      return {
+        filePath,
+        success: true,
+        threatsFound: result.policiesMatched,
+        policyEngineResult: result,
+      };
     } catch (error: any) {
       // Count as scanned with no threats so it doesn't break progress tracking
       console.warn(`[Scanner] Skipped ${filePath}: ${error.message}`);
@@ -543,12 +572,24 @@ export class scannerService {
           if (this.shouldIncludeFile(currentPath, options))
             files.push(currentPath);
         } else if (stats.isDirectory()) {
+          const normCurrent = currentPath
+            .toLowerCase()
+            .replace(/\\/g, "/");
           if (
             options.excludePaths.some((ex) =>
-              currentPath
-                .toLowerCase()
-                .replace(/\\/g, "/")
-                .includes(ex.toLowerCase().replace(/\\/g, "/")),
+              normCurrent.includes(
+                ex.toLowerCase().replace(/\\/g, "/"),
+              ),
+            )
+          )
+            return;
+          // Skip user-whitelisted paths
+          if (
+            options.whitelistedPaths.length > 0 &&
+            options.whitelistedPaths.some((wp) =>
+              normCurrent.includes(
+                wp.toLowerCase().replace(/\\/g, "/"),
+              ),
             )
           )
             return;

@@ -30,16 +30,6 @@ import CustomSelect from "@/components/CustomSelect";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import CopyableText from "@/components/CopyableText";
 
-const SENSITIVITY_CONFIDENCE: Record<string, number> = {
-  Low: 95,
-  Medium: 75,
-  High: 50,
-};
-const SENSITIVITY_DESCRIPTION: Record<string, string> = {
-  Low: "Base model · Highest accuracy, slower detection",
-  Medium: "Small model · Balanced speed and accuracy",
-  High: "Tiny model · Fastest detection, lower accuracy",
-};
 const SCAN_TYPE_OPTIONS = [
   {
     value: "quick",
@@ -57,24 +47,6 @@ const SCAN_TYPE_OPTIONS = [
     description: "Scan a specific directory or path",
   },
 ];
-const SENSITIVITY_OPTIONS = [
-  {
-    value: "Low",
-    label: "Low",
-    description: "Base model · Highest confidence",
-  },
-  {
-    value: "Medium",
-    label: "Medium",
-    description: "Small model · Balanced",
-  },
-  {
-    value: "High",
-    label: "High",
-    description: "Tiny model · Fastest",
-  },
-];
-
 function formatETA(
   filesScanned: number,
   totalFiles: number,
@@ -90,20 +62,16 @@ function formatETA(
   return `~${Math.round(remaining / 3600)}h left`;
 }
 
-const INITIAL: ScanState = { isActive: false, scanId: null, totalFiles: 0, filesScanned: 0, filesWithThreats: 0, totalThreats: 0, currentFile: "", startTime: null, status: "idle" };
-
-function formatETA(filesScanned: number, totalFiles: number, startTime: number) {
-  if (!filesScanned || !totalFiles) return "Calculating...";
-  const rate = filesScanned / ((Date.now() - startTime) / 1000);
-  const rem = (totalFiles - filesScanned) / rate;
-  if (rem < 60) return `~${Math.round(rem)}s left`;
-  if (rem < 3600) return `~${Math.round(rem / 60)}m left`;
-  return `~${Math.round(rem / 3600)}h left`;
-}
 function formatDuration(ms: number) {
   const s = Math.round(ms / 1000);
   return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`;
 }
+
+const cardStyle = {
+  background: "var(--background-card)",
+  border: "1px solid var(--border)",
+  borderRadius: "16px",
+};
 
 export default function ScannerPage() {
   // scanState and setScanState live in context — survive navigation
@@ -113,8 +81,6 @@ export default function ScannerPage() {
   const [scanType, setScanType] = useState("quick");
   const [scanPath, setScanPath] = useState("");
   const [isStarting, setIsStarting] = useState(false);
-  const [sensitivity, setSensitivity] = useState("Medium");
-
   const [excludedKeywords, setExcludedKeywords] = useState<string[]>(
     [],
   );
@@ -123,7 +89,6 @@ export default function ScannerPage() {
   );
   const [keywordInput, setKeywordInput] = useState("");
   const [pathInput, setPathInput] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [toast, setToast] = useState<{
@@ -132,7 +97,7 @@ export default function ScannerPage() {
   } | null>(null);
   const scanStateRef = useRef<ScanState>(IDLE_SCAN);
   const completionTimeRef = useRef<number | null>(null);
-  const cancelledRef    = useRef(false);
+  const cancelledRef = useRef(false);
 
   // Throttle ref for scan:progress — prevents UI freeze from rapid socket events
   const progressThrottleRef = useRef<ReturnType<
@@ -273,13 +238,24 @@ export default function ScannerPage() {
   // Load saved preferences on mount
   useEffect(() => {
     const saved = localStorage.getItem("dlp_scanner_prefs");
-    if (saved) try {
-      const p = JSON.parse(saved);
-      setExcludedKeywords(p.excludedKeywords || []);
-      setWhitelistedPaths(p.whitelistedPaths || []);
-      setSensitivity(p.sensitivity || "Medium");
-    } catch {}
+    if (saved)
+      try {
+        const p = JSON.parse(saved);
+        setExcludedKeywords(p.excludedKeywords || []);
+        setWhitelistedPaths(p.whitelistedPaths || []);
+      } catch {}
   }, []);
+
+  // Persist preferences to localStorage
+  const savePrefs = (kws: string[], wps: string[]) => {
+    localStorage.setItem(
+      "dlp_scanner_prefs",
+      JSON.stringify({
+        excludedKeywords: kws,
+        whitelistedPaths: wps,
+      }),
+    );
+  };
 
   const addKeywords = () => {
     const words = keywordInput
@@ -287,9 +263,16 @@ export default function ScannerPage() {
       .map((w) => w.trim())
       .filter((w) => w && !excludedKeywords.includes(w));
     if (words.length) {
-      setExcludedKeywords((p) => [...p, ...words]);
+      const updated = [...excludedKeywords, ...words];
+      setExcludedKeywords(updated);
       setKeywordInput("");
+      savePrefs(updated, whitelistedPaths);
     }
+  };
+  const removeKeyword = (kw: string) => {
+    const updated = excludedKeywords.filter((k) => k !== kw);
+    setExcludedKeywords(updated);
+    savePrefs(updated, whitelistedPaths);
   };
   const addPaths = () => {
     const paths = pathInput
@@ -297,9 +280,16 @@ export default function ScannerPage() {
       .map((p) => p.trim())
       .filter((p) => p && !whitelistedPaths.includes(p));
     if (paths.length) {
-      setWhitelistedPaths((p) => [...p, ...paths]);
+      const updated = [...whitelistedPaths, ...paths];
+      setWhitelistedPaths(updated);
       setPathInput("");
+      savePrefs(excludedKeywords, updated);
     }
+  };
+  const removePath = (wp: string) => {
+    const updated = whitelistedPaths.filter((x) => x !== wp);
+    setWhitelistedPaths(updated);
+    savePrefs(excludedKeywords, updated);
   };
   const handleKeywordKeyDown = (
     e: KeyboardEvent<HTMLInputElement>,
@@ -314,24 +304,6 @@ export default function ScannerPage() {
       e.preventDefault();
       addPaths();
     }
-  };
-
-  const handleSavePreferences = () => {
-    setIsSaving(true);
-    if (keywordInput.trim()) addKeywords();
-    if (pathInput.trim()) addPaths();
-    localStorage.setItem(
-      "dlp_scanner_prefs",
-      JSON.stringify({
-        excludedKeywords,
-        whitelistedPaths,
-        sensitivity,
-      }),
-    );
-    setTimeout(() => {
-      setIsSaving(false);
-      setToast({ message: "Preferences saved.", type: "success" });
-    }, 600);
   };
 
   const handleStartScan = async () => {
@@ -377,6 +349,10 @@ export default function ScannerPage() {
               type: "success",
             });
           }
+        },
+        {
+          excludedKeywords,
+          whitelistedPaths,
         },
       );
 
@@ -430,16 +406,23 @@ export default function ScannerPage() {
   const isRunning = scanState.status === "running";
   const showProgress =
     isRunning || isCompleted || isFailed || isCancelled;
-  const confidence = SENSITIVITY_CONFIDENCE[sensitivity] || 75;
-
   return (
     <div className="space-y-6 pb-12">
-      <h1 style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Content Scanner</h1>
+      <h1
+        style={{
+          fontSize: "28px",
+          fontWeight: 700,
+          color: "var(--text-primary)",
+          letterSpacing: "-0.02em",
+        }}
+      >
+        Content Scanner
+      </h1>
 
-      {/* ── Config + Model ──────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* ── Scan Configuration ──────────────────────────────────────────────── */}
+      <div>
         <div
-          className="lg:col-span-2 border rounded-2xl p-4 md:p-5 shadow-lg"
+          className="border rounded-2xl p-4 md:p-5 shadow-lg"
           style={cardStyle}
         >
           <h2 className="text-xl font-black text-white mb-8 flex items-center gap-3 tracking-tight">
@@ -500,46 +483,6 @@ export default function ScannerPage() {
             </button>
           </div>
         </div>
-
-        <div
-          className="border rounded-2xl p-4 md:p-5 shadow-lg flex flex-col justify-center"
-          style={cardStyle}
-        >
-          <h3 className="text-lg font-bold text-white mb-6">
-            Model Configuration
-          </h3>
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-neutral-400">
-                Model Sensitivity
-              </label>
-              <CustomSelect
-                value={sensitivity}
-                onChange={setSensitivity}
-                options={SENSITIVITY_OPTIONS}
-              />
-            </div>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <label className="text-sm font-medium text-neutral-400">
-                  Detection Confidence
-                </label>
-                <span className="text-indigo-400 font-mono font-bold text-sm">
-                  {confidence}%
-                </span>
-              </div>
-              <div className="relative w-full h-2 bg-white/5 rounded-full overflow-hidden border border-white/5">
-                <div
-                  className="absolute top-0 left-0 h-full bg-gradient-to-r from-indigo-600 to-indigo-400 transition-all duration-500 rounded-full"
-                  style={{ width: `${confidence}%` }}
-                />
-              </div>
-              <p className="text-xs text-neutral-600 px-1">
-                {SENSITIVITY_DESCRIPTION[sensitivity]}
-              </p>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Progress */}
@@ -589,12 +532,41 @@ export default function ScannerPage() {
               )}
             </h3>
             <div className="flex items-center gap-3">
-              {isCompleted ? <CheckCircle2 size={18} style={{ color: 'var(--success-alt)' }} /> :
-               isFailed    ? <AlertTriangle size={18} style={{ color: 'var(--danger)' }} /> :
-               isCancelled ? <X size={18} style={{ color: 'var(--warning)' }} /> :
-               <div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--brand-a30)', borderTopColor: 'var(--brand-light)' }} />}
-              <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                {isCompleted ? 'Scan Complete' : isFailed ? 'Scan Failed' : isCancelled ? 'Scan Cancelled' : 'Scanning in Progress'}
+              {isCompleted ? (
+                <CheckCircle2
+                  size={18}
+                  style={{ color: "var(--success-alt)" }}
+                />
+              ) : isFailed ? (
+                <AlertTriangle
+                  size={18}
+                  style={{ color: "var(--danger)" }}
+                />
+              ) : isCancelled ? (
+                <X size={18} style={{ color: "var(--warning)" }} />
+              ) : (
+                <div
+                  className="w-4 h-4 border-2 rounded-full animate-spin"
+                  style={{
+                    borderColor: "var(--brand-a30)",
+                    borderTopColor: "var(--brand-light)",
+                  }}
+                />
+              )}
+              <span
+                style={{
+                  fontSize: "15px",
+                  fontWeight: 600,
+                  color: "var(--text-primary)",
+                }}
+              >
+                {isCompleted
+                  ? "Scan Complete"
+                  : isFailed
+                    ? "Scan Failed"
+                    : isCancelled
+                      ? "Scan Cancelled"
+                      : "Scanning in Progress"}
               </span>
             </div>
             <div className="flex items-center gap-3">
@@ -747,14 +719,14 @@ export default function ScannerPage() {
           Scanner Preferences
         </h3>
         <div className="space-y-6">
+          {/* ── Add inputs ── */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-3">
+            <div className="space-y-2">
               <label className="text-sm font-medium text-neutral-400">
-                Excluded Keywords
+                Add Excluded Keywords
               </label>
               <p className="text-xs text-neutral-600">
-                Matches containing these keywords are skipped before
-                ML analysis.
+                Matches containing these keywords will be ignored.
               </p>
               <div className="flex gap-2">
                 <input
@@ -772,33 +744,11 @@ export default function ScannerPage() {
                   Add
                 </button>
               </div>
-              {excludedKeywords.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {excludedKeywords.map((kw) => (
-                    <span
-                      key={kw}
-                      className="flex items-center gap-1.5 px-3 py-1 bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 rounded-full text-xs font-bold"
-                    >
-                      {kw}
-                      <button
-                        onClick={() =>
-                          setExcludedKeywords((p) =>
-                            p.filter((k) => k !== kw),
-                          )
-                        }
-                        className="hover:text-white transition-colors"
-                      >
-                        <X size={12} />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              )}
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-2">
               <label className="text-sm font-medium text-neutral-400">
-                Whitelisted Paths
+                Add Whitelisted Paths
               </label>
               <p className="text-xs text-neutral-600">
                 These directories are completely skipped during
@@ -820,62 +770,86 @@ export default function ScannerPage() {
                   Add
                 </button>
               </div>
-              {whitelistedPaths.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {whitelistedPaths.map((p) => (
-                    <span
-                      key={p}
-                      className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 rounded-full text-xs font-bold"
-                    >
-                      {p}
-                      <button
-                        onClick={() =>
-                          setWhitelistedPaths((prev) =>
-                            prev.filter((x) => x !== p),
-                          )
-                        }
-                        className="hover:text-white transition-colors"
-                      >
-                        <X size={12} />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              )}
             </div>
           </div>
 
-          <button
-            onClick={handleSavePreferences}
-            disabled={isSaving}
-            className={`px-8 py-2.5 rounded-xl font-bold transition-all active:scale-95 flex items-center gap-2 ${isSaving ? "bg-indigo-600/50 cursor-not-allowed" : "bg-indigo-600 hover:bg-indigo-500"} text-white`}
-          >
-            {isSaving ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Saving...
-              </>
-            ) : (
-              "Save Preferences"
-            )}
-          </button>
-        </div>
+          {/* ── Active Preferences ── */}
+          {(excludedKeywords.length > 0 ||
+            whitelistedPaths.length > 0) && (
+            <div className="border-t border-white/5 pt-5 space-y-5">
+              <h4 className="text-sm font-bold text-neutral-300 uppercase tracking-wider">
+                Active Preferences
+              </h4>
 
-        <button onClick={() => {
-          setIsSaving(true);
-          if (keywordInput.trim()) addKeywords();
-          if (pathInput.trim()) addPaths();
-          localStorage.setItem("dlp_scanner_prefs", JSON.stringify({ excludedKeywords, whitelistedPaths, sensitivity }));
-          setTimeout(() => { setIsSaving(false); setToast({ message: "Preferences saved.", type: "success" }); }, 800);
-        }}
-          disabled={isSaving}
-          className="flex items-center gap-2 px-6 py-2.5 rounded-xl transition-all"
-          style={{ background: isSaving ? 'var(--brand-mid)' : 'var(--brand-light)', color: 'var(--text-on-brand)', fontSize: '13px', fontWeight: 600, opacity: isSaving ? 0.7 : 1 }}
-          onMouseEnter={e => { if (!isSaving) (e.currentTarget as HTMLButtonElement).style.background = 'var(--brand-main)'; }}
-          onMouseLeave={e => { if (!isSaving) (e.currentTarget as HTMLButtonElement).style.background = 'var(--brand-light)'; }}
-        >
-          {isSaving ? <><div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--spinner-track)', borderTopColor: 'var(--text-on-brand)' }} /> Saving...</> : 'Save Preferences'}
-        </button>
+              {excludedKeywords.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-indigo-400 uppercase tracking-wider">
+                      Excluded Keywords
+                    </span>
+                    <span className="text-xs text-neutral-600">
+                      ({excludedKeywords.length})
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {excludedKeywords.map((kw) => (
+                      <span
+                        key={kw}
+                        className="flex items-center gap-1.5 px-3 py-1 bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 rounded-full text-xs font-bold"
+                      >
+                        {kw}
+                        <button
+                          onClick={() => removeKeyword(kw)}
+                          className="hover:text-white transition-colors"
+                          title={`Remove "${kw}"`}
+                        >
+                          <X size={12} />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {whitelistedPaths.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">
+                      Whitelisted Paths
+                    </span>
+                    <span className="text-xs text-neutral-600">
+                      ({whitelistedPaths.length})
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {whitelistedPaths.map((p) => (
+                      <span
+                        key={p}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 rounded-full text-xs font-bold font-mono"
+                      >
+                        {p}
+                        <button
+                          onClick={() => removePath(p)}
+                          className="hover:text-white transition-colors"
+                          title={`Remove "${p}"`}
+                        >
+                          <X size={12} />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {excludedKeywords.length === 0 &&
+            whitelistedPaths.length === 0 && (
+              <div className="border-t border-white/5 pt-5 text-center text-neutral-600 text-sm py-4">
+                No active preferences. Add keywords or paths above.
+              </div>
+            )}
+        </div>
       </div>
 
       {/* ── Recent Scan Results ──────────────────────────────────────────────── */}
@@ -981,9 +955,13 @@ export default function ScannerPage() {
         }
       `}</style>
 
-      <ConfirmDialog isOpen={showDeleteConfirm} title="Delete All Scans?"
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        title="Delete All Scans?"
         message="This will permanently remove all scan records. This action cannot be undone."
-        confirmText="Delete All" cancelText="Cancel" isDestructive
+        confirmText="Delete All"
+        cancelText="Cancel"
+        isDestructive
         onCancel={() => setShowDeleteConfirm(false)}
         onConfirm={() => {
           clearAllScans();

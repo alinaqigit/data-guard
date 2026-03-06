@@ -86,7 +86,6 @@ export const defaultMockSecurityContext = {
     realTime: true,
     autoResponse: false,
     notifications: true,
-    sensitivity: "Medium" as const,
   },
   updateMonitoringSettings: jest.fn(),
   quarantineFile: jest.fn().mockResolvedValue(undefined),

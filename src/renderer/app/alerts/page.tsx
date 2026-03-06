@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Bell, Eye, CheckCircle2, Trash2, Info } from "lucide-react";
 
 import { useSecurity } from "@/context/SecurityContext";
@@ -9,8 +9,17 @@ import Toast from "@/components/Toast";
 import CopyableText from "@/components/CopyableText";
 
 export default function AlertsPage() {
-  const { alerts, resolveAlert, clearAllAlerts, deleteAlert } =
-    useSecurity();
+  const {
+    alerts,
+    resolveAlert,
+    clearAllAlerts,
+    deleteAlert,
+    refreshThreats,
+  } = useSecurity();
+
+  useEffect(() => {
+    refreshThreats();
+  }, []);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(
     null,

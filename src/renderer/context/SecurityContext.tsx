@@ -7,6 +7,7 @@ import React, {
   useEffect,
   useRef,
 } from "react";
+import Toast from "@/components/Toast";
 import {
   authService,
   policyService,
@@ -73,7 +74,13 @@ interface MonitoringSettings {
   realTime: boolean;
   autoResponse: boolean;
   notifications: boolean;
-  sensitivity: "Low" | "Medium" | "High";
+}
+
+export interface FileActivity {
+  filePath: string;
+  changeType: "add" | "change" | "unlink";
+  threatsFound: number;
+  timestamp: string;
 }
 
 // ── Scan progress — lives in context so it survives page navigation ───────────
@@ -118,7 +125,6 @@ interface SecurityContextType {
     scanPath: string,
     onComplete?: (threatsFound: number) => void,
     extraOptions?: {
-      mlTier?: "base" | "small" | "tiny";
       excludedKeywords?: string[];
       whitelistedPaths?: string[];
     },
@@ -139,6 +145,7 @@ interface SecurityContextType {
   theme: "light" | "dark" | "system";
   resolvedTheme: "light" | "dark";
   setThemePreference: (pref: "light" | "dark" | "system") => void;
+  toggleTheme: () => void;
   addPolicy: (policy: Omit<Policy, "id">) => Promise<void>;
   updatePolicy: (policy: Policy) => Promise<void>;
   togglePolicyStatus: (id: string) => Promise<void>;
@@ -150,6 +157,7 @@ interface SecurityContextType {
   monitoredPaths: string[];
   watcherReady: boolean;
   monitorError: string | null;
+  fileActivity: FileActivity[];
   updateMonitoringSettings: (
     settings: Partial<MonitoringSettings>,
   ) => void;
@@ -209,7 +217,12 @@ export function SecurityProvider({
   const [totalFilesScanned, setTotalFilesScanned] = useState(0);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<UserProfile | null>(null);
-  const [theme, setTheme] = useState<"light" | "dark">("dark");
+  const [theme, setTheme] = useState<"light" | "dark" | "system">(
+    "dark",
+  );
+  const [resolvedTheme, setResolvedTheme] = useState<
+    "light" | "dark"
+  >("dark");
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [systemMetrics, setSystemMetrics] =
     useState<SystemMetrics>(DEFAULT_METRICS);
@@ -218,12 +231,14 @@ export function SecurityProvider({
       realTime: true,
       autoResponse: false,
       notifications: true,
-      sensitivity: "Medium",
     });
   const [monitoredPaths, setMonitoredPaths] = useState<string[]>([]);
   const [watcherReady, setWatcherReady] = useState(false);
   const [monitorError, setMonitorError] = useState<string | null>(
     null,
+  );
+  const [fileActivity, setFileActivity] = useState<FileActivity[]>(
+    [],
   );
 
   // ── Scan progress state — survives navigation because it's in context ─────
@@ -239,6 +254,7 @@ export function SecurityProvider({
   };
 
   const socketInitialized = useRef(false);
+  const prevAlertsLengthRef = useRef(0);
   // realTimeRef always mirrors monitoringSettings.realTime for use in socket callbacks
   const realTimeRef = useRef(monitoringSettings.realTime);
 
@@ -261,7 +277,7 @@ export function SecurityProvider({
           message: isEncryption
             ? `Auto-encrypted: ${newest.description}`
             : `Threat detected: ${newest.description}`,
-          type: isEncryption ? "success" : "warning",
+          type: isEncryption ? "success" : "error",
         });
       }
     }
@@ -274,8 +290,21 @@ export function SecurityProvider({
     socketInitialized.current = true;
     const socket = getSocket();
 
+    const lastMetricsRef = { current: null as SystemMetrics | null };
     const handleMetrics = (metrics: SystemMetrics) => {
-      if (!realTimeRef.current) return;
+      const prev = lastMetricsRef.current;
+      if (prev) {
+        const diff = (a: number, b: number) => Math.abs(a - b);
+        if (
+          diff(prev.cpu, metrics.cpu) < 3 &&
+          diff(prev.memory, metrics.memory) < 3 &&
+          diff(prev.network, metrics.network) < 3 &&
+          prev.activeSessions === metrics.activeSessions
+        ) {
+          return;
+        }
+      }
+      lastMetricsRef.current = metrics;
       setSystemMetrics(metrics);
     };
 
@@ -370,15 +399,24 @@ export function SecurityProvider({
     };
 
     const handleLiveScannerActivity = (activity: any) => {
-      console.log("[SecurityContext] liveScanner:activity", activity);
       if (activity.watcherReady) {
         setWatcherReady(true);
-        console.log(
-          "[SecurityContext] Live scanner watcher is READY",
+      }
+      if (activity.filePath) {
+        setFileActivity((prev) =>
+          [
+            {
+              filePath: activity.filePath,
+              changeType: activity.changeType,
+              threatsFound: activity.threatsFound || 0,
+              timestamp:
+                activity.timestamp || new Date().toISOString(),
+            },
+            ...prev,
+          ].slice(0, 50),
         );
       }
       if (activity.threatsFound > 0) {
-        // Refresh threats from DB — the backend now persists them
         refreshThreats();
       }
     };
@@ -401,6 +439,7 @@ export function SecurityProvider({
         clearTimeout(ctxProgressTimer);
         ctxProgressTimer = null;
       }
+      socketInitialized.current = false;
     };
   }, []);
 
@@ -417,9 +456,9 @@ export function SecurityProvider({
           setIsAuthenticated(true);
           setUser({
             name: userData.username,
-            email: userData.email || '',
+            email: userData.email || "",
             role: "Security Administrator",
-            bio: userData.bio || '',
+            bio: userData.bio || "",
           });
           await refreshPolicies();
           await refreshScans();
@@ -430,6 +469,7 @@ export function SecurityProvider({
           console.log(
             "[SecurityContext] checkAuth: refreshThreats done",
           );
+          authenticated = true;
           // Monitoring auto-start is handled by the isAuthenticated effect below
         } catch {
           // Session expired — try auto-login with remembered credentials
@@ -473,16 +513,7 @@ export function SecurityProvider({
 
       await refreshPolicies();
       await refreshScans();
-
-      // Auto-start live monitor based on saved settings
-      const saved = loadSavedSettings();
-      if (saved.realTime !== false) {
-        setTimeout(() => {
-          monitoringApiService
-            .startMonitoring(saved.autoResponse ?? false)
-            .catch((err) => console.warn("[Monitor] Auto-start failed:", err));
-        }, 1500);
-      }
+      // Monitoring auto-start is handled by the isAuthenticated effect below
     };
     checkAuth();
   }, []);
@@ -539,7 +570,8 @@ export function SecurityProvider({
     if (theme === "system") {
       const mql = window.matchMedia("(prefers-color-scheme: dark)");
       applyResolvedTheme(mql.matches ? "dark" : "light");
-      const handler = (e: MediaQueryListEvent) => applyResolvedTheme(e.matches ? "dark" : "light");
+      const handler = (e: MediaQueryListEvent) =>
+        applyResolvedTheme(e.matches ? "dark" : "light");
       mql.addEventListener("change", handler);
       return () => mql.removeEventListener("change", handler);
     } else {
@@ -660,7 +692,6 @@ export function SecurityProvider({
     scanPath: string,
     onComplete?: (threatsFound: number) => void,
     extraOptions?: {
-      mlTier?: "base" | "small" | "tiny";
       excludedKeywords?: string[];
       whitelistedPaths?: string[];
     },
@@ -757,9 +788,9 @@ export function SecurityProvider({
     setIsAuthenticated(true);
     setUser({
       name: response.user.username,
-      email: response.user.email || '',
+      email: response.user.email || "",
       role: "Security Administrator",
-      bio: response.user.bio || '',
+      bio: response.user.bio || "",
     });
     if (rememberMe) {
       setRememberedCredentials(username, password);
@@ -796,12 +827,12 @@ export function SecurityProvider({
       });
       setUser({
         name: updated.username,
-        email: updated.email || '',
+        email: updated.email || "",
         role: profile.role,
-        bio: updated.bio || '',
+        bio: updated.bio || "",
       });
     } catch (err) {
-      console.error('Failed to update profile:', err);
+      console.error("Failed to update profile:", err);
       throw err;
     }
   };
@@ -847,6 +878,11 @@ export function SecurityProvider({
   const toggleTheme = () =>
     setTheme((prev) => (prev === "light" ? "dark" : "light"));
 
+  const [globalToast, setGlobalToast] = useState<{
+    message: string;
+    type: "success" | "error";
+  } | null>(null);
+
   return (
     <SecurityContext.Provider
       value={{
@@ -879,10 +915,13 @@ export function SecurityProvider({
         togglePolicyStatus,
         deletePolicy,
         toggleTheme,
+        setThemePreference: setTheme,
+        resolvedTheme,
         refreshPolicies,
         refreshScans,
         refreshThreats,
         updateMonitoringSettings,
+        fileActivity,
         quarantineFile,
         encryptFile,
         deleteFile,

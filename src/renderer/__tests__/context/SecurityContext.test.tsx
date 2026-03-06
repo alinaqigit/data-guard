@@ -420,11 +420,11 @@ describe("SecurityContext", () => {
       await waitFor(() => expect(ctx).toBeDefined());
 
       await act(async () => {
-        await ctx!.updateMonitoringSettings({ sensitivity: "High" });
+        await ctx!.updateMonitoringSettings({ notifications: false });
       });
 
       await waitFor(() => {
-        expect(ctx!.monitoringSettings.sensitivity).toBe("High");
+        expect(ctx!.monitoringSettings.notifications).toBe(false);
       });
     });
   });

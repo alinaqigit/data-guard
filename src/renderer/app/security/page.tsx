@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 
 import { useSecurity } from "@/context/SecurityContext";
+import type { FileActivity } from "@/context/SecurityContext";
 import Toast from "@/components/Toast";
 
 // Smoothly animate a number value toward a target
@@ -91,6 +92,7 @@ export default function SecurityMonitorPage() {
     monitoredPaths,
     watcherReady,
     monitorError,
+    fileActivity,
     updateMonitoringSettings,
   } = useSecurity();
 
@@ -359,6 +361,84 @@ export default function SecurityMonitorPage() {
               ))}
             </div>
           </div>
+
+          {/* File Activity Feed */}
+          {monitoringSettings.realTime && (
+            <div
+              className="border rounded-2xl p-4 md:p-5 shadow-lg"
+              style={{
+                background:
+                  "linear-gradient(135deg, #020617 0%, #000000 100%)",
+                borderColor: "rgba(51, 65, 85, 0.3)",
+              }}
+            >
+              <h3 className="text-xl font-black text-white mb-6 tracking-tight flex items-center gap-3">
+                <Eye className="text-cyan-400" size={28} />
+                File Activity
+                <span className="ml-auto text-xs font-semibold px-2.5 py-1 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+                  {fileActivity.length} events
+                </span>
+              </h3>
+              {fileActivity.length === 0 ? (
+                <p className="text-sm text-neutral-500 text-center py-4">
+                  Waiting for file changes in monitored directories…
+                </p>
+              ) : (
+                <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
+                  {fileActivity.slice(0, 20).map((fa, i) => (
+                    <div
+                      key={`${fa.timestamp}-${i}`}
+                      className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors border border-transparent hover:border-white/10"
+                    >
+                      <div
+                        className={`p-1.5 rounded-full ${
+                          fa.threatsFound > 0
+                            ? "bg-red-500/20 text-red-400"
+                            : fa.changeType === "unlink"
+                              ? "bg-yellow-500/20 text-yellow-400"
+                              : fa.changeType === "add"
+                                ? "bg-emerald-500/20 text-emerald-400"
+                                : "bg-blue-500/20 text-blue-400"
+                        }`}
+                      >
+                        {fa.threatsFound > 0 ? (
+                          <AlertTriangle size={14} />
+                        ) : fa.changeType === "unlink" ? (
+                          <Eye size={14} />
+                        ) : (
+                          <CheckCircle size={14} />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-neutral-200 truncate">
+                          {fa.filePath.split(/[\\/]/).pop()}
+                        </p>
+                        <p className="text-xs text-neutral-500 truncate">
+                          {fa.changeType === "add"
+                            ? "Created"
+                            : fa.changeType === "change"
+                              ? "Modified"
+                              : "Deleted"}
+                          {fa.threatsFound > 0 &&
+                            ` · ${fa.threatsFound} threat${fa.threatsFound > 1 ? "s" : ""}`}
+                        </p>
+                      </div>
+                      <span className="text-xs text-neutral-600 font-medium shrink-0">
+                        {new Date(fa.timestamp).toLocaleTimeString(
+                          [],
+                          {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            second: "2-digit",
+                          },
+                        )}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Right Column */}
@@ -560,7 +640,7 @@ export default function SecurityMonitorPage() {
               </span>
               {isRealTimePaused
                 ? "Paused · Real-time monitoring is off"
-                : "Live · Updates every 3 seconds"}
+                : "Live"}
             </div>
           </div>
 

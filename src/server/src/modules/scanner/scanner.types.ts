@@ -32,7 +32,6 @@ export interface ScanOptions {
 
   /** Maximum matches per file (passed to PolicyEngine) */
   maxMatchesPerFile?: number;
-   mlTier?: "base" | "small" | "tiny";
   excludedKeywords?: string[];
   whitelistedPaths?: string[];
 }
@@ -60,7 +59,6 @@ export const DEFAULT_SCAN_OPTIONS: Required<ScanOptions> = {
   maxDepth: 0, // unlimited
   followSymlinks: false,
   maxMatchesPerFile: 100,
-    mlTier: "small",
   excludedKeywords: [],
   whitelistedPaths: [],
 };

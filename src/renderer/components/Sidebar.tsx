@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState } from "react";
 import {
   LayoutDashboard,
   FileSearch,
@@ -16,7 +16,6 @@ import {
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
 import { useSecurity } from "@/context/SecurityContext";
 
 interface SidebarProps {
