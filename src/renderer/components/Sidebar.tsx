@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from 'react';
 import {
   LayoutDashboard,
   FileSearch,
@@ -10,136 +9,247 @@ import {
   BarChart3,
   ShieldAlert,
   User,
-  LogOut,
-  Menu,
+  PanelLeftClose,
+  PanelLeft,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { useSecurity } from "@/context/SecurityContext";
 
 interface SidebarProps {
-  isOpen?: boolean;
-  onClose?: () => void;
+  isCollapsed: boolean;
+  onToggleCollapse: () => void;
 }
 
 export default function Sidebar({
-  isOpen = false,
-  onClose,
+  isCollapsed,
+  onToggleCollapse,
 }: SidebarProps) {
   const pathname = usePathname();
-  const router = useRouter();
-  const { logout } = useSecurity();
+  const { resolvedTheme } = useSecurity();
+  const logoSrc = resolvedTheme === "light" ? "/images/logo-dark.png" : "/images/logo.png";
 
   const navItems = [
     { name: "Dashboard", href: "/", icon: LayoutDashboard },
     { name: "Content Scanner", href: "/scanner", icon: FileSearch },
-    {
-      name: "Security Monitor",
-      href: "/security",
-      icon: ShieldCheck,
-    },
+    { name: "Security Monitor", href: "/security", icon: ShieldCheck },
     { name: "Alerts Center", href: "/alerts", icon: Bell },
     { name: "Policies", href: "/policies", icon: ScrollText },
     { name: "Reports", href: "/reports", icon: BarChart3 },
     { name: "Threats", href: "/threats", icon: ShieldAlert },
-    { name: "My Profile", href: "/profile", icon: User },
   ];
 
-  const handleLogout = () => {
-    logout();
-    router.push("/login");
+  const linkStyle = (isActive: boolean): React.CSSProperties => ({
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    padding: isCollapsed ? "10px 0" : "10px 14px",
+    borderRadius: "10px",
+    textDecoration: "none",
+    transition: "all 0.15s ease",
+    justifyContent: isCollapsed ? "center" : "flex-start",
+    background: isActive ? "var(--brand-a12)" : "transparent",
+    color: isActive ? "var(--brand-light)" : "var(--text-tertiary)",
+  });
+
+  const handleHover = (
+    e: React.MouseEvent<HTMLAnchorElement>,
+    enter: boolean,
+    isActive: boolean,
+  ) => {
+    if (isActive) return;
+    e.currentTarget.style.background = enter ? "var(--hover-nav)" : "transparent";
+    e.currentTarget.style.color = enter ? "var(--text-primary)" : "var(--text-tertiary)";
   };
 
   return (
     <aside
-      className={`fixed left-0 top-0 z-40 h-screen w-80 bg-neutral-900 border-r border-white/5 transition-transform duration-300 ease-in-out md:translate-x-0 ${isOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"}`}
       style={{
-        background:
-          "linear-gradient(180deg, #020617 0%, #000000 100%)",
-        borderColor: "rgba(51, 65, 85, 0.3)",
+        width: isCollapsed ? "64px" : "240px",
+        background: "var(--background-card)",
+        border: "1px solid var(--border)",
+        borderRadius: "16px",
+        transition: "width 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        flexShrink: 0,
+        overflow: "hidden",
+        position: "relative",
+        zIndex: 100,
+        boxShadow: "0 4px 24px var(--shadow-soft)",
       }}
     >
-      <div className="flex flex-col h-full">
-        {/* Header */}
-        <div className="p-8 border-b border-white/5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 relative">
-                <Image
-                  src="/images/logo.png"
-                  alt="DataGuard Logo"
-                  fill
-                  className="object-contain"
-                />
-              </div>
-              <span className="text-3xl font-black text-white tracking-tight">
-                DataGaurd
-              </span>
+      {/* Header */}
+      <div
+        style={{
+          padding: isCollapsed ? "16px 0" : "16px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: isCollapsed ? "center" : "space-between",
+          borderBottom: "1px solid var(--border)",
+          minHeight: "56px",
+          gap: "8px",
+          WebkitAppRegion: "drag" as unknown as string,
+        } as React.CSSProperties}
+      >
+        {!isCollapsed && (
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
+            <div style={{ width: "28px", height: "28px", position: "relative", flexShrink: 0 }}>
+              <Image src={logoSrc} alt="DataGuard Logo" fill className="object-contain" />
             </div>
-            {/* Mobile Close Button */}
-            <button
-              onClick={onClose}
-              className="p-2 md:hidden text-neutral-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors"
+            <span
+              style={{
+                fontSize: "17px",
+                fontWeight: 800,
+                color: "var(--text-primary)",
+                letterSpacing: "-0.02em",
+                whiteSpace: "nowrap",
+              }}
             >
-              <Menu size={24} />
-            </button>
+              DataGuard
+            </span>
           </div>
-        </div>
+        )}
+        <button
+          onClick={onToggleCollapse}
+          style={{
+            padding: "6px",
+            borderRadius: "6px",
+            background: "transparent",
+            border: "none",
+            color: "var(--text-disabled)",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+            transition: "color 0.2s ease",
+            WebkitAppRegion: "no-drag",
+          } as React.CSSProperties}
+          onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text-primary)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-disabled)"; }}
+          title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {isCollapsed ? <PanelLeft size={18} /> : <PanelLeftClose size={18} />}
+        </button>
+      </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto py-8">
-          <ul className="space-y-2 px-4">
-            {navItems.map((item) => {
-              const isActive = pathname === item.href;
-              return (
-                <li key={item.name}>
-                  <Link
-                    href={item.href}
-                    className={`flex items-center px-5 py-3 rounded-2xl transition-all duration-300 group ${
-                      isActive
-                        ? "bg-indigo-600/15 text-indigo-400 shadow-lg shadow-indigo-500/10"
-                        : "text-neutral-400 hover:text-white hover:bg-white/5"
-                    }`}
-                  >
-                    <item.icon
-                      size={24}
-                      className={`flex-shrink-0 ${isActive ? "text-indigo-400" : "text-neutral-400 group-hover:text-white"}`}
-                    />
-                    <span className="ml-4 text-base font-black whitespace-nowrap tracking-tight">
+      {/* Navigation */}
+      <nav style={{ flex: 1, overflowY: "auto", padding: "12px 8px" }}>
+        <ul
+          style={{
+            listStyle: "none",
+            margin: 0,
+            padding: 0,
+            display: "flex",
+            flexDirection: "column",
+            gap: "2px",
+          }}
+        >
+          {navItems.map((item) => {
+            const isActive = pathname === item.href;
+            return (
+              <li key={item.name}>
+                <Link
+                  href={item.href}
+                  title={isCollapsed ? item.name : undefined}
+                  style={linkStyle(isActive)}
+                  onMouseEnter={(e) => handleHover(e, true, isActive)}
+                  onMouseLeave={(e) => handleHover(e, false, isActive)}
+                >
+                  <item.icon size={20} style={{ flexShrink: 0 }} />
+                  {!isCollapsed && (
+                    <span
+                      style={{
+                        fontSize: "14px",
+                        fontWeight: isActive ? 600 : 500,
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                      }}
+                    >
                       {item.name}
                     </span>
-                    {isActive && (
-                      <div className="ml-auto w-2.5 h-2.5 rounded-full bg-indigo-500 shadow-[0_0_12px_rgba(99,102,241,0.6)]" />
-                    )}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
+                  )}
+                  {isActive && !isCollapsed && (
+                    <div
+                      style={{
+                        marginLeft: "auto",
+                        width: "8px",
+                        height: "8px",
+                        borderRadius: "50%",
+                        background: "var(--brand-light)",
+                        boxShadow: "0 0 8px var(--brand-a50)",
+                      }}
+                    />
+                  )}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
 
-        {/* Footer */}
-        <div className="p-8 border-t border-white/5">
-          <button
-            onClick={handleLogout}
-            className="flex items-center w-full px-5 py-3 text-neutral-400 rounded-2xl hover:text-red-400 hover:bg-red-500/10 group transition-all"
-          >
-            <LogOut
-              size={24}
-              className="flex-shrink-0 group-hover:text-red-400 transition-colors"
-            />
-            <span className="ml-4 text-lg font-black whitespace-nowrap tracking-tight">
-              Logout
+      {/* Footer — My Profile + Version */}
+      <div style={{ borderTop: "1px solid var(--border)", padding: "12px 8px" }}>
+        <Link
+          href="/profile"
+          title={isCollapsed ? "My Profile" : undefined}
+          style={linkStyle(pathname === "/profile")}
+          onMouseEnter={(e) => handleHover(e, true, pathname === "/profile")}
+          onMouseLeave={(e) => handleHover(e, false, pathname === "/profile")}
+        >
+          <User size={20} style={{ flexShrink: 0 }} />
+          {!isCollapsed && (
+            <span
+              style={{
+                fontSize: "14px",
+                fontWeight: pathname === "/profile" ? 600 : 500,
+                whiteSpace: "nowrap",
+              }}
+            >
+              My Profile
             </span>
-          </button>
-          <div className="md:hidden pt-4 text-center">
-            <p className="text-xs text-neutral-600">
-              v1.2.0 • DataGuard Admin
-            </p>
+          )}
+        </Link>
+
+        {!isCollapsed && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              padding: "8px 14px 4px",
+              marginTop: "4px",
+            }}
+          >
+            <div
+              style={{
+                width: "24px",
+                height: "24px",
+                borderRadius: "50%",
+                background: "var(--background-subtle)",
+                border: "1px solid var(--border)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              <Image
+                src={logoSrc}
+                alt=""
+                width={14}
+                height={14}
+                style={{ objectFit: "contain" }}
+              />
+            </div>
+            <span style={{ fontSize: "11px", color: "var(--text-disabled)", whiteSpace: "nowrap" }}>
+              v1.0.0 · DataGuard DLP
+            </span>
           </div>
-        </div>
+        )}
       </div>
     </aside>
   );

@@ -76,11 +76,6 @@ const getSeverityStyles = (severity: string) => {
   }
 };
 
-const cardStyle = {
-  background: "linear-gradient(135deg, #020617 0%, #000000 100%)",
-  borderColor: "rgba(51, 65, 85, 0.3)",
-};
-
 // Next status in the progression cycle
 const NEXT_STATUS: Record<string, string> = {
   New: "Investigating",
@@ -519,10 +514,10 @@ export default function ThreatsPage() {
               <stat.icon size={28} />
             </div>
             <div>
-              <p className="text-sm font-bold text-neutral-400 uppercase tracking-widest">
+              <p className="text-sm font-bold uppercase tracking-widest" style={{ color: 'var(--text-tertiary)' }}>
                 {stat.label}
               </p>
-              <p className="text-2xl font-black text-white mt-1 tracking-tight">
+              <p className="mt-1 tracking-tight" style={{ fontSize: '24px', fontWeight: 700, color: 'var(--text-primary)' }}>
                 {stat.count.toLocaleString()}
               </p>
             </div>
@@ -539,12 +534,12 @@ export default function ThreatsPage() {
           className={`border rounded-2xl shadow-xl overflow-hidden flex-1 min-w-0 transition-all duration-300 ${selectedThreat ? "max-w-[calc(100%-340px)]" : "w-full"}`}
           style={cardStyle}
         >
-          <div className="p-4 md:p-5 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <h2 className="text-xl font-black text-white flex items-center gap-3 tracking-tight">
+          <div className="p-4 md:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4" style={{ borderBottom: '1px solid var(--border)' }}>
+            <h2 className="flex items-center gap-3 tracking-tight" style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)' }}>
               <AlertTriangle className="text-rose-500" size={26} />
               Active Threat Registry
               {filtered.length !== alerts.length && (
-                <span className="text-sm font-bold text-neutral-500">
+                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)' }}>
                   ({filtered.length} of {alerts.length})
                 </span>
               )}
@@ -573,7 +568,7 @@ export default function ThreatsPage() {
                       mode: "all",
                     })
                   }
-                  className="flex items-center gap-2 px-3 py-2 text-xs font-black text-rose-500 hover:bg-rose-500/10 rounded-xl transition-colors border border-rose-500/20 uppercase tracking-wider"
+                  className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-rose-500 hover:bg-rose-500/10 rounded-xl transition-colors border border-rose-500/20 uppercase tracking-wider"
                 >
                   <Trash2 size={14} /> Delete All
                 </button>
@@ -584,7 +579,7 @@ export default function ThreatsPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-neutral-950/50 border-b border-neutral-800 text-neutral-400 text-xs uppercase tracking-wider">
+                <tr style={{ background: 'var(--surface-1)', borderBottom: '1px solid var(--border)', color: 'var(--text-disabled)' }} className="text-xs uppercase tracking-wider">
                   <th className="py-4 px-5 font-semibold">
                     Threat ID
                   </th>
@@ -602,17 +597,17 @@ export default function ThreatsPage() {
                 {filtered.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="py-20 text-center">
-                      <div className="flex flex-col items-center gap-2 text-neutral-500">
+                      <div className="flex flex-col items-center gap-2" style={{ color: 'var(--text-muted)' }}>
                         <ShieldCheck
                           size={48}
                           className="opacity-20 mb-2"
                         />
-                        <p className="text-lg font-bold text-neutral-400">
+                        <p style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-tertiary)' }}>
                           {alerts.length === 0
                             ? "Environment Secure"
                             : "No matches found"}
                         </p>
-                        <p className="text-sm">
+                        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
                           {alerts.length === 0
                             ? "No active threats detected."
                             : "Adjust your filters."}
@@ -631,7 +626,9 @@ export default function ThreatsPage() {
                     return (
                       <tr
                         key={threat.id}
-                        className={`group transition-colors cursor-pointer ${isSelected ? "bg-indigo-500/5 border-l-2 border-indigo-500" : "hover:bg-white/5"}`}
+                        className={`group transition-colors cursor-pointer ${isSelected ? "bg-indigo-500/5 border-l-2 border-indigo-500" : ""}`}
+                        onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'var(--hover-row)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = ''; }}
                         onClick={() =>
                           setSelectedThreat(
                             isSelected ? null : (threat as Alert),
@@ -639,7 +636,7 @@ export default function ThreatsPage() {
                         }
                       >
                         <td className="py-4 px-5">
-                          <span className="text-xs font-mono text-neutral-500 font-bold">
+                          <span className="text-xs font-mono font-bold" style={{ color: 'var(--text-muted)' }}>
                             THR-
                             {String(threat.id)
                               .slice(-6)
@@ -648,24 +645,24 @@ export default function ThreatsPage() {
                         </td>
                         <td className="py-4 px-5">
                           <span
-                            className={`px-2 py-0.5 rounded-full text-xs font-black uppercase border ${getSeverityStyles(threat.severity)}`}
+                            className={`px-2 py-0.5 rounded-full text-xs font-bold uppercase border ${getSeverityStyles(threat.severity)}`}
                           >
                             {threat.severity}
                           </span>
                         </td>
                         <td className="py-4 px-5">
                           <div>
-                            <p className="text-white font-black text-sm tracking-tight">
+                            <p className="tracking-tight" style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: '13px' }}>
                               {threat.type}
                             </p>
-                            <p className="text-neutral-500 text-xs font-bold uppercase tracking-wider">
+                            <p className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
                               {threat.source}
                             </p>
                           </div>
                         </td>
                         <td className="py-4 px-5">
                           <span
-                            className={`px-3 py-1 rounded-full text-xs font-black uppercase border ${getStatusStyles(threat.status)}`}
+                            className={`px-3 py-1 rounded-full text-xs font-bold uppercase border ${getStatusStyles(threat.status)}`}
                           >
                             {threat.status}
                           </span>
@@ -684,7 +681,8 @@ export default function ThreatsPage() {
                                     : (threat as Alert),
                                 )
                               }
-                              className="p-2 hover:bg-indigo-500/10 hover:text-indigo-400 text-neutral-500 rounded-lg transition-colors"
+                              className="p-2 hover:bg-indigo-500/10 hover:text-indigo-400 rounded-lg transition-colors"
+                              style={{ color: 'var(--text-muted)' }}
                               title="View Details"
                             >
                               <Eye size={16} />
@@ -694,7 +692,8 @@ export default function ThreatsPage() {
                               onClick={() =>
                                 handleAdvanceStatus(threat as Alert)
                               }
-                              className="p-2 hover:bg-amber-500/10 hover:text-amber-400 text-neutral-500 rounded-lg transition-colors"
+                              className="p-2 hover:bg-amber-500/10 hover:text-amber-400 rounded-lg transition-colors"
+                              style={{ color: 'var(--text-muted)' }}
                               title={`Advance to ${NEXT_STATUS_LABEL[threat.status]}`}
                             >
                               <NextIcon size={16} />
@@ -707,7 +706,8 @@ export default function ThreatsPage() {
                                     handleQuarantine(threat as Alert)
                                   }
                                   disabled={!!loading}
-                                  className="p-2 hover:bg-blue-500/10 hover:text-blue-400 text-neutral-500 rounded-lg transition-colors disabled:opacity-40"
+                                  className="p-2 hover:bg-blue-500/10 hover:text-blue-400 rounded-lg transition-colors disabled:opacity-40"
+                                  style={{ color: 'var(--text-muted)' }}
                                   title="Quarantine File"
                                 >
                                   {loading === "quarantine" ? (
@@ -722,7 +722,8 @@ export default function ThreatsPage() {
                                     handleEncrypt(threat as Alert)
                                   }
                                   disabled={!!loading}
-                                  className="p-2 hover:bg-emerald-500/10 hover:text-emerald-400 text-neutral-500 rounded-lg transition-colors disabled:opacity-40"
+                                  className="p-2 hover:bg-emerald-500/10 hover:text-emerald-400 rounded-lg transition-colors disabled:opacity-40"
+                                  style={{ color: 'var(--text-muted)' }}
                                   title="Encrypt File (Safe)"
                                 >
                                   {loading === "encrypt" ? (
@@ -737,7 +738,8 @@ export default function ThreatsPage() {
                                     handleDeleteFile(threat as Alert)
                                   }
                                   disabled={!!loading}
-                                  className="p-2 hover:bg-red-500/10 hover:text-red-500 text-neutral-500 rounded-lg transition-colors disabled:opacity-40"
+                                  className="p-2 hover:bg-red-500/10 hover:text-red-500 rounded-lg transition-colors disabled:opacity-40"
+                                  style={{ color: 'var(--text-muted)' }}
                                   title="Delete File (Destructive)"
                                 >
                                   {loading === "deletefile" ? (
@@ -765,50 +767,33 @@ export default function ThreatsPage() {
             className="w-80 shrink-0 border rounded-2xl shadow-xl overflow-hidden animate-in slide-in-from-right-4 duration-200"
             style={cardStyle}
           >
-            <div className="p-4 border-b border-white/5 flex items-center justify-between">
-              <h3 className="text-base font-black text-white">
+            <div className="p-4 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border)' }}>
+              <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>
                 Threat Detail
               </h3>
               <button
                 onClick={() => setSelectedThreat(null)}
-                className="p-1 text-neutral-500 hover:text-white transition-colors"
+                className="p-1 transition-colors"
+                style={{ color: 'var(--text-muted)' }}
+                onMouseEnter={e => { e.currentTarget.style.color = 'var(--text-primary)'; }}
+                onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; }}
               >
                 <X size={18} />
               </button>
             </div>
             <div style={{ padding: '16px' }} className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="font-mono text-xs text-neutral-500 font-bold">
+                <span className="font-mono text-xs font-bold" style={{ color: 'var(--text-muted)' }}>
                   THR-
                   {String(selectedThreat.id)
                     .slice(-6)
                     .padStart(6, "0")}
                 </span>
                 <span
-                  className={`px-2 py-0.5 rounded-full text-xs font-black uppercase border ${getSeverityStyles(selectedThreat.severity)}`}
+                  className={`px-2 py-0.5 rounded-full text-xs font-bold uppercase border ${getSeverityStyles(selectedThreat.severity)}`}
                 >
                   {selectedThreat.severity}
                 </span>
-              </div>
-
-              {/* Type */}
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 text-xs text-neutral-500 font-bold uppercase tracking-wider">
-                  <Activity size={12} /> Type
-                </div>
-                <p className="text-white font-bold text-sm">
-                  {selectedThreat.type}
-                </p>
-              </div>
-
-              {/* Source */}
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 text-xs text-neutral-500 font-bold uppercase tracking-wider">
-                  <FileText size={12} /> Source
-                </div>
-                <p className="text-neutral-300 text-sm font-bold">
-                  {selectedThreat.source}
-                </p>
               </div>
 
               {[
@@ -823,18 +808,14 @@ export default function ThreatsPage() {
                   </div>
                   <p style={{ fontSize: '13px', lineHeight: 1.5, ...valueStyle }}>{value}</p>
                 </div>
-                <CopyableText
-                  text={selectedThreat.description}
-                  className="text-neutral-400 text-sm leading-relaxed"
-                />
-              </div>
+              ))}
 
               {/* Structured Policy Violation Details */}
               {selectedThreat.details &&
                 selectedThreat.details.policiesViolated?.length >
                   0 && (
                   <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-xs text-neutral-500 font-bold uppercase tracking-wider">
+                    <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
                       <FileText size={12} /> Policy Violations (
                       {selectedThreat.details.totalMatches} total)
                     </div>
@@ -843,13 +824,14 @@ export default function ThreatsPage() {
                         (pv, i) => (
                           <div
                             key={i}
-                            className="bg-white/5 rounded-xl p-3 border border-white/5 space-y-2"
+                            className="rounded-xl p-3 space-y-2"
+                            style={{ background: 'var(--surface-1)', border: '1px solid var(--border-subtle)' }}
                           >
                             <div className="flex items-center justify-between">
-                              <span className="text-indigo-400 text-xs font-black uppercase tracking-wider">
+                              <span className="text-indigo-400 text-xs font-bold uppercase tracking-wider">
                                 {pv.policyName}
                               </span>
-                              <span className="text-neutral-500 text-xs font-bold">
+                              <span className="text-xs font-bold" style={{ color: 'var(--text-muted)' }}>
                                 {pv.matchCount} match
                                 {pv.matchCount > 1 ? "es" : ""}
                               </span>
@@ -871,7 +853,7 @@ export default function ThreatsPage() {
                                 </div>
                               ))}
                               {pv.matches.length > 10 && (
-                                <p className="text-neutral-600 text-xs font-bold">
+                                <p className="text-xs font-bold" style={{ color: 'var(--text-disabled)' }}>
                                   … and {pv.matches.length - 10} more
                                 </p>
                               )}
@@ -938,36 +920,36 @@ export default function ThreatsPage() {
 
               {/* Time */}
               <div className="space-y-1">
-                <div className="flex items-center gap-2 text-xs text-neutral-500 font-bold uppercase tracking-wider">
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
                   <Clock size={12} /> Detected
                 </div>
-                <p className="text-neutral-400 text-sm">
+                <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
                   {selectedThreat.time}
                 </p>
               </div>
 
               {/* Status */}
               <div className="space-y-1">
-                <p className="text-xs text-neutral-500 font-bold uppercase tracking-wider">
+                <p className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
                   Status
                 </p>
                 <span
-                  className={`px-3 py-1 rounded-full text-xs font-black uppercase border ${getStatusStyles(selectedThreat.status)}`}
+                  className={`px-3 py-1 rounded-full text-xs font-bold uppercase border ${getStatusStyles(selectedThreat.status)}`}
                 >
                   {selectedThreat.status}
                 </span>
               </div>
 
-              <hr className="border-white/5" />
+              <hr style={{ borderColor: 'var(--border)' }} />
 
               <div className="space-y-2">
-                <p className="text-xs text-neutral-500 font-bold uppercase tracking-wider">
+                <p className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
                   File Actions
                 </p>
 
                 <button
                   onClick={() => handleAdvanceStatus(selectedThreat)}
-                  className="w-full flex items-center gap-2 px-3 py-2.5 bg-amber-500/10 border border-amber-500/20 text-amber-400 hover:bg-amber-500/20 rounded-xl text-sm font-black transition-colors"
+                  className="w-full flex items-center gap-2 px-3 py-2.5 bg-amber-500/10 border border-amber-500/20 text-amber-400 hover:bg-amber-500/20 rounded-xl text-sm font-bold transition-colors"
                 >
                   {(() => {
                     const I =
@@ -985,7 +967,7 @@ export default function ThreatsPage() {
                           handleQuarantine(selectedThreat)
                         }
                         disabled={!!actionLoading[selectedThreat.id]}
-                        className="w-full flex items-center gap-2 px-3 py-2.5 bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20 rounded-xl text-sm font-black transition-colors disabled:opacity-50"
+                        className="w-full flex items-center gap-2 px-3 py-2.5 bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20 rounded-xl text-sm font-bold transition-colors disabled:opacity-50"
                       >
                         {actionLoading[selectedThreat.id] ===
                         "quarantine" ? (
@@ -998,7 +980,7 @@ export default function ThreatsPage() {
                       <button
                         onClick={() => handleEncrypt(selectedThreat)}
                         disabled={!!actionLoading[selectedThreat.id]}
-                        className="w-full flex items-center gap-2 px-3 py-2.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 rounded-xl text-sm font-black transition-colors disabled:opacity-50"
+                        className="w-full flex items-center gap-2 px-3 py-2.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 rounded-xl text-sm font-bold transition-colors disabled:opacity-50"
                       >
                         {actionLoading[selectedThreat.id] ===
                         "encrypt" ? (
@@ -1013,7 +995,7 @@ export default function ThreatsPage() {
                           handleDeleteFile(selectedThreat)
                         }
                         disabled={!!actionLoading[selectedThreat.id]}
-                        className="w-full flex items-center gap-2 px-3 py-2.5 bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500/20 rounded-xl text-sm font-black transition-colors disabled:opacity-50"
+                        className="w-full flex items-center gap-2 px-3 py-2.5 bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500/20 rounded-xl text-sm font-bold transition-colors disabled:opacity-50"
                       >
                         {actionLoading[selectedThreat.id] ===
                         "deletefile" ? (
@@ -1030,7 +1012,10 @@ export default function ThreatsPage() {
                   onClick={() =>
                     handleDeleteRecord(selectedThreat.id)
                   }
-                  className="w-full flex items-center gap-2 px-3 py-2.5 bg-white/5 border border-white/10 text-neutral-400 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/20 rounded-xl text-sm font-black transition-colors"
+                  className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-bold transition-colors"
+                  style={{ background: 'var(--surface-1)', border: '1px solid var(--border-subtle)', color: 'var(--text-tertiary)' }}
+                  onMouseEnter={e => { e.currentTarget.style.color = 'rgb(251, 113, 133)'; e.currentTarget.style.background = 'rgba(244, 63, 94, 0.1)'; e.currentTarget.style.borderColor = 'rgba(244, 63, 94, 0.2)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-tertiary)'; e.currentTarget.style.background = 'var(--surface-1)'; e.currentTarget.style.borderColor = 'var(--border-subtle)'; }}
                 >
                   <X size={16} /> Delete Record Only
                 </button>
@@ -1045,12 +1030,12 @@ export default function ThreatsPage() {
         className="border rounded-2xl shadow-xl overflow-hidden"
         style={cardStyle}
       >
-        <div className="p-4 md:p-5 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <h2 className="text-xl font-black text-white flex items-center gap-3 tracking-tight">
+        <div className="p-4 md:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4" style={{ borderBottom: '1px solid var(--border)' }}>
+          <h2 className="flex items-center gap-3 tracking-tight" style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)' }}>
             <Lock className="text-emerald-500" size={26} />
             Encrypted File Vault
             {encryptedFiles.length > 0 && (
-              <span className="text-sm font-bold text-neutral-500">
+              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)' }}>
                 ({encryptedFiles.length})
               </span>
             )}
@@ -1058,7 +1043,10 @@ export default function ThreatsPage() {
           <button
             onClick={fetchEncryptedFiles}
             disabled={encLoadingFiles}
-            className="flex items-center gap-2 px-3 py-2 text-xs font-black text-neutral-400 hover:text-white hover:bg-white/5 rounded-xl transition-colors border border-white/10 uppercase tracking-wider"
+            className="flex items-center gap-2 px-3 py-2 text-xs font-bold rounded-xl transition-colors uppercase tracking-wider"
+            style={{ color: 'var(--text-tertiary)', border: '1px solid var(--border-subtle)' }}
+            onMouseEnter={e => { e.currentTarget.style.color = 'var(--text-primary)'; e.currentTarget.style.background = 'var(--hover-row)'; }}
+            onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-tertiary)'; e.currentTarget.style.background = ''; }}
           >
             <RefreshCw
               size={14}
@@ -1071,7 +1059,7 @@ export default function ThreatsPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-neutral-950/50 border-b border-neutral-800 text-neutral-400 text-xs uppercase tracking-wider">
+              <tr style={{ background: 'var(--surface-1)', borderBottom: '1px solid var(--border)', color: 'var(--text-disabled)' }} className="text-xs uppercase tracking-wider">
                 <th className="py-4 px-5 font-semibold">File</th>
                 <th className="py-4 px-5 font-semibold">
                   Original Path
@@ -1082,11 +1070,11 @@ export default function ThreatsPage() {
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-neutral-800/60">
+            <tbody className="divide-y" style={{ borderColor: 'var(--border-subtle)' }}>
               {encLoadingFiles ? (
                 <tr>
                   <td colSpan={4} className="py-16 text-center">
-                    <div className="flex flex-col items-center gap-3 text-neutral-500">
+                    <div className="flex flex-col items-center gap-3" style={{ color: 'var(--text-muted)' }}>
                       <RefreshCw
                         size={28}
                         className="animate-spin opacity-30"
@@ -1100,15 +1088,15 @@ export default function ThreatsPage() {
               ) : encryptedFiles.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="py-16 text-center">
-                    <div className="flex flex-col items-center gap-2 text-neutral-500">
+                    <div className="flex flex-col items-center gap-2" style={{ color: 'var(--text-muted)' }}>
                       <ShieldCheck
                         size={40}
                         className="opacity-20 mb-1"
                       />
-                      <p className="text-base font-bold text-neutral-400">
+                      <p className="text-base font-bold" style={{ color: 'var(--text-tertiary)' }}>
                         No Encrypted Files
                       </p>
-                      <p className="text-sm">
+                      <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
                         Files you encrypt from threats above will
                         appear here.
                       </p>
@@ -1121,7 +1109,9 @@ export default function ThreatsPage() {
                   return (
                     <tr
                       key={file.id}
-                      className="group hover:bg-white/5 transition-colors"
+                      className="group transition-colors"
+                      onMouseEnter={e => { e.currentTarget.style.background = 'var(--hover-row)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = ''; }}
                     >
                       <td className="py-4 px-5">
                         <div className="flex items-center gap-2">
@@ -1129,20 +1119,22 @@ export default function ThreatsPage() {
                             size={16}
                             className="text-emerald-500 shrink-0"
                           />
-                          <span className="text-white font-bold text-sm truncate max-w-52">
+                          <span className="font-bold text-sm truncate max-w-52" style={{ color: 'var(--text-primary)' }}>
                             {getFileName(file.encryptedPath)}
                           </span>
                         </div>
                       </td>
                       <td className="py-4 px-5">
-                        <CopyableText
-                          text={file.originalPath}
-                          className="text-neutral-400 text-xs font-mono break-all max-w-80"
-                          iconSize={12}
-                        />
+                        <span style={{ color: 'var(--text-tertiary)' }}>
+                          <CopyableText
+                            text={file.originalPath}
+                            className="text-xs font-mono break-all max-w-80"
+                            iconSize={12}
+                          />
+                        </span>
                       </td>
                       <td className="py-4 px-5">
-                        <div className="flex items-center gap-1.5 text-neutral-500 text-xs">
+                        <div className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--text-muted)' }}>
                           <Clock size={12} />
                           {formatEncDate(file.encryptedAt)}
                         </div>
@@ -1158,7 +1150,8 @@ export default function ThreatsPage() {
                               })
                             }
                             disabled={isActing}
-                            className="p-2 hover:bg-emerald-500/10 hover:text-emerald-400 text-neutral-500 rounded-lg transition-colors disabled:opacity-40"
+                            className="p-2 hover:bg-emerald-500/10 hover:text-emerald-400 rounded-lg transition-colors disabled:opacity-40"
+                            style={{ color: 'var(--text-muted)' }}
                             title="Decrypt & Restore"
                           >
                             {encActionLoading[file.id] ===
@@ -1174,7 +1167,8 @@ export default function ThreatsPage() {
                                 file.encryptedPath,
                               )
                             }
-                            className="p-2 hover:bg-violet-500/10 hover:text-violet-400 text-neutral-500 rounded-lg transition-colors"
+                            className="p-2 hover:bg-violet-500/10 hover:text-violet-400 rounded-lg transition-colors"
+                            style={{ color: 'var(--text-muted)' }}
                             title="Show in Folder"
                           >
                             <FolderOpen size={16} />

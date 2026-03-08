@@ -90,16 +90,8 @@ function formatETA(
   return `~${Math.round(remaining / 3600)}h left`;
 }
 
-const INITIAL: ScanState = { isActive: false, scanId: null, totalFiles: 0, filesScanned: 0, filesWithThreats: 0, totalThreats: 0, currentFile: "", startTime: null, status: "idle" };
+const INITIAL: ScanState = IDLE_SCAN;
 
-function formatETA(filesScanned: number, totalFiles: number, startTime: number) {
-  if (!filesScanned || !totalFiles) return "Calculating...";
-  const rate = filesScanned / ((Date.now() - startTime) / 1000);
-  const rem = (totalFiles - filesScanned) / rate;
-  if (rem < 60) return `~${Math.round(rem)}s left`;
-  if (rem < 3600) return `~${Math.round(rem / 60)}m left`;
-  return `~${Math.round(rem / 3600)}h left`;
-}
 function formatDuration(ms: number) {
   const s = Math.round(ms / 1000);
   return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`;
@@ -431,6 +423,7 @@ export default function ScannerPage() {
   const showProgress =
     isRunning || isCompleted || isFailed || isCancelled;
   const confidence = SENSITIVITY_CONFIDENCE[sensitivity] || 75;
+  const cardStyle = { background: 'var(--background-card)', border: '1px solid var(--border)', borderRadius: '16px' };
 
   return (
     <div className="space-y-6 pb-12">
@@ -442,13 +435,13 @@ export default function ScannerPage() {
           className="lg:col-span-2 border rounded-2xl p-4 md:p-5 shadow-lg"
           style={cardStyle}
         >
-          <h2 className="text-xl font-black text-white mb-8 flex items-center gap-3 tracking-tight">
+          <h2 className="text-xl font-bold mb-8 flex items-center gap-3 tracking-tight" style={{ color: 'var(--text-primary)' }}>
             <Shield className="text-blue-500" size={28} />
             Scan Configuration
           </h2>
           <div className="space-y-5">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-neutral-400">
+              <label className="text-sm font-medium" style={{ color: 'var(--text-tertiary)' }}>
                 Scan Type
               </label>
               <CustomSelect
@@ -459,20 +452,21 @@ export default function ScannerPage() {
             </div>
             {scanType === "custom" && (
               <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
-                <label className="text-sm font-medium text-neutral-400">
+                <label className="text-sm font-medium" style={{ color: 'var(--text-tertiary)' }}>
                   Custom Path
                 </label>
                 <input
                   type="text"
                   placeholder="e.g. C:\Users\Documents or /home/user/documents"
-                  className="w-full bg-neutral-950 border border-neutral-800 text-white rounded-xl px-4 py-2.5 focus:outline-none focus:border-blue-500 transition-colors placeholder:text-neutral-600"
+                  className="w-full rounded-xl px-4 py-2.5 focus:outline-none transition-colors text-sm"
+                  style={{ background: 'var(--background-input)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
                   value={scanPath}
                   onChange={(e) => setScanPath(e.target.value)}
                 />
               </div>
             )}
 
-            <div className="text-xs text-neutral-500 px-1">
+            <div className="text-xs px-1" style={{ color: 'var(--text-muted)' }}>
               {scanType === "quick" &&
                 "Scans top-level files across all drives and user folders. Fast."}
               {scanType === "full" &&
@@ -483,8 +477,10 @@ export default function ScannerPage() {
             <button
               onClick={handleStartScan}
               disabled={isStarting || isRunning}
-              className={`w-full py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg active:scale-95
-                ${isStarting || isRunning ? "bg-blue-600/50 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-500 shadow-blue-900/20"} text-white`}
+              className="w-full py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg active:scale-95"
+              style={{ background: isStarting || isRunning ? 'var(--brand-mid)' : 'var(--brand-light)', color: 'var(--text-on-brand)', opacity: isStarting || isRunning ? 0.7 : 1, cursor: isStarting || isRunning ? 'not-allowed' : 'pointer' }}
+              onMouseEnter={e => { if (!isStarting && !isRunning) (e.currentTarget as HTMLButtonElement).style.background = 'var(--brand-main)'; }}
+              onMouseLeave={e => { if (!isStarting && !isRunning) (e.currentTarget as HTMLButtonElement).style.background = 'var(--brand-light)'; }}
             >
               {isStarting || isRunning ? (
                 <>
@@ -505,12 +501,12 @@ export default function ScannerPage() {
           className="border rounded-2xl p-4 md:p-5 shadow-lg flex flex-col justify-center"
           style={cardStyle}
         >
-          <h3 className="text-lg font-bold text-white mb-6">
+          <h3 className="text-lg font-bold mb-6" style={{ color: 'var(--text-primary)' }}>
             Model Configuration
           </h3>
           <div className="space-y-6">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-neutral-400">
+              <label className="text-sm font-medium" style={{ color: 'var(--text-tertiary)' }}>
                 Model Sensitivity
               </label>
               <CustomSelect
@@ -521,20 +517,20 @@ export default function ScannerPage() {
             </div>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <label className="text-sm font-medium text-neutral-400">
+                <label className="text-sm font-medium" style={{ color: 'var(--text-tertiary)' }}>
                   Detection Confidence
                 </label>
                 <span className="text-indigo-400 font-mono font-bold text-sm">
                   {confidence}%
                 </span>
               </div>
-              <div className="relative w-full h-2 bg-white/5 rounded-full overflow-hidden border border-white/5">
+              <div className="relative w-full h-2 rounded-full overflow-hidden" style={{ background: 'var(--surface-1)', border: '1px solid var(--border-subtle)' }}>
                 <div
                   className="absolute top-0 left-0 h-full bg-gradient-to-r from-indigo-600 to-indigo-400 transition-all duration-500 rounded-full"
                   style={{ width: `${confidence}%` }}
                 />
               </div>
-              <p className="text-xs text-neutral-600 px-1">
+              <p className="text-xs px-1" style={{ color: 'var(--text-disabled)' }}>
                 {SENSITIVITY_DESCRIPTION[sensitivity]}
               </p>
             </div>
@@ -559,35 +555,6 @@ export default function ScannerPage() {
           }
         >
           <div className="flex items-center justify-between mb-5">
-            <h3 className="text-lg font-black text-white flex items-center gap-3">
-              {isCompleted ? (
-                <>
-                  <CheckCircle2
-                    className="text-emerald-500"
-                    size={22}
-                  />
-                  Scan Complete
-                </>
-              ) : isFailed ? (
-                <>
-                  <AlertTriangle
-                    className="text-rose-500"
-                    size={22}
-                  />
-                  Scan Failed
-                </>
-              ) : isCancelled ? (
-                <>
-                  <X className="text-amber-500" size={22} />
-                  Scan Cancelled
-                </>
-              ) : (
-                <>
-                  <div className="w-5 h-5 border-2 border-blue-400/30 border-t-blue-400 rounded-full animate-spin" />
-                  Scanning in Progress
-                </>
-              )}
-            </h3>
             <div className="flex items-center gap-3">
               {isCompleted ? <CheckCircle2 size={18} style={{ color: 'var(--success-alt)' }} /> :
                isFailed    ? <AlertTriangle size={18} style={{ color: 'var(--danger)' }} /> :
@@ -601,7 +568,8 @@ export default function ScannerPage() {
               {isCancelled && (
                 <button
                   onClick={() => updateScanState(IDLE_SCAN)}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 text-neutral-400 hover:text-white hover:bg-white/10 rounded-xl text-sm font-black transition-colors"
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-bold transition-colors"
+                  style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', color: 'var(--text-tertiary)' }}
                 >
                   <X size={14} />
                   Dismiss
@@ -613,19 +581,19 @@ export default function ScannerPage() {
                 scanState.activeScanId !== -1 && (
                   <button
                     onClick={handleCancelScan}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500/20 rounded-xl text-sm font-black transition-colors"
+                    className="flex items-center gap-2 px-3 py-1.5 bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500/20 rounded-xl text-sm font-bold transition-colors"
                   >
                     <X size={14} />
                     Cancel
                   </button>
                 )}
-              <span className="text-2xl font-black text-white tabular-nums">
+              <span className="text-2xl font-bold tabular-nums" style={{ color: 'var(--text-primary)' }}>
                 {percentage}%
               </span>
             </div>
           </div>
 
-          <div className="relative w-full h-3 bg-white/5 rounded-full overflow-hidden mb-5">
+          <div className="relative w-full h-3 rounded-full overflow-hidden mb-5" style={{ background: 'var(--surface-1)' }}>
             <div
               className={`absolute top-0 left-0 h-full rounded-full transition-all duration-500 ${
                 isCompleted
@@ -652,40 +620,40 @@ export default function ScannerPage() {
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
-            <div className="bg-white/5 rounded-xl p-3 text-center">
-              <p className="text-xs text-neutral-500 font-bold uppercase tracking-wider mb-1">
+            <div className="rounded-xl p-3 text-center" style={{ background: 'var(--surface-1)' }}>
+              <p className="text-xs font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>
                 Files Scanned
               </p>
-              <p className="text-xl font-black text-white tabular-nums">
+              <p className="text-xl font-bold tabular-nums" style={{ color: 'var(--text-primary)' }}>
                 {scanState.filesScanned.toLocaleString()}
               </p>
               {scanState.totalFiles > 0 && (
-                <p className="text-xs text-neutral-600 mt-0.5">
+                <p className="text-xs mt-0.5" style={{ color: 'var(--text-disabled)' }}>
                   of {scanState.totalFiles.toLocaleString()}
                 </p>
               )}
             </div>
-            <div className="bg-white/5 rounded-xl p-3 text-center">
-              <p className="text-xs text-neutral-500 font-bold uppercase tracking-wider mb-1">
+            <div className="rounded-xl p-3 text-center" style={{ background: 'var(--surface-1)' }}>
+              <p className="text-xs font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>
                 Confirmed Leaks
               </p>
               <p
-                className={`text-xl font-black tabular-nums ${scanState.totalThreats > 0 ? "text-rose-400" : "text-emerald-400"}`}
+                className={`text-xl font-bold tabular-nums ${scanState.totalThreats > 0 ? "text-rose-400" : "text-emerald-400"}`}
               >
                 {scanState.totalThreats}
               </p>
               {scanState.filesWithThreats > 0 && (
-                <p className="text-xs text-neutral-600 mt-0.5">
+                <p className="text-xs mt-0.5" style={{ color: 'var(--text-disabled)' }}>
                   in {scanState.filesWithThreats} file
                   {scanState.filesWithThreats !== 1 ? "s" : ""}
                 </p>
               )}
             </div>
-            <div className="bg-white/5 rounded-xl p-3 text-center">
-              <p className="text-xs text-neutral-500 font-bold uppercase tracking-wider mb-1">
+            <div className="rounded-xl p-3 text-center" style={{ background: 'var(--surface-1)' }}>
+              <p className="text-xs font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>
                 {isCompleted ? "Duration" : "ETA"}
               </p>
-              <p className="text-xl font-black text-white">
+              <p className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
                 {isCompleted &&
                 scanState.startTime &&
                 completionTimeRef.current
@@ -701,12 +669,12 @@ export default function ScannerPage() {
                     : "—"}
               </p>
             </div>
-            <div className="bg-white/5 rounded-xl p-3 text-center">
-              <p className="text-xs text-neutral-500 font-bold uppercase tracking-wider mb-1">
+            <div className="rounded-xl p-3 text-center" style={{ background: 'var(--surface-1)' }}>
+              <p className="text-xs font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>
                 Status
               </p>
               <p
-                className={`text-sm font-black uppercase tracking-wide ${
+                className={`text-sm font-bold uppercase tracking-wide ${
                   isCompleted
                     ? "text-emerald-400"
                     : isFailed
@@ -722,10 +690,11 @@ export default function ScannerPage() {
           </div>
 
           {scanState.currentFile && !isCompleted && !isCancelled && (
-            <div className="flex items-center gap-2 text-xs text-neutral-500 font-mono truncate px-1">
+            <div className="flex items-center gap-2 text-xs font-mono truncate px-1" style={{ color: 'var(--text-muted)' }}>
               <FileSearch
                 size={12}
-                className="flex-shrink-0 text-neutral-600"
+                className="flex-shrink-0"
+                style={{ color: 'var(--text-disabled)' }}
               />
               <CopyableText
                 text={scanState.currentFile}
@@ -743,16 +712,16 @@ export default function ScannerPage() {
         className="border rounded-2xl p-4 md:p-5 shadow-lg"
         style={cardStyle}
       >
-        <h3 className="text-lg font-bold text-white mb-6">
+        <h3 className="text-lg font-bold mb-6" style={{ color: 'var(--text-primary)' }}>
           Scanner Preferences
         </h3>
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-3">
-              <label className="text-sm font-medium text-neutral-400">
+              <label className="text-sm font-medium" style={{ color: 'var(--text-tertiary)' }}>
                 Excluded Keywords
               </label>
-              <p className="text-xs text-neutral-600">
+              <p className="text-xs" style={{ color: 'var(--text-disabled)' }}>
                 Matches containing these keywords are skipped before
                 ML analysis.
               </p>
@@ -760,14 +729,18 @@ export default function ScannerPage() {
                 <input
                   type="text"
                   placeholder="e.g. ticket, train, invoice"
-                  className="flex-1 bg-black border border-white/10 text-white rounded-xl px-4 py-2.5 focus:outline-none focus:border-indigo-500 transition-colors placeholder:text-neutral-600 text-sm"
+                  className="flex-1 rounded-xl px-4 py-2.5 focus:outline-none transition-colors text-sm"
+                  style={{ background: 'var(--background-input)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
                   value={keywordInput}
                   onChange={(e) => setKeywordInput(e.target.value)}
                   onKeyDown={handleKeywordKeyDown}
                 />
                 <button
                   onClick={addKeywords}
-                  className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold text-sm transition-all active:scale-95"
+                  className="px-4 py-2.5 rounded-xl font-bold text-sm transition-all active:scale-95"
+                  style={{ background: 'var(--brand-light)', color: 'var(--text-on-brand)' }}
+                  onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = 'var(--brand-main)'}
+                  onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = 'var(--brand-light)'}
                 >
                   Add
                 </button>
@@ -797,10 +770,10 @@ export default function ScannerPage() {
             </div>
 
             <div className="space-y-3">
-              <label className="text-sm font-medium text-neutral-400">
+              <label className="text-sm font-medium" style={{ color: 'var(--text-tertiary)' }}>
                 Whitelisted Paths
               </label>
-              <p className="text-xs text-neutral-600">
+              <p className="text-xs" style={{ color: 'var(--text-disabled)' }}>
                 These directories are completely skipped during
                 scanning.
               </p>
@@ -808,14 +781,18 @@ export default function ScannerPage() {
                 <input
                   type="text"
                   placeholder="e.g. C:\Users\Public"
-                  className="flex-1 bg-black border border-white/10 text-white rounded-xl px-4 py-2.5 focus:outline-none focus:border-indigo-500 transition-colors placeholder:text-neutral-600 text-sm"
+                  className="flex-1 rounded-xl px-4 py-2.5 focus:outline-none transition-colors text-sm"
+                  style={{ background: 'var(--background-input)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
                   value={pathInput}
                   onChange={(e) => setPathInput(e.target.value)}
                   onKeyDown={handlePathKeyDown}
                 />
                 <button
                   onClick={addPaths}
-                  className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold text-sm transition-all active:scale-95"
+                  className="px-4 py-2.5 rounded-xl font-bold text-sm transition-all active:scale-95"
+                  style={{ background: 'var(--brand-light)', color: 'var(--text-on-brand)' }}
+                  onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = 'var(--brand-main)'}
+                  onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = 'var(--brand-light)'}
                 >
                   Add
                 </button>
@@ -845,20 +822,6 @@ export default function ScannerPage() {
             </div>
           </div>
 
-          <button
-            onClick={handleSavePreferences}
-            disabled={isSaving}
-            className={`px-8 py-2.5 rounded-xl font-bold transition-all active:scale-95 flex items-center gap-2 ${isSaving ? "bg-indigo-600/50 cursor-not-allowed" : "bg-indigo-600 hover:bg-indigo-500"} text-white`}
-          >
-            {isSaving ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Saving...
-              </>
-            ) : (
-              "Save Preferences"
-            )}
-          </button>
         </div>
 
         <button onClick={() => {
@@ -884,7 +847,7 @@ export default function ScannerPage() {
         style={cardStyle}
       >
         <div className="flex justify-between items-center mb-6">
-          <h3 className="text-lg font-black text-white">
+          <h3 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
             Recent Scan Results
           </h3>
           {scans.length > 0 && (
@@ -898,7 +861,7 @@ export default function ScannerPage() {
           )}
         </div>
         {scans.length === 0 ? (
-          <div className="py-12 text-center text-neutral-500">
+          <div className="py-12 text-center" style={{ color: 'var(--text-muted)' }}>
             <FileSearch
               size={36}
               className="mx-auto mb-3 opacity-20"
@@ -915,7 +878,7 @@ export default function ScannerPage() {
                 header: "Scan ID",
                 accessor: "scanid",
                 render: (v) => (
-                  <span className="font-mono text-xs px-2 py-1 bg-white/5 rounded text-neutral-400 border border-white/5">
+                  <span className="font-mono text-xs px-2 py-1 rounded" style={{ background: 'var(--surface-1)', color: 'var(--text-tertiary)', border: '1px solid var(--border-subtle)' }}>
                     {v}
                   </span>
                 ),
@@ -925,7 +888,7 @@ export default function ScannerPage() {
                 accessor: "type",
                 className: "w-[35%]",
                 render: (v) => (
-                  <span className="font-semibold text-neutral-100">
+                  <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>
                     {v}
                   </span>
                 ),
@@ -942,8 +905,9 @@ export default function ScannerPage() {
                       className={
                         v > 0
                           ? "text-rose-500 font-bold"
-                          : "text-neutral-500"
+                          : ""
                       }
+                      style={v > 0 ? {} : { color: 'var(--text-muted)' }}
                     >
                       {v}
                     </span>
@@ -953,7 +917,7 @@ export default function ScannerPage() {
               {
                 header: "Time",
                 accessor: "time",
-                className: "text-neutral-500 text-xs text-right",
+                className: "text-xs text-right",
               },
             ]}
             data={scans.map((s) => ({

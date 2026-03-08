@@ -60,6 +60,23 @@ export function clearRememberedCredentials() {
   localStorage.removeItem(REMEMBER_KEY);
 }
 
+// Server-issued remember-me token (distinct from stored credentials)
+const REMEMBER_TOKEN_KEY = "dlp_remember_token";
+
+export function setRememberToken(token: string | null) {
+  if (typeof window === "undefined") return;
+  if (token) {
+    localStorage.setItem(REMEMBER_TOKEN_KEY, token);
+  } else {
+    localStorage.removeItem(REMEMBER_TOKEN_KEY);
+  }
+}
+
+export function getRememberToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(REMEMBER_TOKEN_KEY);
+}
+
 // Generic API request handler
 interface RequestOptions extends RequestInit {
   requiresAuth?: boolean;
