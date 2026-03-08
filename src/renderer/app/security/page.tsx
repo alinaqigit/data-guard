@@ -253,15 +253,15 @@ export default function SecurityMonitorPage() {
             style={{ background: 'var(--background-card)', borderColor: 'var(--border)' }}
           >
             <div className="flex items-center gap-3 mb-8">
-              <Activity className="text-blue-500" size={28} />
-              <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)' }}>
+              <Activity className="text-blue-500" size={20} />
+              <h2 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
                 Live Monitoring Dashboard
               </h2>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-6 text-center shadow-xl">
-                <p className="text-red-400 text-base font-bold uppercase tracking-widest mb-2">
+                <p className="text-red-400 text-xs font-bold uppercase tracking-widest mb-2">
                   Critical Alerts
                 </p>
                 <span style={{ fontSize: '32px', fontWeight: 700, color: 'var(--text-primary)' }}>
@@ -272,7 +272,7 @@ export default function SecurityMonitorPage() {
                 </p>
               </div>
               <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-6 text-center shadow-xl">
-                <p className="text-yellow-400 text-base font-bold uppercase tracking-widest mb-2">
+                <p className="text-yellow-400 text-xs font-bold uppercase tracking-widest mb-2">
                   Warnings
                 </p>
                 <span style={{ fontSize: '32px', fontWeight: 700, color: 'var(--text-primary)' }}>
@@ -283,7 +283,7 @@ export default function SecurityMonitorPage() {
                 </p>
               </div>
               <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-6 text-center shadow-xl">
-                <p className="text-blue-400 text-base font-bold uppercase tracking-widest mb-2">
+                <p className="text-blue-400 text-xs font-bold uppercase tracking-widest mb-2">
                   Active Sessions
                 </p>
                 <span style={{ fontSize: '32px', fontWeight: 700, color: 'var(--text-primary)' }}>
@@ -301,8 +301,8 @@ export default function SecurityMonitorPage() {
             className="border rounded-2xl p-4 md:p-5 shadow-lg"
             style={{ background: 'var(--background-card)', borderColor: 'var(--border)' }}
           >
-            <h3 className="mb-6 flex items-center gap-3" style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)' }}>
-              <Activity className="text-indigo-500" size={28} />
+            <h3 className="mb-6 flex items-center gap-3" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
+              <Activity className="text-indigo-500" size={20} />
               Recent Activity Stream
             </h3>
             <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2">
@@ -363,8 +363,8 @@ export default function SecurityMonitorPage() {
             className="border rounded-2xl p-4 md:p-5 shadow-lg"
             style={{ background: 'var(--background-card)', borderColor: 'var(--border)' }}
           >
-            <h3 className="mb-8 flex items-center gap-3" style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)' }}>
-              <Settings size={28} className="text-indigo-400" />
+            <h3 className="mb-8 flex items-center gap-3" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
+              <Settings size={20} className="text-indigo-400" />
               Monitoring Controls
             </h3>
 
@@ -458,15 +458,15 @@ export default function SecurityMonitorPage() {
             className="border rounded-2xl p-4 md:p-5 shadow-lg"
             style={{ background: 'var(--background-card)', borderColor: 'var(--border)' }}
           >
-            <h3 className="mb-8 flex items-center gap-3" style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)' }}>
-              <BarChart3 size={28} className="text-emerald-400" />
+            <h3 className="mb-8 flex items-center gap-3" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
+              <BarChart3 size={20} className="text-emerald-400" />
               System Metrics
             </h3>
             <div className="space-y-8">
               <div>
-                <div className="flex justify-between text-base font-bold mb-3">
+                <div className="flex justify-between text-sm font-semibold mb-3">
                   <span className="flex items-center gap-2" style={{ color: 'var(--text-tertiary)' }}>
-                    <Cpu size={18} /> CPU Usage
+                    <Cpu size={16} /> CPU Usage
                   </span>
                   <span className="text-blue-400 font-bold">
                     {smoothCpu}%
@@ -479,9 +479,9 @@ export default function SecurityMonitorPage() {
                 />
               </div>
               <div>
-                <div className="flex justify-between text-base font-bold mb-3">
+                <div className="flex justify-between text-sm font-semibold mb-3">
                   <span className="flex items-center gap-2" style={{ color: 'var(--text-tertiary)' }}>
-                    <Server size={18} /> Memory Usage
+                    <Server size={16} /> Memory Usage
                   </span>
                   <span
                     className={`font-bold ${smoothMemory > 85 ? "text-red-400" : smoothMemory > 70 ? "text-yellow-400" : "text-emerald-400"}`}
@@ -508,9 +508,9 @@ export default function SecurityMonitorPage() {
                 />
               </div>
               <div>
-                <div className="flex justify-between text-base font-bold mb-3">
+                <div className="flex justify-between text-sm font-semibold mb-3">
                   <span className="flex items-center gap-2" style={{ color: 'var(--text-tertiary)' }}>
-                    <Globe size={18} /> Network Traffic
+                    <Globe size={16} /> Network Traffic
                   </span>
                   <span className="text-green-400 font-bold">
                     {smoothNetwork}%
@@ -559,8 +559,8 @@ export default function SecurityMonitorPage() {
             className="border rounded-2xl p-4 md:p-5 shadow-lg"
             style={{ background: 'var(--background-card)', borderColor: 'var(--border)' }}
           >
-            <h3 className="mb-4 flex items-center gap-3" style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)' }}>
-              <FolderOpen size={28} className="text-amber-400" />
+            <h3 className="mb-4 flex items-center gap-3" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
+              <FolderOpen size={20} className="text-amber-400" />
               Monitored Directories
               {monitoringSettings.realTime && (
                 <span

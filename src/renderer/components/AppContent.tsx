@@ -99,10 +99,7 @@ export default function AppContent({
             flexDirection: "column",
             minWidth: 0,
             overflow: "auto",
-            borderRadius: "16px",
-            background: "var(--background-card)",
-            border: "1px solid var(--border)",
-            boxShadow: "0 4px 24px var(--shadow-soft)",
+            transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
           }}
         >
           <main

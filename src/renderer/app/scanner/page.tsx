@@ -435,13 +435,13 @@ export default function ScannerPage() {
           className="lg:col-span-2 border rounded-2xl p-4 md:p-5 shadow-lg"
           style={cardStyle}
         >
-          <h2 className="text-xl font-bold mb-8 flex items-center gap-3 tracking-tight" style={{ color: 'var(--text-primary)' }}>
-            <Shield className="text-blue-500" size={28} />
+          <h2 className="flex items-center gap-3 tracking-tight" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '24px' }}>
+            <Shield className="text-blue-500" size={20} />
             Scan Configuration
           </h2>
           <div className="space-y-5">
             <div className="space-y-2">
-              <label className="text-sm font-medium" style={{ color: 'var(--text-tertiary)' }}>
+              <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-disabled)', textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>
                 Scan Type
               </label>
               <CustomSelect
@@ -452,7 +452,7 @@ export default function ScannerPage() {
             </div>
             {scanType === "custom" && (
               <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
-                <label className="text-sm font-medium" style={{ color: 'var(--text-tertiary)' }}>
+                <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-disabled)', textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>
                   Custom Path
                 </label>
                 <input
@@ -501,12 +501,12 @@ export default function ScannerPage() {
           className="border rounded-2xl p-4 md:p-5 shadow-lg flex flex-col justify-center"
           style={cardStyle}
         >
-          <h3 className="text-lg font-bold mb-6" style={{ color: 'var(--text-primary)' }}>
+          <h3 className="mb-6" style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>
             Model Configuration
           </h3>
           <div className="space-y-6">
             <div className="space-y-2">
-              <label className="text-sm font-medium" style={{ color: 'var(--text-tertiary)' }}>
+              <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-disabled)', textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>
                 Model Sensitivity
               </label>
               <CustomSelect
@@ -517,7 +517,7 @@ export default function ScannerPage() {
             </div>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <label className="text-sm font-medium" style={{ color: 'var(--text-tertiary)' }}>
+                <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-disabled)', textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>
                   Detection Confidence
                 </label>
                 <span className="text-indigo-400 font-mono font-bold text-sm">
@@ -712,13 +712,13 @@ export default function ScannerPage() {
         className="border rounded-2xl p-4 md:p-5 shadow-lg"
         style={cardStyle}
       >
-        <h3 className="text-lg font-bold mb-6" style={{ color: 'var(--text-primary)' }}>
+        <h3 className="mb-6" style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>
           Scanner Preferences
         </h3>
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-3">
-              <label className="text-sm font-medium" style={{ color: 'var(--text-tertiary)' }}>
+              <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-disabled)', textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>
                 Excluded Keywords
               </label>
               <p className="text-xs" style={{ color: 'var(--text-disabled)' }}>
@@ -770,7 +770,7 @@ export default function ScannerPage() {
             </div>
 
             <div className="space-y-3">
-              <label className="text-sm font-medium" style={{ color: 'var(--text-tertiary)' }}>
+              <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-disabled)', textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>
                 Whitelisted Paths
               </label>
               <p className="text-xs" style={{ color: 'var(--text-disabled)' }}>
@@ -847,7 +847,7 @@ export default function ScannerPage() {
         style={cardStyle}
       >
         <div className="flex justify-between items-center mb-6">
-          <h3 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
+          <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>
             Recent Scan Results
           </h3>
           {scans.length > 0 && (

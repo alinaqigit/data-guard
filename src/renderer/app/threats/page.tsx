@@ -511,10 +511,10 @@ export default function ThreatsPage() {
             <div
               className={`p-4 rounded-xl ${stat.bg} ${stat.color}`}
             >
-              <stat.icon size={28} />
+              <stat.icon size={22} />
             </div>
             <div>
-              <p className="text-sm font-bold uppercase tracking-widest" style={{ color: 'var(--text-tertiary)' }}>
+              <p className="uppercase tracking-widest" style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-tertiary)', letterSpacing: '0.08em' }}>
                 {stat.label}
               </p>
               <p className="mt-1 tracking-tight" style={{ fontSize: '24px', fontWeight: 700, color: 'var(--text-primary)' }}>
@@ -535,8 +535,8 @@ export default function ThreatsPage() {
           style={cardStyle}
         >
           <div className="p-4 md:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4" style={{ borderBottom: '1px solid var(--border)' }}>
-            <h2 className="flex items-center gap-3 tracking-tight" style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)' }}>
-              <AlertTriangle className="text-rose-500" size={26} />
+            <h2 className="flex items-center gap-3 tracking-tight" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
+              <AlertTriangle className="text-rose-500" size={20} />
               Active Threat Registry
               {filtered.length !== alerts.length && (
                 <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)' }}>
@@ -1031,8 +1031,8 @@ export default function ThreatsPage() {
         style={cardStyle}
       >
         <div className="p-4 md:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4" style={{ borderBottom: '1px solid var(--border)' }}>
-          <h2 className="flex items-center gap-3 tracking-tight" style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)' }}>
-            <Lock className="text-emerald-500" size={26} />
+          <h2 className="flex items-center gap-3 tracking-tight" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
+            <Lock className="text-emerald-500" size={20} />
             Encrypted File Vault
             {encryptedFiles.length > 0 && (
               <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)' }}>
@@ -1070,7 +1070,7 @@ export default function ThreatsPage() {
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y" style={{ borderColor: 'var(--border-subtle)' }}>
+            <tbody>
               {encLoadingFiles ? (
                 <tr>
                   <td colSpan={4} className="py-16 text-center">

@@ -157,8 +157,8 @@ export default function PolicyManagementPage() {
             style={cardStyle}
           >
             <div className="p-4 md:p-6 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border)' }}>
-              <h2 className="flex items-center gap-3 tracking-tight" style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                <Shield className="text-emerald-500" size={28} />
+              <h2 className="flex items-center gap-3 tracking-tight" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                <Shield className="text-emerald-500" size={20} />
                 Active Policies
                 {totalPolicies > 0 && (
                   <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)' }}>
@@ -182,9 +182,9 @@ export default function PolicyManagementPage() {
                 <div className="py-20 text-center">
                   <div className="flex flex-col items-center gap-4">
                     <div className="p-6 rounded-full" style={{ background: 'var(--surface-1)', color: 'var(--text-muted)' }}>
-                      <Shield size={48} />
+                      <Shield size={40} />
                     </div>
-                    <p style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-tertiary)' }}>
+                    <p style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-tertiary)' }}>
                       No policies yet
                     </p>
                     <p style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-disabled)' }}>
@@ -284,7 +284,7 @@ export default function PolicyManagementPage() {
             className="border rounded-2xl p-4 md:p-5 shadow-xl"
             style={cardStyle}
           >
-            <h3 className="mb-8 tracking-tight" style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)' }}>
+            <h3 className="mb-8 tracking-tight" style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>
               Policy Statistics
             </h3>
 

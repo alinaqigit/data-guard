@@ -103,8 +103,8 @@ export default function AlertsPage() {
       >
         {/* Header */}
         <div className="p-4 md:p-5 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-4" style={{ borderColor: 'var(--border)' }}>
-          <h2 className="flex items-center gap-3 tracking-tight" style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)' }}>
-            <Bell className="text-blue-500" size={28} />
+          <h2 className="flex items-center gap-3 tracking-tight" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
+            <Bell className="text-blue-500" size={20} />
             Security Alerts
             {alerts.length > 0 && (
               <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)' }}>
@@ -141,12 +141,12 @@ export default function AlertsPage() {
                   <td colSpan={7} className="py-24 text-center">
                     <div className="flex flex-col items-center gap-4">
                       <div className="p-6 rounded-full" style={{ background: 'var(--surface-1)', color: 'var(--text-muted)' }}>
-                        <Bell size={64} />
+                        <Bell size={48} />
                       </div>
-                      <p style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-tertiary)' }}>
+                      <p style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-tertiary)' }}>
                         No alerts found
                       </p>
-                      <p style={{ fontSize: '16px', fontWeight: 500, color: 'var(--text-disabled)' }}>
+                      <p style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-disabled)' }}>
                         Everything looks secure for now.
                       </p>
                     </div>
