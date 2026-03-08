@@ -249,7 +249,7 @@ export default function SecurityMonitorPage() {
         <div className="lg:col-span-2 space-y-6">
           {/* Live Monitoring Dashboard */}
           <div
-            className="border rounded-2xl p-4 md:p-5 shadow-lg"
+            className="border rounded-2xl p-4 md:p-5"
             style={{ background: 'var(--background-card)', borderColor: 'var(--border)' }}
           >
             <div className="flex items-center gap-3 mb-8">
@@ -260,7 +260,7 @@ export default function SecurityMonitorPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-6 text-center shadow-xl">
+              <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-6 text-center">
                 <p className="text-red-400 text-xs font-bold uppercase tracking-widest mb-2">
                   Critical Alerts
                 </p>
@@ -271,7 +271,7 @@ export default function SecurityMonitorPage() {
                   High severity · Active
                 </p>
               </div>
-              <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-6 text-center shadow-xl">
+              <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-6 text-center">
                 <p className="text-yellow-400 text-xs font-bold uppercase tracking-widest mb-2">
                   Warnings
                 </p>
@@ -282,7 +282,7 @@ export default function SecurityMonitorPage() {
                   Medium severity · Active
                 </p>
               </div>
-              <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-6 text-center shadow-xl">
+              <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-6 text-center">
                 <p className="text-blue-400 text-xs font-bold uppercase tracking-widest mb-2">
                   Active Sessions
                 </p>
@@ -298,7 +298,7 @@ export default function SecurityMonitorPage() {
 
           {/* Recent Activity Stream */}
           <div
-            className="border rounded-2xl p-4 md:p-5 shadow-lg"
+            className="border rounded-2xl p-4 md:p-5"
             style={{ background: 'var(--background-card)', borderColor: 'var(--border)' }}
           >
             <h3 className="mb-6 flex items-center gap-3" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
@@ -360,7 +360,7 @@ export default function SecurityMonitorPage() {
         <div className="space-y-6">
           {/* Monitoring Controls */}
           <div
-            className="border rounded-2xl p-4 md:p-5 shadow-lg"
+            className="border rounded-2xl p-4 md:p-5"
             style={{ background: 'var(--background-card)', borderColor: 'var(--border)' }}
           >
             <h3 className="mb-8 flex items-center gap-3" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
@@ -455,7 +455,7 @@ export default function SecurityMonitorPage() {
 
           {/* System Metrics */}
           <div
-            className="border rounded-2xl p-4 md:p-5 shadow-lg"
+            className="border rounded-2xl p-4 md:p-5"
             style={{ background: 'var(--background-card)', borderColor: 'var(--border)' }}
           >
             <h3 className="mb-8 flex items-center gap-3" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
@@ -556,7 +556,7 @@ export default function SecurityMonitorPage() {
 
           {/* Monitored Directories */}
           <div
-            className="border rounded-2xl p-4 md:p-5 shadow-lg"
+            className="border rounded-2xl p-4 md:p-5"
             style={{ background: 'var(--background-card)', borderColor: 'var(--border)' }}
           >
             <h3 className="mb-4 flex items-center gap-3" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>

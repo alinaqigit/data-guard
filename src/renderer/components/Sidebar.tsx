@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   LayoutDashboard,
   FileSearch,
@@ -29,6 +30,17 @@ export default function Sidebar({
   const pathname = usePathname();
   const { resolvedTheme } = useSecurity();
   const logoSrc = resolvedTheme === "light" ? "/images/logo-dark.png" : "/images/logo.png";
+
+  const [tooltip, setTooltip] = useState<{ name: string; top: number } | null>(null);
+
+  const showTooltip = (e: React.MouseEvent<HTMLElement>, name: string) => {
+    if (isCollapsed) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      setTooltip({ name, top: rect.top + rect.height / 2 });
+    }
+  };
+
+  const hideTooltip = () => setTooltip(null);
 
   const navItems = [
     { name: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -154,10 +166,9 @@ export default function Sidebar({
               <li key={item.name}>
                 <Link
                   href={item.href}
-                  title={isCollapsed ? item.name : undefined}
                   style={linkStyle(isActive)}
-                  onMouseEnter={(e) => handleHover(e, true, isActive)}
-                  onMouseLeave={(e) => handleHover(e, false, isActive)}
+                  onMouseEnter={(e) => { handleHover(e, true, isActive); showTooltip(e, item.name); }}
+                  onMouseLeave={(e) => { handleHover(e, false, isActive); hideTooltip(); }}
                 >
                   <item.icon size={20} style={{ flexShrink: 0 }} />
                   {!isCollapsed && (
@@ -195,10 +206,9 @@ export default function Sidebar({
       <div style={{ borderTop: "1px solid var(--border)", padding: "12px 8px" }}>
         <Link
           href="/profile"
-          title={isCollapsed ? "My Profile" : undefined}
           style={linkStyle(pathname === "/profile")}
-          onMouseEnter={(e) => handleHover(e, true, pathname === "/profile")}
-          onMouseLeave={(e) => handleHover(e, false, pathname === "/profile")}
+          onMouseEnter={(e) => { handleHover(e, true, pathname === "/profile"); showTooltip(e, "My Profile"); }}
+          onMouseLeave={(e) => { handleHover(e, false, pathname === "/profile"); hideTooltip(); }}
         >
           <User size={20} style={{ flexShrink: 0 }} />
           {!isCollapsed && (
@@ -251,6 +261,31 @@ export default function Sidebar({
           </div>
         )}
       </div>
+
+      {/* Tooltip for collapsed state */}
+      {isCollapsed && tooltip && (
+        <div
+          style={{
+            position: 'fixed',
+            left: '76px',
+            top: `${tooltip.top}px`,
+            transform: 'translateY(-50%)',
+            background: 'var(--background-card)',
+            color: 'var(--text-primary)',
+            border: '1px solid var(--border)',
+            borderRadius: '8px',
+            padding: '5px 12px',
+            fontSize: '12.5px',
+            fontWeight: 500,
+            whiteSpace: 'nowrap',
+            zIndex: 9999,
+            boxShadow: '0 4px 12px var(--shadow-soft)',
+            pointerEvents: 'none',
+          }}
+        >
+          {tooltip.name}
+        </div>
+      )}
     </aside>
   );
 }

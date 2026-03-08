@@ -153,7 +153,7 @@ export default function PolicyManagementPage() {
         {/* Active Policies */}
         <div className="lg:col-span-2 space-y-6">
           <div
-            className="border rounded-2xl shadow-xl overflow-hidden"
+            className="border rounded-2xl overflow-hidden"
             style={cardStyle}
           >
             <div className="p-4 md:p-6 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border)' }}>
@@ -281,7 +281,7 @@ export default function PolicyManagementPage() {
         {/* Policy Statistics */}
         <div className="space-y-6">
           <div
-            className="border rounded-2xl p-4 md:p-5 shadow-xl"
+            className="border rounded-2xl p-4 md:p-5"
             style={cardStyle}
           >
             <h3 className="mb-8 tracking-tight" style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>

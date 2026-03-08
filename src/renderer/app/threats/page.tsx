@@ -505,7 +505,7 @@ export default function ThreatsPage() {
         {stats.map((stat, i) => (
           <div
             key={i}
-            className="border rounded-2xl p-4 md:p-5 shadow-xl flex items-center gap-5 hover:-translate-y-1 transition-all duration-300"
+            className="border rounded-2xl p-4 md:p-5 flex items-center gap-5 hover:-translate-y-1 transition-all duration-300"
             style={cardStyle}
           >
             <div
@@ -531,7 +531,7 @@ export default function ThreatsPage() {
       >
         {/* Threat table */}
         <div
-          className={`border rounded-2xl shadow-xl overflow-hidden flex-1 min-w-0 transition-all duration-300 ${selectedThreat ? "max-w-[calc(100%-340px)]" : "w-full"}`}
+          className={`border rounded-2xl overflow-hidden flex-1 min-w-0 transition-all duration-300 ${selectedThreat ? "max-w-[calc(100%-340px)]" : "w-full"}`}
           style={cardStyle}
         >
           <div className="p-4 md:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4" style={{ borderBottom: '1px solid var(--border)' }}>
@@ -764,7 +764,7 @@ export default function ThreatsPage() {
         {/* Detail panel */}
         {selectedThreat && (
           <div
-            className="w-80 shrink-0 border rounded-2xl shadow-xl overflow-hidden animate-in slide-in-from-right-4 duration-200"
+            className="w-80 shrink-0 border rounded-2xl overflow-hidden animate-in slide-in-from-right-4 duration-200"
             style={cardStyle}
           >
             <div className="p-4 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border)' }}>
@@ -1027,7 +1027,7 @@ export default function ThreatsPage() {
 
       {/* ── Encrypted File Vault ─────────────────────────── */}
       <div
-        className="border rounded-2xl shadow-xl overflow-hidden"
+        className="border rounded-2xl overflow-hidden"
         style={cardStyle}
       >
         <div className="p-4 md:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4" style={{ borderBottom: '1px solid var(--border)' }}>
@@ -1070,7 +1070,7 @@ export default function ThreatsPage() {
                 </th>
               </tr>
             </thead>
-            <tbody>
+            <tbody style={{ borderColor: 'var(--border-subtle)' }}>
               {encLoadingFiles ? (
                 <tr>
                   <td colSpan={4} className="py-16 text-center">
@@ -1110,6 +1110,7 @@ export default function ThreatsPage() {
                     <tr
                       key={file.id}
                       className="group transition-colors"
+                      style={{ borderBottom: '1px solid var(--border-subtle)' }}
                       onMouseEnter={e => { e.currentTarget.style.background = 'var(--hover-row)'; }}
                       onMouseLeave={e => { e.currentTarget.style.background = ''; }}
                     >

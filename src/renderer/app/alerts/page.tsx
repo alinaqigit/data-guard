@@ -98,7 +98,7 @@ export default function AlertsPage() {
       </div>
 
       <div
-        className="border rounded-2xl shadow-xl overflow-hidden"
+        className="border rounded-2xl overflow-hidden"
         style={{ background: 'var(--background-card)', borderColor: 'var(--border)' }}
       >
         {/* Header */}

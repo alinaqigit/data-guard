@@ -432,7 +432,7 @@ export default function ScannerPage() {
       {/* ── Config + Model ──────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div
-          className="lg:col-span-2 border rounded-2xl p-4 md:p-5 shadow-lg"
+          className="lg:col-span-2 border rounded-2xl p-4 md:p-5"
           style={cardStyle}
         >
           <h2 className="flex items-center gap-3 tracking-tight" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '24px' }}>
@@ -477,7 +477,7 @@ export default function ScannerPage() {
             <button
               onClick={handleStartScan}
               disabled={isStarting || isRunning}
-              className="w-full py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg active:scale-95"
+              className="w-full py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:scale-95"
               style={{ background: isStarting || isRunning ? 'var(--brand-mid)' : 'var(--brand-light)', color: 'var(--text-on-brand)', opacity: isStarting || isRunning ? 0.7 : 1, cursor: isStarting || isRunning ? 'not-allowed' : 'pointer' }}
               onMouseEnter={e => { if (!isStarting && !isRunning) (e.currentTarget as HTMLButtonElement).style.background = 'var(--brand-main)'; }}
               onMouseLeave={e => { if (!isStarting && !isRunning) (e.currentTarget as HTMLButtonElement).style.background = 'var(--brand-light)'; }}
@@ -498,7 +498,7 @@ export default function ScannerPage() {
         </div>
 
         <div
-          className="border rounded-2xl p-4 md:p-5 shadow-lg flex flex-col justify-center"
+          className="border rounded-2xl p-4 md:p-5 flex flex-col justify-center"
           style={cardStyle}
         >
           <h3 className="mb-6" style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>
@@ -541,7 +541,7 @@ export default function ScannerPage() {
       {/* Progress */}
       {showProgress && (
         <div
-          className={`border rounded-2xl p-5 shadow-lg transition-all duration-300 ${
+          className={`border rounded-2xl p-5 transition-all duration-300 ${
             isCompleted
               ? "border-emerald-500/30 bg-emerald-950/20"
               : isFailed
@@ -709,7 +709,7 @@ export default function ScannerPage() {
 
       {/* ── Scanner Preferences ──────────────────────────────────────────────── */}
       <div
-        className="border rounded-2xl p-4 md:p-5 shadow-lg"
+        className="border rounded-2xl p-4 md:p-5"
         style={cardStyle}
       >
         <h3 className="mb-6" style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>
@@ -832,7 +832,7 @@ export default function ScannerPage() {
           setTimeout(() => { setIsSaving(false); setToast({ message: "Preferences saved.", type: "success" }); }, 800);
         }}
           disabled={isSaving}
-          className="flex items-center gap-2 px-6 py-2.5 rounded-xl transition-all"
+          className="flex items-center gap-2 px-6 py-2.5 rounded-xl transition-all mt-6"
           style={{ background: isSaving ? 'var(--brand-mid)' : 'var(--brand-light)', color: 'var(--text-on-brand)', fontSize: '13px', fontWeight: 600, opacity: isSaving ? 0.7 : 1 }}
           onMouseEnter={e => { if (!isSaving) (e.currentTarget as HTMLButtonElement).style.background = 'var(--brand-main)'; }}
           onMouseLeave={e => { if (!isSaving) (e.currentTarget as HTMLButtonElement).style.background = 'var(--brand-light)'; }}
@@ -843,7 +843,7 @@ export default function ScannerPage() {
 
       {/* ── Recent Scan Results ──────────────────────────────────────────────── */}
       <div
-        className="border rounded-2xl p-4 md:p-5 shadow-lg"
+        className="border rounded-2xl p-4 md:p-5"
         style={cardStyle}
       >
         <div className="flex justify-between items-center mb-6">
