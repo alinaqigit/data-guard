@@ -114,8 +114,8 @@ export class reportsService {
       .split("T")[0];
 
     const inRange = (dateStr: string) => {
-      const d =
-        dateStr?.split("T")[0] || dateStr?.split(" ")[0] || "";
+      // Extract YYYY-MM-DD regardless of format ("2026-03-09 02:15:00" or "2026-03-09T02:15:00Z")
+      const d = (dateStr || "").substring(0, 10);
       if (request.dateRange === "today") return d === todayStr;
       if (request.dateRange === "weekly") return d >= weekAgoStr;
       return true;
