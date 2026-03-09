@@ -3,6 +3,7 @@ import { policyRepository } from "../policy/policy.repository";
 import { PolicyEngineService } from "../policyEngine/policyEngine.service";
 import { fileActionsService } from "../fileActions/fileActions.service";
 import { threatRepository } from "../threats/threats.repository";
+import { scanRepository } from "../scanner/scanner.repository";
 import {
   getQuickScanPaths,
   getFullScanPaths,
@@ -128,6 +129,7 @@ function isSafeToScan(filePath: string): boolean {
 interface ActiveWatcher {
   scannerId: number;
   userId: number;
+  linkedScanId: number;
   watcher: chokidar.FSWatcher;
   options: Required<LiveScannerOptions>;
   policies: PolicyEntity[];
@@ -143,6 +145,7 @@ export class liveScannerService {
   private policyEngine: PolicyEngineService;
   private fileActions: fileActionsService;
   private threatRepo: threatRepository;
+  private scanRepo: scanRepository;
   private activeWatchers: Map<number, ActiveWatcher> = new Map();
 
   constructor(DB_PATH: string) {
@@ -151,6 +154,7 @@ export class liveScannerService {
     this.policyEngine = new PolicyEngineService();
     this.fileActions = new fileActionsService(DB_PATH);
     this.threatRepo = new threatRepository(DB_PATH);
+    this.scanRepo = new scanRepository(DB_PATH);
   }
 
   // ── Start live monitoring for a user ─────────────────────────────────────────
@@ -489,9 +493,18 @@ export class liveScannerService {
         "**/$Recycle.Bin/**",
       ],
     });
+    // Create a linked scan record so threats can reference a valid scans(id)
+    const linkedScan = this.scanRepo.createScan({
+      userId,
+      scanType: "full",
+      targetPath: watchPaths.join("|"),
+      status: "running",
+    });
+
     const activeWatcher: ActiveWatcher = {
       scannerId: scanner.id,
       userId,
+      linkedScanId: linkedScan.id,
       watcher,
       options,
       policies,
@@ -709,10 +722,12 @@ export class liveScannerService {
       }
 
       // ── Persist threat to database (deduplicated by user + file path) ──
-      const { threat: savedThreat, isNew } =
-        this.threatRepo.upsertThreat({
+      let savedThreat: any;
+      let isNew = true;
+      try {
+        const result = this.threatRepo.upsertThreat({
           userId: aw.userId,
-          scanId: aw.scannerId,
+          scanId: aw.linkedScanId,
           severity,
           type: "Live Monitor: Policy Violation",
           description,
@@ -721,14 +736,21 @@ export class liveScannerService {
           status: "New",
           filePath,
         });
-
-      console.log(
-        `[LiveScanner] Threat ${isNew ? "created" : "updated"} (id=${savedThreat.id}) for ${filePath}`,
-      );
+        savedThreat = result.threat;
+        isNew = result.isNew;
+        console.log(
+          `[LiveScanner] Threat ${isNew ? "created" : "updated"} (id=${savedThreat.id}) for ${filePath}`,
+        );
+      } catch (dbErr: any) {
+        console.error(
+          `[LiveScanner] Failed to persist threat for ${filePath}:`,
+          dbErr.message,
+        );
+      }
 
       if (socketService) {
         socketService.emitAlert({
-          id: savedThreat.id,
+          id: savedThreat?.id ?? -1,
           severity,
           time: timestamp,
           type: isNew
@@ -757,11 +779,13 @@ export class liveScannerService {
           console.log(`[LiveScanner] Auto-encrypted: ${filePath}`);
 
           // Mark the threat as resolved since it was auto-handled
-          this.threatRepo.updateThreatStatus(
-            savedThreat.id,
-            aw.userId,
-            "Resolved",
-          );
+          if (savedThreat) {
+            this.threatRepo.updateThreatStatus(
+              savedThreat.id,
+              aw.userId,
+              "Resolved",
+            );
+          }
 
           if (socketService) {
             socketService.emitAlert({
