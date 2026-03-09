@@ -64,13 +64,13 @@ export default function AlertsPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <h1 className="text-3xl md:text-4xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-500 tracking-tight">
+        <h1 style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
           Alerts Center
         </h1>
         {/* Summary badges */}
         {alerts.length > 0 && (
           <div className="flex items-center gap-3">
-            <span className="px-3 py-1 rounded-full text-xs font-black uppercase border bg-red-500/10 text-red-500 border-red-500/20">
+            <span className="px-3 py-1 rounded-full text-xs font-bold uppercase border bg-red-500/10 text-red-500 border-red-500/20">
               {
                 alerts.filter(
                   (a) =>
@@ -79,7 +79,7 @@ export default function AlertsPage() {
               }{" "}
               Critical
             </span>
-            <span className="px-3 py-1 rounded-full text-xs font-black uppercase border bg-yellow-500/10 text-yellow-500 border-yellow-500/20">
+            <span className="px-3 py-1 rounded-full text-xs font-bold uppercase border bg-yellow-500/10 text-yellow-500 border-yellow-500/20">
               {
                 alerts.filter(
                   (a) =>
@@ -89,7 +89,7 @@ export default function AlertsPage() {
               }{" "}
               Warnings
             </span>
-            <span className="px-3 py-1 rounded-full text-xs font-black uppercase border bg-emerald-500/10 text-emerald-500 border-emerald-500/20">
+            <span className="px-3 py-1 rounded-full text-xs font-bold uppercase border bg-emerald-500/10 text-emerald-500 border-emerald-500/20">
               {alerts.filter((a) => a.status === "Resolved").length}{" "}
               Resolved
             </span>
@@ -98,20 +98,16 @@ export default function AlertsPage() {
       </div>
 
       <div
-        className="border rounded-2xl shadow-xl overflow-hidden"
-        style={{
-          background:
-            "linear-gradient(135deg, #020617 0%, #000000 100%)",
-          borderColor: "rgba(51, 65, 85, 0.3)",
-        }}
+        className="border rounded-2xl overflow-hidden"
+        style={{ background: 'var(--background-card)', borderColor: 'var(--border)' }}
       >
         {/* Header */}
-        <div className="p-4 md:p-5 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <h2 className="text-xl font-black text-white flex items-center gap-3 tracking-tight">
-            <Bell className="text-blue-500" size={28} />
+        <div className="p-4 md:p-5 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-4" style={{ borderColor: 'var(--border)' }}>
+          <h2 className="flex items-center gap-3 tracking-tight" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
+            <Bell className="text-blue-500" size={20} />
             Security Alerts
             {alerts.length > 0 && (
-              <span className="text-sm font-bold text-neutral-500">
+              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)' }}>
                 ({alerts.length})
               </span>
             )}
@@ -129,7 +125,7 @@ export default function AlertsPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-left border-separate border-spacing-0">
             <thead>
-              <tr className="bg-white/5 border-b border-white/10 text-neutral-400 text-sm font-black uppercase tracking-[0.1em]">
+              <tr className="text-sm font-semibold uppercase tracking-[0.1em]" style={{ background: 'var(--surface-1)', borderBottom: '1px solid var(--border)', color: 'var(--text-disabled)' }}>
                 <th className="py-4 px-5">Severity</th>
                 <th className="py-4 px-5">Time</th>
                 <th className="py-4 px-5">Alert Type</th>
@@ -139,18 +135,18 @@ export default function AlertsPage() {
                 <th className="py-4 px-5 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
+            <tbody className="divide-y" style={{ borderColor: 'var(--border-subtle)' }}>
               {alerts.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-24 text-center">
                     <div className="flex flex-col items-center gap-4">
-                      <div className="p-6 bg-white/5 rounded-full text-neutral-500">
-                        <Bell size={64} />
+                      <div className="p-6 rounded-full" style={{ background: 'var(--surface-1)', color: 'var(--text-muted)' }}>
+                        <Bell size={48} />
                       </div>
-                      <p className="text-neutral-400 font-black text-2xl">
+                      <p style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-tertiary)' }}>
                         No alerts found
                       </p>
-                      <p className="text-neutral-600 text-lg font-medium">
+                      <p style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-disabled)' }}>
                         Everything looks secure for now.
                       </p>
                     </div>
@@ -160,42 +156,47 @@ export default function AlertsPage() {
                 alerts.map((alert) => (
                   <tr
                     key={alert.id}
-                    className="group hover:bg-white/5 transition-colors"
+                    className="group transition-colors"
+                    style={{ cursor: 'default' }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--hover-row)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = ''}
                   >
                     <td className="py-4 px-5">
                       <span
-                        className={`px-3 py-1.5 rounded-full text-xs font-black uppercase border ${getSeverityStyles(alert.severity)}`}
+                        className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase border ${getSeverityStyles(alert.severity)}`}
                       >
                         {alert.severity}
                       </span>
                     </td>
                     <td className="py-4 px-5 whitespace-nowrap">
-                      <span className="text-neutral-300 text-sm font-bold">
+                      <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>
                         {alert.time}
                       </span>
                     </td>
                     <td className="py-4 px-5">
-                      <span className="text-white text-sm font-black tracking-tight">
+                      <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
                         {alert.type}
                       </span>
                     </td>
                     <td className="py-4 px-5 min-w-[280px]">
-                      <CopyableText
-                        text={alert.description}
-                        className="text-neutral-400 text-sm font-medium leading-relaxed"
-                      />
+                      <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-tertiary)' }}>
+                        <CopyableText
+                          text={alert.description}
+                          className="leading-relaxed"
+                        />
+                      </div>
                     </td>
                     <td className="py-4 px-5">
-                      <div className="flex items-center gap-2 text-neutral-500">
+                      <div className="flex items-center gap-2" style={{ color: 'var(--text-muted)' }}>
                         <Info size={14} />
-                        <span className="text-sm font-bold">
+                        <span style={{ fontSize: '13px', fontWeight: 600 }}>
                           {alert.source}
                         </span>
                       </div>
                     </td>
                     <td className="py-4 px-5">
                       <span
-                        className={`px-3 py-1 rounded text-xs font-black uppercase border ${getStatusStyles(alert.status)}`}
+                        className={`px-3 py-1 rounded text-xs font-bold uppercase border ${getStatusStyles(alert.status)}`}
                       >
                         {alert.status}
                       </span>
@@ -214,7 +215,8 @@ export default function AlertsPage() {
                         <button
                           onClick={() => setDeleteTargetId(alert.id)}
                           title="Delete Alert"
-                          className="p-2 text-neutral-600 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                          className="p-2 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                          style={{ color: 'var(--text-disabled)' }}
                         >
                           <Trash2 size={17} />
                         </button>

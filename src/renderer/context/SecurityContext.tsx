@@ -31,6 +31,7 @@ import {
   fileActionsService,
   monitoringApiService,
 } from "@/lib/api/fileActions.service";
+import Toast from "@/components/Toast";
 
 interface Scan {
   id: number;
@@ -199,6 +200,16 @@ function mapApiScanToUi(s: ApiScan): Scan {
   };
 }
 
+function loadSavedSettings(): Partial<MonitoringSettings> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem("dlp_monitoring_settings");
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
 export function SecurityProvider({
   children,
 }: {
@@ -209,7 +220,8 @@ export function SecurityProvider({
   const [totalFilesScanned, setTotalFilesScanned] = useState(0);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<UserProfile | null>(null);
-  const [theme, setTheme] = useState<"light" | "dark">("dark");
+  const [theme, setTheme] = useState<"light" | "dark" | "system">("dark");
+  const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">("dark");
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [systemMetrics, setSystemMetrics] =
     useState<SystemMetrics>(DEFAULT_METRICS);
@@ -225,6 +237,7 @@ export function SecurityProvider({
   const [monitorError, setMonitorError] = useState<string | null>(
     null,
   );
+  const [globalToast, setGlobalToast] = useState<{ message: string; type: "success" | "warning" | "error" } | null>(null);
 
   // ── Scan progress state — survives navigation because it's in context ─────
   const [scanState, setScanStateRaw] = useState<ScanState>(IDLE_SCAN);
@@ -239,6 +252,7 @@ export function SecurityProvider({
   };
 
   const socketInitialized = useRef(false);
+  const prevAlertsLengthRef = useRef(0);
   // realTimeRef always mirrors monitoringSettings.realTime for use in socket callbacks
   const realTimeRef = useRef(monitoringSettings.realTime);
 
@@ -844,8 +858,8 @@ export function SecurityProvider({
     setPolicies((prev) => prev.filter((p) => p.id !== id));
   };
 
-  const toggleTheme = () =>
-    setTheme((prev) => (prev === "light" ? "dark" : "light"));
+  const setThemePreference = (pref: "light" | "dark" | "system") =>
+    setTheme(pref);
 
   return (
     <SecurityContext.Provider
@@ -858,6 +872,8 @@ export function SecurityProvider({
         user,
         systemMetrics,
         theme,
+        resolvedTheme,
+        setThemePreference,
         monitoringSettings,
         monitoredPaths,
         watcherReady,
@@ -878,7 +894,6 @@ export function SecurityProvider({
         updatePolicy,
         togglePolicyStatus,
         deletePolicy,
-        toggleTheme,
         refreshPolicies,
         refreshScans,
         refreshThreats,

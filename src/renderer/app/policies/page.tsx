@@ -153,19 +153,19 @@ export default function PolicyManagementPage() {
         {/* Active Policies */}
         <div className="lg:col-span-2 space-y-6">
           <div
-            className="border rounded-2xl shadow-xl overflow-hidden"
+            className="border rounded-2xl overflow-hidden"
             style={cardStyle}
           >
-            <div className="p-4 md:p-6 border-b border-white/5 flex items-center justify-between">
-              <h2 className="text-xl font-black text-white flex items-center gap-3 tracking-tight">
-                <Shield className="text-emerald-500" size={28} />
+            <div className="p-4 md:p-6 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border)' }}>
+              <h2 className="flex items-center gap-3 tracking-tight" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                <Shield className="text-emerald-500" size={20} />
                 Active Policies
                 {totalPolicies > 0 && (
-                  <span className="text-sm font-bold text-neutral-500">
+                  <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)' }}>
                     ({totalPolicies})
                   </span>
                 )}
-              </div>
+              </h2>
               <button
                 onClick={() => setIsNewPolicyOpen(true)}
                 className="flex items-center gap-2 px-4 py-2 rounded-xl transition-all"
@@ -181,33 +181,36 @@ export default function PolicyManagementPage() {
               {policies.length === 0 ? (
                 <div className="py-20 text-center">
                   <div className="flex flex-col items-center gap-4">
-                    <div className="p-6 bg-white/5 rounded-full text-neutral-500">
-                      <Shield size={48} />
+                    <div className="p-6 rounded-full" style={{ background: 'var(--surface-1)', color: 'var(--text-muted)' }}>
+                      <Shield size={40} />
                     </div>
-                    <p className="text-neutral-400 font-black text-xl">
+                    <p style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-tertiary)' }}>
                       No policies yet
                     </p>
-                    <p className="text-neutral-600 font-medium">
+                    <p style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-disabled)' }}>
                       Click "New Policy" to create your first policy.
                     </p>
                   </div>
                 </div>
               ) : (
-                policies.map((policy: any) => (
+                <>
+                {policies.map((policy: any) => (
                   <div
                     key={policy.id}
-                    className="p-4 md:p-5 hover:bg-white/5 transition-colors group"
+                    className="p-4 md:p-5 transition-colors group"
+                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--hover-row)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = '')}
                   >
                     <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                       <div className="space-y-3">
-                        <h3 className="text-lg font-black text-white group-hover:text-indigo-400 transition-colors capitalize tracking-tight">
+                        <h3 className="group-hover:text-indigo-400 transition-colors capitalize tracking-tight" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
                           {policy.name}
                         </h3>
-                        <p className="text-neutral-400 text-sm font-bold leading-relaxed max-w-xl">
+                        <p className="leading-relaxed max-w-xl" style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-tertiary)' }}>
                           {policy.description}
                         </p>
                         <div className="flex flex-wrap items-center gap-3 pt-1">
-                          <span className="bg-white/5 text-neutral-300 px-3 py-1 rounded text-xs font-black border border-white/10 uppercase tracking-widest">
+                          <span className="px-3 py-1 rounded text-xs font-bold uppercase tracking-widest" style={{ background: 'var(--surface-1)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}>
                             {policy.type}
                           </span>
                           <CopyableText
@@ -218,7 +221,7 @@ export default function PolicyManagementPage() {
                         </div>
                       </div>
                       <span
-                        className={`flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-black uppercase border flex items-center gap-2 shadow-sm ${
+                        className={`flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-bold uppercase border flex items-center gap-2 shadow-sm ${
                           policy.status === "Active"
                             ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
                             : "bg-neutral-500/10 text-neutral-400 border-neutral-500/20"
@@ -230,19 +233,18 @@ export default function PolicyManagementPage() {
                         {policy.status}
                       </span>
                     </div>
-                  </div>
 
                     <div className="flex items-center gap-3 mt-6">
                       <button
                         onClick={() => setEditingPolicy(policy)}
-                        className="flex items-center gap-2 text-sm font-black text-blue-500 hover:text-blue-400 transition-colors px-4 py-2 rounded-xl bg-blue-500/5 hover:bg-blue-500/10 border border-blue-500/20"
+                        className="flex items-center gap-2 text-sm font-bold text-blue-500 hover:text-blue-400 transition-colors px-4 py-2 rounded-xl bg-blue-500/5 hover:bg-blue-500/10 border border-blue-500/20"
                       >
                         <Edit2 size={16} />
                         Edit
                       </button>
                       <button
                         onClick={() => togglePolicyStatus(policy.id)}
-                        className={`flex items-center gap-2 text-sm font-black transition-colors px-4 py-2 rounded-xl border ${
+                        className={`flex items-center gap-2 text-sm font-bold transition-colors px-4 py-2 rounded-xl border ${
                           policy.status === "Active"
                             ? "text-red-500 bg-red-500/5 hover:bg-red-500/10 border-red-500/20"
                             : "text-emerald-500 bg-emerald-500/5 hover:bg-emerald-500/10 border-emerald-500/20"
@@ -260,14 +262,18 @@ export default function PolicyManagementPage() {
                             policyId: policy.id,
                           })
                         }
-                        className="flex items-center gap-2 text-sm font-black text-neutral-500 hover:text-red-500 transition-all ml-auto p-2 hover:bg-red-500/10 rounded-xl"
+                        className="flex items-center gap-2 text-sm font-bold transition-all ml-auto p-2 hover:bg-red-500/10 rounded-xl"
+                        style={{ color: 'var(--text-muted)' }}
+                        onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')}
+                        onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
                       >
                         <Trash2 size={18} />
                       </button>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -275,71 +281,27 @@ export default function PolicyManagementPage() {
         {/* Policy Statistics */}
         <div className="space-y-6">
           <div
-            className="border rounded-2xl p-4 md:p-5 shadow-xl"
+            className="border rounded-2xl p-4 md:p-5"
             style={cardStyle}
           >
-            <h3 className="text-xl font-black text-white mb-8 tracking-tight">
+            <h3 className="mb-8 tracking-tight" style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>
               Policy Statistics
             </h3>
 
             {/* Implementation % */}
-            <div className="text-center pb-8 border-b border-white/5 mb-8">
-              <p className="text-6xl font-black text-white mb-2 tracking-tighter">
+            <div className="text-center pb-8 mb-8" style={{ borderBottom: '1px solid var(--border)' }}>
+              <p className="mb-2 tracking-tighter" style={{ fontSize: '48px', fontWeight: 700, color: 'var(--text-primary)' }}>
                 {implementationPct}%
               </p>
-              <p className="text-neutral-500 text-sm font-black uppercase tracking-[0.2em]">
+              <p className="uppercase tracking-[0.2em]" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)' }}>
                 Policy Implementation
               </p>
-              <p className="text-neutral-600 text-xs mt-1">
+              <p className="mt-1" style={{ fontSize: '12px', color: 'var(--text-disabled)' }}>
                 {activePolicies} of {totalPolicies} policies enforced
               </p>
             </div>
 
-            <div className="space-y-8">
-              {/* Violations Today */}
-              <div className="space-y-4">
-                <div className="flex justify-between items-center text-sm font-black uppercase tracking-wider">
-                  <span className="text-neutral-400">
-                    Violations Today
-                  </span>
-                  <span className="text-rose-500">
-                    {violationsToday}
-                  </span>
-                </div>
-                <div className="h-3 bg-black/40 rounded-full overflow-hidden border border-white/5 p-0.5">
-                  <div
-                    className="h-full bg-rose-500 rounded-full shadow-[0_0_15px_rgba(244,63,94,0.4)] transition-all duration-700"
-                    style={{
-                      width: `${Math.min(100, (violationsToday / Math.max(maxViolations, 10)) * 100)}%`,
-                    }}
-                  />
-                </div>
-                <p className="text-xs text-neutral-600">
-                  Active alerts generated today
-                </p>
-              </div>
 
-              {/* Policy Coverage */}
-              <div className="space-y-4">
-                <div className="flex justify-between items-center text-sm font-black uppercase tracking-wider">
-                  <span className="text-neutral-400">
-                    Policy Coverage
-                  </span>
-                  <span className="text-emerald-500">
-                    {implementationPct}%
-                  </span>
-                </div>
-                <div className="h-3 bg-black/40 rounded-full overflow-hidden border border-white/5 p-0.5">
-                  <div
-                    className="h-full bg-emerald-500 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.4)] transition-all duration-700"
-                    style={{ width: `${implementationPct}%` }}
-                  />
-                </div>
-                <p className="text-xs text-neutral-600">
-                  Percentage of active policies in enforcement
-                </p>
-              </div>
-            </div>
             <div>
               <div className="flex justify-between items-center mb-2">
                 <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-tertiary)' }}>Coverage</span>
