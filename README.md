@@ -518,7 +518,7 @@ git push
 
 ## 📄 License
 
-[Add your license here]
+This is not open source,hence no one is allowed to use or modify it.All right reserved 
 
 ## 👥 Team
 
