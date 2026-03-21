@@ -30,16 +30,6 @@ import CustomSelect from "@/components/CustomSelect";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import CopyableText from "@/components/CopyableText";
 
-const SENSITIVITY_CONFIDENCE: Record<string, number> = {
-  Low: 95,
-  Medium: 75,
-  High: 50,
-};
-const SENSITIVITY_DESCRIPTION: Record<string, string> = {
-  Low: "Base model · Highest accuracy, slower detection",
-  Medium: "Small model · Balanced speed and accuracy",
-  High: "Tiny model · Fastest detection, lower accuracy",
-};
 const SCAN_TYPE_OPTIONS = [
   {
     value: "quick",
@@ -57,23 +47,7 @@ const SCAN_TYPE_OPTIONS = [
     description: "Scan a specific directory or path",
   },
 ];
-const SENSITIVITY_OPTIONS = [
-  {
-    value: "Low",
-    label: "Low",
-    description: "Base model · Highest confidence",
-  },
-  {
-    value: "Medium",
-    label: "Medium",
-    description: "Small model · Balanced",
-  },
-  {
-    value: "High",
-    label: "High",
-    description: "Tiny model · Fastest",
-  },
-];
+
 
 function formatETA(
   filesScanned: number,
@@ -105,7 +79,6 @@ export default function ScannerPage() {
   const [scanType, setScanType] = useState("quick");
   const [scanPath, setScanPath] = useState("");
   const [isStarting, setIsStarting] = useState(false);
-  const [sensitivity, setSensitivity] = useState("Medium");
 
   const [excludedKeywords, setExcludedKeywords] = useState<string[]>(
     [],
@@ -115,7 +88,6 @@ export default function ScannerPage() {
   );
   const [keywordInput, setKeywordInput] = useState("");
   const [pathInput, setPathInput] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [toast, setToast] = useState<{
@@ -269,7 +241,6 @@ export default function ScannerPage() {
       const p = JSON.parse(saved);
       setExcludedKeywords(p.excludedKeywords || []);
       setWhitelistedPaths(p.whitelistedPaths || []);
-      setSensitivity(p.sensitivity || "Medium");
     } catch {}
   }, []);
 
@@ -309,7 +280,6 @@ export default function ScannerPage() {
   };
 
   const handleSavePreferences = () => {
-    setIsSaving(true);
     if (keywordInput.trim()) addKeywords();
     if (pathInput.trim()) addPaths();
     localStorage.setItem(
@@ -317,13 +287,9 @@ export default function ScannerPage() {
       JSON.stringify({
         excludedKeywords,
         whitelistedPaths,
-        sensitivity,
       }),
     );
-    setTimeout(() => {
-      setIsSaving(false);
-      setToast({ message: "Preferences saved.", type: "success" });
-    }, 600);
+    setToast({ message: "Preferences saved.", type: "success" });
   };
 
   const handleStartScan = async () => {
@@ -422,17 +388,16 @@ export default function ScannerPage() {
   const isRunning = scanState.status === "running";
   const showProgress =
     isRunning || isCompleted || isFailed || isCancelled;
-  const confidence = SENSITIVITY_CONFIDENCE[sensitivity] || 75;
   const cardStyle = { background: 'var(--background-card)', border: '1px solid var(--border)', borderRadius: '16px' };
 
   return (
     <div className="space-y-6 pb-12">
       <h1 style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Content Scanner</h1>
 
-      {/* ── Config + Model ──────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* ── Config ──────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 gap-6">
         <div
-          className="lg:col-span-2 border rounded-2xl p-4 md:p-5"
+          className="border rounded-2xl p-4 md:p-5"
           style={cardStyle}
         >
           <h2 className="flex items-center gap-3 tracking-tight" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '24px' }}>
@@ -494,46 +459,6 @@ export default function ScannerPage() {
                 </>
               )}
             </button>
-          </div>
-        </div>
-
-        <div
-          className="border rounded-2xl p-4 md:p-5 flex flex-col justify-center"
-          style={cardStyle}
-        >
-          <h3 className="mb-6" style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>
-            Model Configuration
-          </h3>
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-disabled)', textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>
-                Model Sensitivity
-              </label>
-              <CustomSelect
-                value={sensitivity}
-                onChange={setSensitivity}
-                options={SENSITIVITY_OPTIONS}
-              />
-            </div>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-disabled)', textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>
-                  Detection Confidence
-                </label>
-                <span className="text-indigo-400 font-mono font-bold text-sm">
-                  {confidence}%
-                </span>
-              </div>
-              <div className="relative w-full h-2 rounded-full overflow-hidden" style={{ background: 'var(--surface-1)', border: '1px solid var(--border-subtle)' }}>
-                <div
-                  className="absolute top-0 left-0 h-full bg-gradient-to-r from-indigo-600 to-indigo-400 transition-all duration-500 rounded-full"
-                  style={{ width: `${confidence}%` }}
-                />
-              </div>
-              <p className="text-xs px-1" style={{ color: 'var(--text-disabled)' }}>
-                {SENSITIVITY_DESCRIPTION[sensitivity]}
-              </p>
-            </div>
           </div>
         </div>
       </div>
@@ -824,20 +749,13 @@ export default function ScannerPage() {
 
         </div>
 
-        <button onClick={() => {
-          setIsSaving(true);
-          if (keywordInput.trim()) addKeywords();
-          if (pathInput.trim()) addPaths();
-          localStorage.setItem("dlp_scanner_prefs", JSON.stringify({ excludedKeywords, whitelistedPaths, sensitivity }));
-          setTimeout(() => { setIsSaving(false); setToast({ message: "Preferences saved.", type: "success" }); }, 800);
-        }}
-          disabled={isSaving}
+        <button onClick={handleSavePreferences}
           className="flex items-center gap-2 px-6 py-2.5 rounded-xl transition-all mt-6"
-          style={{ background: isSaving ? 'var(--brand-mid)' : 'var(--brand-light)', color: 'var(--text-on-brand)', fontSize: '13px', fontWeight: 600, opacity: isSaving ? 0.7 : 1 }}
-          onMouseEnter={e => { if (!isSaving) (e.currentTarget as HTMLButtonElement).style.background = 'var(--brand-main)'; }}
-          onMouseLeave={e => { if (!isSaving) (e.currentTarget as HTMLButtonElement).style.background = 'var(--brand-light)'; }}
+          style={{ background: 'var(--brand-light)', color: 'var(--text-on-brand)', fontSize: '13px', fontWeight: 600 }}
+          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--brand-main)'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--brand-light)'; }}
         >
-          {isSaving ? <><div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--spinner-track)', borderTopColor: 'var(--text-on-brand)' }} /> Saving...</> : 'Save Preferences'}
+          Save Preferences
         </button>
       </div>
 
