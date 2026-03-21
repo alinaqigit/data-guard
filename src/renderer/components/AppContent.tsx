@@ -49,16 +49,28 @@ export default function AppContent({
 
   if (!isAuthenticated && !isPublicPath) {
     return (
-      <main
+      <div
         style={{
-          flex: 1,
+          display: "flex",
+          flexDirection: "column",
           width: "100%",
-          minHeight: "100vh",
+          height: "100vh",
           background: "var(--background-body)",
         }}
       >
-        <LoginPage />
-      </main>
+        <TitleBar />
+        <main
+          style={{
+            flex: 1,
+            width: "100%",
+            minHeight: "100vh",
+            marginTop: "36px",
+            overflow: "auto",
+          }}
+        >
+          <LoginPage />
+        </main>
+      </div>
     );
   }
 

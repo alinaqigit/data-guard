@@ -22,12 +22,34 @@ declare global {
 
 export default function TitleBar() {
   const [isMaximized, setIsMaximized] = useState(false);
+  const [isElectron, setIsElectron] = useState(false);
   const { resolvedTheme } = useSecurity();
-  const isElectron =
-    typeof window !== "undefined" && window.electronWindow;
 
   useEffect(() => {
-    if (isElectron) {
+    if (typeof window === "undefined") return;
+
+    // The preload bridge can become available slightly after first render.
+    if (window.electronWindow) {
+      setIsElectron(true);
+      return;
+    }
+
+    let attempts = 0;
+    const interval = window.setInterval(() => {
+      attempts += 1;
+      if (window.electronWindow) {
+        setIsElectron(true);
+        window.clearInterval(interval);
+      } else if (attempts >= 20) {
+        window.clearInterval(interval);
+      }
+    }, 100);
+
+    return () => window.clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (isElectron && window.electronWindow) {
       window.electronWindow?.isMaximized().then(setIsMaximized);
       const cleanup = window.electronWindow?.onMaximizeChange(
         (maximized) => {
