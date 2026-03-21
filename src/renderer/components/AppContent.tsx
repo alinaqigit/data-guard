@@ -35,7 +35,10 @@ export default function AppContent({
   if (!mounted) {
     return (
       <div
-        style={{ minHeight: "100vh", background: "var(--background-body)" }}
+        style={{
+          minHeight: "100vh",
+          background: "var(--background-body)",
+        }}
         suppressHydrationWarning
       />
     );
@@ -46,7 +49,14 @@ export default function AppContent({
 
   if (!isAuthenticated && !isPublicPath) {
     return (
-      <main style={{ flex: 1, width: "100%", minHeight: "100vh", background: "var(--background-body)" }}>
+      <main
+        style={{
+          flex: 1,
+          width: "100%",
+          minHeight: "100vh",
+          background: "var(--background-body)",
+        }}
+      >
         <LoginPage />
       </main>
     );
@@ -54,9 +64,28 @@ export default function AppContent({
 
   if (!isAuthenticated && isPublicPath) {
     return (
-      <main style={{ flex: 1, width: "100%", minHeight: "100vh", background: "var(--background-body)" }}>
-        {children}
-      </main>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          width: "100%",
+          height: "100vh",
+          background: "var(--background-body)",
+        }}
+      >
+        <TitleBar />
+        <main
+          style={{
+            flex: 1,
+            width: "100%",
+            minHeight: "100vh",
+            marginTop: "36px",
+            overflow: "auto",
+          }}
+        >
+          {children}
+        </main>
+      </div>
     );
   }
 

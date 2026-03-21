@@ -42,6 +42,13 @@ export const fileActionsService = {
   }> {
     return api.get("/api/files/encrypted", true);
   },
+
+  async deleteAllEncryptedRecords(): Promise<{
+    deletedCount: number;
+    message: string;
+  }> {
+    return api.delete("/api/files/encrypted", true);
+  },
 };
 
 export const monitoringApiService = {

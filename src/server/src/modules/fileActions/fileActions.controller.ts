@@ -112,6 +112,20 @@ export class fileActionsController {
       ),
     );
 
+    // DELETE /api/files/encrypted — delete all encrypted file records for user
+    this.router.delete(
+      "/encrypted",
+      asyncHandler(
+        async (req: AuthenticatedRequest, res: Response) => {
+          if (!req.user) throw new UnauthorizedError();
+          const result = this.service.deleteAllEncryptedFileRecords(
+            req.user.userId,
+          );
+          res.status(200).json(result);
+        },
+      ),
+    );
+
     // POST /api/files/open — open file with default system application
     this.router.post(
       "/open",

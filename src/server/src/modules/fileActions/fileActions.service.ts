@@ -233,6 +233,17 @@ export class fileActionsService {
     return this.repo.getByUserId(userId);
   }
 
+  public deleteAllEncryptedFileRecords(userId: number): {
+    deletedCount: number;
+    message: string;
+  } {
+    const deletedCount = this.repo.deleteAllByUserId(userId);
+    return {
+      deletedCount,
+      message: `Deleted ${deletedCount} encrypted vault record(s).`,
+    };
+  }
+
   // ── Open file with default system application ──────────
   public async openFile(filePath: string): Promise<FileActionResult> {
     this.validatePath(filePath);

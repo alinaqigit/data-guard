@@ -6,7 +6,8 @@
   "main": ".webpack/main",
   "private": true,
   "scripts": {
-    "dev": "npm run build:server && npm run build:next && concurrently \"npm run dev:next\" \"electron-forge start\"",
+    "init": "npm run install:all && npm run build:server && npm run build:next",
+    "dev": "npm run build:server && concurrently \"npm run dev:next\" \"electron-forge start\"",
     "start": "electron-forge start",
     "package": "electron-forge package",
     "publish": "electron-forge publish",
