@@ -77,13 +77,28 @@ export default function TitleBar() {
     return null;
   }
 
-  const logoSrc = resolvedTheme === "light" ? "/images/logo-dark.png" : "/images/logo.png";
+  const logoSrc =
+    resolvedTheme === "light"
+      ? "/images/logo-dark.png"
+      : "/images/logo.png";
 
   return (
     <div className="titlebar">
       <div className="titlebar-brand">
-        <div style={{ width: 20, height: 20, position: "relative", flexShrink: 0 }}>
-          <Image src={logoSrc} alt="DataGuard" fill className="object-contain" />
+        <div
+          style={{
+            width: 20,
+            height: 20,
+            position: "relative",
+            flexShrink: 0,
+          }}
+        >
+          <Image
+            src={logoSrc}
+            alt="DataGuard"
+            fill
+            className="object-contain"
+          />
         </div>
         <span className="titlebar-title">DataGuard</span>
       </div>

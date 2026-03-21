@@ -93,16 +93,19 @@ export default function ReportsPage() {
     <div className="space-y-6 pb-10">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
+      <h1 style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+        Reports & Analytics
+      </h1>
+
       {/* Generator */}
       <div style={cardStyle} className="overflow-hidden">
-        <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)' }}>
-          <h1 style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Reports & Analytics</h1>
+        <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)' }}>
+          <h2 className="flex items-center gap-2" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
+            <BarChart3 size={16} style={{ color: 'var(--brand-light)' }} />
+            Report Generator
+          </h2>
         </div>
         <div style={{ padding: '24px' }} className="space-y-6">
-          <div className="flex items-center gap-2" style={{ color: 'var(--brand-light)', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-            <BarChart3 size={16} /> Report Generator
-          </div>
-
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
